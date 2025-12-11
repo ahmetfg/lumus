@@ -1,21 +1,448 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>Snake Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dikey Zamanlama Oyunu - Serbest Düşüş</title>
     <style>
-        body { 
-            background: #0d1b0d; color: #4eff4e; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            height: 100vh; margin: 0; font-family: monospace; 
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            user-select: none;
         }
-        #board { width: 300px; height: 300px; border: 2px solid #4eff4e; display: flex; align-items: center; justify-content: center; }
+        canvas {
+            border: 2px solid #444;
+            background-color: #222;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #ddd;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #score-board {
+            font-size: 48px;
+            font-weight: bold;
+            color: #4cd137;
+            text-shadow: 0 0 10px rgba(76, 209, 55, 0.5);
+        }
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #4cd137;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+        .hidden {
+            display: none !important;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #4cd137;
+            border: none;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: transform 0.1s;
+        }
+        button:hover {
+            transform: scale(1.05);
+            background-color: #5ce646;
+        }
+        p {
+            color: #aaa;
+            max-width: 300px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
-    <h2>YILAN OYUNU</h2>
-    <div id="board">
-        [Oyun Alanı Burası]
+
+    <div id="ui-layer">
+        <h1>Sonsuz Çıkış</h1>
+        <div id="score-board">0</div>
     </div>
-    <p>Bu ayrı bir HTML dosyasıdır.</p>
+
+    <div id="start-screen">
+        <h2 style="color: #4cd137; margin:0;">SERBEST DÜŞÜŞ MODU</h2>
+        <p>Yukarı çıkmaya çalış.<br>Düşersen panik yapma, alttaki platformları yakalamaya çalış.<br>En kötü ihtimalle Level 0'a çakılırsın.</p>
+        <button onclick="startGame()">OYUNA BAŞLA</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score-board');
+        const startScreen = document.getElementById('start-screen');
+
+        // Oyun Sabitleri
+        const CANVAS_WIDTH = 480; 
+        const CANVAS_HEIGHT = 800;
+        
+        // Oyun Ayarları
+        const GRAVITY = 0.6;
+        const JUMP_FORCE = -14;
+        const PLAYER_SIZE = 20;
+        const PLATFORM_HEIGHT = 18;
+        const BASE_PLATFORM_WIDTH = 120; 
+        const PLATFORM_GAP_Y = 140; 
+        
+        // Zemin Seviyesi (Level 0 Platformunun Y koordinatı)
+        const FLOOR_LEVEL = CANVAS_HEIGHT - 100;
+
+        // Oyun Durumu
+        let gameState = 'MENU'; // MENU, PLAYING
+        let score = 0;
+        let platforms = [];
+        let particles = [];
+        let cameraY = 0; // Negatif değerler yukarıyı ifade eder
+        
+        // Karakter Objesi
+        const player = {
+            x: CANVAS_WIDTH / 2 - PLAYER_SIZE / 2, 
+            y: 0,
+            vy: 0,
+            width: PLAYER_SIZE,
+            height: PLAYER_SIZE,
+            color: '#4cd137',
+            isGrounded: false,
+            currentPlatform: null
+        };
+
+        function resize() {
+            let scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
+            if (window.innerWidth < 500) scale = window.innerWidth / CANVAS_WIDTH; 
+            
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            
+            canvas.style.width = `${CANVAS_WIDTH * scale}px`;
+            canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Platform {
+            constructor(y, isMoving = true) {
+                this.y = y;
+                this.height = PLATFORM_HEIGHT;
+                this.isMoving = isMoving;
+                this.color = `hsl(${Math.random() * 360}, 60%, 60%)`;
+
+                // Zemin (Level 0) kontrolü - Burası her zaman tam ekran
+                if (y >= FLOOR_LEVEL) {
+                    this.width = CANVAS_WIDTH;
+                    this.x = 0;
+                    this.speed = 0;
+                    this.color = '#555';
+                } else {
+                    // Diğer tüm platformlar için rastgele genişlik (60px - 200px arası)
+                    this.width = Math.random() * (200 - 60) + 60;
+
+                    if (isMoving) {
+                        this.x = Math.random() * (CANVAS_WIDTH - this.width);
+                        let speedBase = 2 + (Math.abs(y) * 0.0005); 
+                        this.speed = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * speedBase + 1);
+                    } else {
+                        // Sabit platformlar ortada dursun ama genişlikleri rastgele olsun
+                        this.x = CANVAS_WIDTH / 2 - this.width / 2;
+                        this.speed = 0;
+                    }
+                }
+            }
+
+            update() {
+                if (this.isMoving) {
+                    this.x += this.speed;
+                    if (this.x <= 0 || this.x + this.width >= CANVAS_WIDTH) {
+                        this.speed *= -1;
+                    }
+                }
+            }
+
+            draw() {
+                // Sadece ekranda görünenleri çiz (Performans için)
+                if (this.y - cameraY > -100 && this.y - cameraY < CANVAS_HEIGHT + 100) {
+                    ctx.fillStyle = this.color;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = this.color;
+                    ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+                    ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.fillRect(this.x, (this.y - cameraY) + this.height - 5, this.width, 5);
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.alpha = 1;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= 0.03;
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y - cameraY, this.size, this.size);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function startGame() {
+            gameState = 'PLAYING';
+            score = 0;
+            cameraY = 0;
+            scoreEl.innerText = score;
+            platforms = [];
+            particles = [];
+            startScreen.classList.add('hidden');
+
+            // Başlangıç platformu (Tam genişlik - Level 0)
+            let basePlat = new Platform(FLOOR_LEVEL, false);
+            platforms.push(basePlat);
+            
+            // İlk seti oluştur
+            for (let i = 1; i < 6; i++) {
+                // DEĞİŞİKLİK: i > 3 şartı kaldırıldı. Artık hepsi (true) hareketli.
+                platforms.push(new Platform(FLOOR_LEVEL - (i * PLATFORM_GAP_Y), true)); 
+            }
+
+            // Karakteri başlat
+            player.x = CANVAS_WIDTH / 2 - player.width / 2;
+            player.y = basePlat.y - player.height;
+            player.vy = 0;
+            player.isGrounded = true;
+            player.currentPlatform = basePlat;
+            
+            gameLoop();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (gameState === 'MENU') {
+                    startGame();
+                } 
+                else if (gameState === 'PLAYING' && player.isGrounded) {
+                    player.vy = JUMP_FORCE;
+                    player.isGrounded = false;
+                    player.currentPlatform = null;
+                    createExplosion(player.x + player.width/2, player.y + player.height, '#fff');
+                }
+            }
+        });
+
+        window.addEventListener('touchstart', (e) => {
+             e.preventDefault(); 
+             if (gameState === 'MENU') startGame();
+             else if (gameState === 'PLAYING' && player.isGrounded) {
+                 player.vy = JUMP_FORCE;
+                 player.isGrounded = false;
+                 player.currentPlatform = null;
+                 createExplosion(player.x + player.width/2, player.y + player.height, '#fff');
+             }
+        }, {passive: false});
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // 1. Fizik
+            player.vy += GRAVITY;
+            player.y += player.vy;
+
+            // 2. Zemin (Level 0) Kontrolü - "HARD FLOOR"
+            // Eğer karakter en alt zeminin altına düşerse, orada durdur.
+            if (player.y + player.height > FLOOR_LEVEL) {
+                player.y = FLOOR_LEVEL - player.height;
+                player.vy = 0;
+                player.isGrounded = true;
+                // En alttaki platformu bulup ona bağlayalım ki kayabilsin (gerçi zemin sabit ama olsun)
+                player.currentPlatform = platforms[0]; 
+            }
+
+            // 3. Platformla birlikte hareket et
+            if (player.isGrounded && player.currentPlatform) {
+                let p = player.currentPlatform;
+                player.x += p.speed;
+                // Ekran sınırları
+                if (player.x < 0) player.x = 0;
+                if (player.x + player.width > CANVAS_WIDTH) player.x = CANVAS_WIDTH - player.width;
+
+                // Platformun üzerinden düştü mü?
+                if (player.x + player.width < p.x || player.x > p.x + p.width) {
+                    player.isGrounded = false;
+                    player.currentPlatform = null;
+                } else {
+                    player.y = p.y - player.height;
+                    player.vy = 0;
+                }
+            }
+
+            // 4. Çarpışma (Sadece düşerken)
+            if (player.vy > 0 && !player.isGrounded) {
+                for (let p of platforms) {
+                    // Sadece ekrana yakın platformları kontrol et (Optimizasyon)
+                    if (Math.abs(p.y - player.y) > 100) continue;
+
+                    if (player.y + player.height >= p.y && player.y + player.height <= p.y + p.height + player.vy + 5) {
+                        if (player.x + player.width > p.x && player.x < p.x + p.width) {
+                            player.y = p.y - player.height;
+                            player.vy = 0;
+                            player.isGrounded = true;
+                            player.currentPlatform = p;
+                            createExplosion(player.x + player.width/2, player.y + player.height, p.color);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 5. Kamera Hareketi - Çift Yönlü
+            // YUKARI HAREKET: Karakter ekranın %40'ından yukarı çıkarsa kamera peşinden gelsin
+            let targetUp = player.y - CANVAS_HEIGHT * 0.4;
+            if (targetUp < cameraY) {
+                cameraY += (targetUp - cameraY) * 0.1; 
+            }
+            
+            // AŞAĞI HAREKET: Karakter ekranın %70'inden aşağı düşerse kamera peşinden gelsin
+            let targetDown = player.y - CANVAS_HEIGHT * 0.7;
+            if (targetDown > cameraY) {
+                cameraY += (targetDown - cameraY) * 0.15; // Düşüş biraz daha hızlı takip etsin
+            }
+
+            // KAMERA SINIRI: Kamera Level 0'ın altına inemez (0 bizim başlangıç noktamız)
+            // Bizim koordinat sisteminde yukarı çıktıkça Y azalır (negatif olur).
+            // Level 0 noktası aslında kameraY = 0 olduğunda tam görünür.
+            if (cameraY > 0) cameraY = 0;
+
+            // Skor Hesaplama (Kameranın ne kadar yukarı çıktığına göre - Mutlak değer)
+            let currentHeightScore = Math.floor(Math.abs(cameraY / 10));
+            // Skor sadece artar mı yoksa düşünce azalır mı? İsteğine göre düşerken azalmasını sağladım.
+            score = currentHeightScore; 
+            scoreEl.innerText = score;
+
+            // 6. Platform Yönetimi
+            // ARTIK SİLME İŞLEMİ YOK. Aşağı düşerken platformlar lazım olacak.
+            // Sadece çok yukarıda yeni platform üretimi var.
+            
+            // En üstteki platformu bul
+            let highestY = Infinity;
+            platforms.forEach(p => { if(p.y < highestY) highestY = p.y; });
+            
+            // Eğer en üst platform kameraya girdiyse daha da üste yeni bir tane ekle
+            if (highestY > cameraY - 200) {
+                // Yeni platformlar hareketli ve rastgele genişlikte olmalı
+                platforms.push(new Platform(highestY - PLATFORM_GAP_Y, true)); 
+            }
+
+            // Platformları güncelle
+            platforms.forEach(p => p.update());
+            
+            // Parçacıkları güncelle
+            particles.forEach((p, index) => {
+                p.update();
+                if (p.alpha <= 0) particles.splice(index, 1);
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Arka plan ızgarası
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            let gridY = -(cameraY % 50);
+            for (let i = 0; i < CANVAS_HEIGHT / 50 + 2; i++) {
+                ctx.moveTo(0, gridY + i * 50);
+                ctx.lineTo(CANVAS_WIDTH, gridY + i * 50);
+            }
+            ctx.stroke();
+
+            platforms.forEach(p => p.draw());
+            particles.forEach(p => p.draw());
+
+            // Oyuncu
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = player.color;
+            let stretch = Math.abs(player.vy) * 0.5;
+            // Düşerken de biraz uzasın
+            if (!player.isGrounded) {
+                ctx.fillRect(player.x + stretch/2, player.y - cameraY, player.width - stretch, player.height + stretch);
+            } else {
+                ctx.fillRect(player.x, player.y - cameraY, player.width, player.height);
+            }
+            ctx.shadowBlur = 0;
+            
+            // Gözler
+            ctx.fillStyle = 'black';
+            if (!player.isGrounded) {
+                ctx.fillRect(player.x + 5 + stretch/2, player.y - cameraY + 5, 4, 4);
+                ctx.fillRect(player.x + 12 - stretch/2, player.y - cameraY + 5, 4, 4);
+            } else {
+                ctx.fillRect(player.x + 5, player.y - cameraY + 5, 4, 4);
+                ctx.fillRect(player.x + 12, player.y - cameraY + 5, 4, 4);
+            }
+        }
+
+        function gameLoop() {
+            if (gameState === 'PLAYING') {
+                update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        resize();
+        draw();
+
+    </script>
 </body>
 </html>

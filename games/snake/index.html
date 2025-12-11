@@ -263,30 +263,33 @@
             gameLoop();
         }
 
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                if (gameState === 'MENU') {
-                    startGame();
-                } 
-                else if (gameState === 'PLAYING' && player.isGrounded) {
-                    player.vy = JUMP_FORCE;
-                    player.isGrounded = false;
-                    player.currentPlatform = null;
-                    createExplosion(player.x + player.width/2, player.y + player.height, '#fff');
-                }
-            }
-        });
+        // Ortak Girdi Yönetimi (Klavye, Dokunmatik ve Mouse)
+        function handleInput(e) {
+            // Eğer klavye olayıysa ve basılan tuş Space değilse işlem yapma
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            
+            // Eğer butona tıklanıyorsa (Start ekranı), oyun içi inputu tetikleme
+            if (e.target.tagName === 'BUTTON') return;
 
-        window.addEventListener('touchstart', (e) => {
-             e.preventDefault(); 
-             if (gameState === 'MENU') startGame();
-             else if (gameState === 'PLAYING' && player.isGrounded) {
-                 player.vy = JUMP_FORCE;
-                 player.isGrounded = false;
-                 player.currentPlatform = null;
-                 createExplosion(player.x + player.width/2, player.y + player.height, '#fff');
-             }
-        }, {passive: false});
+            // Dokunmatik ve mouse olaylarında varsayılan davranışı engelle (scroll, seçim vs.)
+            if (e.type !== 'keydown') {
+                e.preventDefault();
+            }
+
+            if (gameState === 'MENU') {
+                startGame();
+            } 
+            else if (gameState === 'PLAYING' && player.isGrounded) {
+                player.vy = JUMP_FORCE;
+                player.isGrounded = false;
+                player.currentPlatform = null;
+                createExplosion(player.x + player.width/2, player.y + player.height, '#fff');
+            }
+        }
+
+        window.addEventListener('keydown', handleInput);
+        window.addEventListener('touchstart', handleInput, {passive: false});
+        window.addEventListener('mousedown', handleInput); // Mouse tıklaması desteği
 
         function update() {
             if (gameState !== 'PLAYING') return;

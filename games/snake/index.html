@@ -21,6 +21,7 @@
             border: 2px solid #444;
             background-color: #222;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            outline: none; /* Focus çerçevesini gizle */
         }
         #ui-layer {
             position: absolute;
@@ -97,7 +98,8 @@
         <button onclick="startGame()">OYUNA BAŞLA</button>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- tabindex eklendi: Klavye odaklanması için -->
+    <canvas id="gameCanvas" tabindex="1"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -242,6 +244,10 @@
             platforms = [];
             particles = [];
             startScreen.classList.add('hidden');
+            
+            // Iframe ve canvas'a odaklanmayı zorla
+            window.focus();
+            if (canvas.focus) canvas.focus();
 
             // Başlangıç platformu (Tam genişlik - Level 0)
             let basePlat = new Platform(FLOOR_LEVEL, false);
@@ -249,7 +255,6 @@
             
             // İlk seti oluştur
             for (let i = 1; i < 6; i++) {
-                // DEĞİŞİKLİK: i > 3 şartı kaldırıldı. Artık hepsi (true) hareketli.
                 platforms.push(new Platform(FLOOR_LEVEL - (i * PLATFORM_GAP_Y), true)); 
             }
 
@@ -287,9 +292,16 @@
             }
         }
 
-        window.addEventListener('keydown', handleInput);
-        window.addEventListener('touchstart', handleInput, {passive: false});
-        window.addEventListener('mousedown', handleInput); // Mouse tıklaması desteği
+        // Olayları document seviyesine taşıdık (Iframe uyumluluğu için daha iyi)
+        document.addEventListener('keydown', handleInput);
+        document.addEventListener('touchstart', handleInput, {passive: false});
+        document.addEventListener('mousedown', handleInput);
+        
+        // Canvas'a tıklayınca odağı geri getir
+        canvas.addEventListener('click', () => {
+            window.focus();
+            if (canvas.focus) canvas.focus();
+        });
 
         function update() {
             if (gameState !== 'PLAYING') return;

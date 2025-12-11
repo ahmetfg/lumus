@@ -6,7 +6,7 @@ document.querySelector('#app').innerHTML = `
     <h1>ARCADE ZONE (Vite)</h1>
     <div class="game-grid">
       <!-- DİKKAT: public klasörünü yazmıyoruz, direkt kökten başlıyoruz -->
-      <button class="game-btn" data-url="/games/snake/index.html">
+      <button class="game-btn" data-url="games/snake/index.html">
         🐍 Yılan Oyunu
       </button>
     </div>

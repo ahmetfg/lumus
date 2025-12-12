@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dikey Zamanlama Oyunu - Serbest Düşüş</title>
+    <title>Vertical Timing - Free Fall</title>
     <style>
         body {
             margin: 0;
@@ -16,12 +16,13 @@
             height: 100vh;
             color: white;
             user-select: none;
+            -webkit-user-select: none; /* Safari mobile support */
         }
         canvas {
             border: 2px solid #444;
             background-color: #222;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            outline: none; /* Focus çerçevesini gizle */
+            outline: none; /* Hide focus outline */
         }
         #ui-layer {
             position: absolute;
@@ -88,17 +89,17 @@
 <body>
 
     <div id="ui-layer">
-        <h1>Sonsuz Çıkış</h1>
+        <h1>Infinite Ascent</h1>
         <div id="score-board">0</div>
     </div>
 
     <div id="start-screen">
-        <h2 style="color: #4cd137; margin:0;">SERBEST DÜŞÜŞ MODU</h2>
-        <p>Yukarı çıkmaya çalış.<br>Düşersen panik yapma, alttaki platformları yakalamaya çalış.<br>En kötü ihtimalle Level 0'a çakılırsın.</p>
-        <button onclick="startGame()">OYUNA BAŞLA</button>
+        <h2 style="color: #4cd137; margin:0;">FREE FALL MODE</h2>
+        <p>Try to climb as high as you can.<br>Don't panic if you fall; aim for the platforms below.<br>Worst case, you land back at Level 0.</p>
+        <button onclick="startGame()">START GAME</button>
     </div>
 
-    <!-- tabindex eklendi: Klavye odaklanması için -->
+    <!-- tabindex added for keyboard focus within iframes -->
     <canvas id="gameCanvas" tabindex="1"></canvas>
 
     <script>
@@ -107,11 +108,11 @@
         const scoreEl = document.getElementById('score-board');
         const startScreen = document.getElementById('start-screen');
 
-        // Oyun Sabitleri
+        // --- Game Constants ---
         const CANVAS_WIDTH = 480; 
         const CANVAS_HEIGHT = 800;
         
-        // Oyun Ayarları
+        // Physics & Gameplay
         const GRAVITY = 0.6;
         const JUMP_FORCE = -14;
         const PLAYER_SIZE = 20;
@@ -119,17 +120,17 @@
         const BASE_PLATFORM_WIDTH = 120; 
         const PLATFORM_GAP_Y = 140; 
         
-        // Zemin Seviyesi (Level 0 Platformunun Y koordinatı)
+        // Floor Level (Y coordinate of Level 0)
         const FLOOR_LEVEL = CANVAS_HEIGHT - 100;
 
-        // Oyun Durumu
+        // --- Game State ---
         let gameState = 'MENU'; // MENU, PLAYING
         let score = 0;
         let platforms = [];
         let particles = [];
-        let cameraY = 0; // Negatif değerler yukarıyı ifade eder
+        let cameraY = 0; // Negative values mean moving up
         
-        // Karakter Objesi
+        // --- Player Object ---
         const player = {
             x: CANVAS_WIDTH / 2 - PLAYER_SIZE / 2, 
             y: 0,
@@ -141,6 +142,7 @@
             currentPlatform: null
         };
 
+        // --- Resize Logic ---
         function resize() {
             let scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
             if (window.innerWidth < 500) scale = window.innerWidth / CANVAS_WIDTH; 
@@ -154,6 +156,8 @@
         window.addEventListener('resize', resize);
         resize();
 
+        // --- Classes ---
+
         class Platform {
             constructor(y, isMoving = true) {
                 this.y = y;
@@ -161,22 +165,23 @@
                 this.isMoving = isMoving;
                 this.color = `hsl(${Math.random() * 360}, 60%, 60%)`;
 
-                // Zemin (Level 0) kontrolü - Burası her zaman tam ekran
+                // Level 0 (Floor) Logic - Always full width and static
                 if (y >= FLOOR_LEVEL) {
                     this.width = CANVAS_WIDTH;
                     this.x = 0;
                     this.speed = 0;
                     this.color = '#555';
                 } else {
-                    // Diğer tüm platformlar için rastgele genişlik (60px - 200px arası)
+                    // Random width for all other platforms (60px - 200px)
                     this.width = Math.random() * (200 - 60) + 60;
 
                     if (isMoving) {
                         this.x = Math.random() * (CANVAS_WIDTH - this.width);
+                        // Speed increases slightly with height
                         let speedBase = 2 + (Math.abs(y) * 0.0005); 
                         this.speed = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * speedBase + 1);
                     } else {
-                        // Sabit platformlar ortada dursun ama genişlikleri rastgele olsun
+                        // Static platforms (if needed) center aligned
                         this.x = CANVAS_WIDTH / 2 - this.width / 2;
                         this.speed = 0;
                     }
@@ -186,6 +191,7 @@
             update() {
                 if (this.isMoving) {
                     this.x += this.speed;
+                    // Bounce off walls
                     if (this.x <= 0 || this.x + this.width >= CANVAS_WIDTH) {
                         this.speed *= -1;
                     }
@@ -193,7 +199,7 @@
             }
 
             draw() {
-                // Sadece ekranda görünenleri çiz (Performans için)
+                // Viewport Culling: Only draw if visible
                 if (this.y - cameraY > -100 && this.y - cameraY < CANVAS_HEIGHT + 100) {
                     ctx.fillStyle = this.color;
                     ctx.shadowBlur = 10;
@@ -201,6 +207,7 @@
                     ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
                     ctx.shadowBlur = 0;
 
+                    // 3D effect / Shadow at bottom
                     ctx.fillStyle = 'rgba(0,0,0,0.3)';
                     ctx.fillRect(this.x, (this.y - cameraY) + this.height - 5, this.width, 5);
                 }
@@ -236,6 +243,8 @@
             }
         }
 
+        // --- Core Functions ---
+
         function startGame() {
             gameState = 'PLAYING';
             score = 0;
@@ -245,20 +254,21 @@
             particles = [];
             startScreen.classList.add('hidden');
             
-            // Iframe ve canvas'a odaklanmayı zorla
+            // Force focus for iframe compatibility
             window.focus();
             if (canvas.focus) canvas.focus();
 
-            // Başlangıç platformu (Tam genişlik - Level 0)
+            // Create Base Floor
             let basePlat = new Platform(FLOOR_LEVEL, false);
             platforms.push(basePlat);
             
-            // İlk seti oluştur
+            // Create Initial Platforms
             for (let i = 1; i < 6; i++) {
+                // All platforms are moving and have random width
                 platforms.push(new Platform(FLOOR_LEVEL - (i * PLATFORM_GAP_Y), true)); 
             }
 
-            // Karakteri başlat
+            // Reset Player
             player.x = CANVAS_WIDTH / 2 - player.width / 2;
             player.y = basePlat.y - player.height;
             player.vy = 0;
@@ -268,16 +278,16 @@
             gameLoop();
         }
 
-        // Ortak Girdi Yönetimi (Klavye, Dokunmatik ve Mouse)
+        // Unified Input Handler (Keyboard, Touch, Mouse)
         function handleInput(e) {
-            // Eğer klavye olayıysa ve basılan tuş Space değilse işlem yapma
+            // Filter keyboard events (only Space)
             if (e.type === 'keydown' && e.code !== 'Space') return;
             
-            // Eğer butona tıklanıyorsa (Start ekranı), oyun içi inputu tetikleme
+            // Ignore clicks on UI buttons
             if (e.target.tagName === 'BUTTON') return;
 
-            // Dokunmatik ve mouse olaylarında varsayılan davranışı engelle (scroll, seçim vs.)
-            if (e.type !== 'keydown') {
+            // Prevent default browser behaviors (scrolling, zooming)
+            if (e.type !== 'keydown' && e.cancelable) {
                 e.preventDefault();
             }
 
@@ -285,6 +295,7 @@
                 startGame();
             } 
             else if (gameState === 'PLAYING' && player.isGrounded) {
+                // Jump Logic
                 player.vy = JUMP_FORCE;
                 player.isGrounded = false;
                 player.currentPlatform = null;
@@ -292,12 +303,12 @@
             }
         }
 
-        // Olayları document seviyesine taşıdık (Iframe uyumluluğu için daha iyi)
+        // Event Listeners (Attached to document for better iframe support)
         document.addEventListener('keydown', handleInput);
         document.addEventListener('touchstart', handleInput, {passive: false});
         document.addEventListener('mousedown', handleInput);
         
-        // Canvas'a tıklayınca odağı geri getir
+        // Re-focus canvas on click to ensure inputs are captured
         canvas.addEventListener('click', () => {
             window.focus();
             if (canvas.focus) canvas.focus();
@@ -306,29 +317,28 @@
         function update() {
             if (gameState !== 'PLAYING') return;
 
-            // 1. Fizik
+            // 1. Physics
             player.vy += GRAVITY;
             player.y += player.vy;
 
-            // 2. Zemin (Level 0) Kontrolü - "HARD FLOOR"
-            // Eğer karakter en alt zeminin altına düşerse, orada durdur.
+            // 2. Floor Collision (Hard Floor at Level 0)
             if (player.y + player.height > FLOOR_LEVEL) {
                 player.y = FLOOR_LEVEL - player.height;
                 player.vy = 0;
                 player.isGrounded = true;
-                // En alttaki platformu bulup ona bağlayalım ki kayabilsin (gerçi zemin sabit ama olsun)
-                player.currentPlatform = platforms[0]; 
+                player.currentPlatform = platforms[0]; // Link to base platform
             }
 
-            // 3. Platformla birlikte hareket et
+            // 3. Platform Movement Handling
             if (player.isGrounded && player.currentPlatform) {
                 let p = player.currentPlatform;
                 player.x += p.speed;
-                // Ekran sınırları
+                
+                // Screen Boundaries
                 if (player.x < 0) player.x = 0;
                 if (player.x + player.width > CANVAS_WIDTH) player.x = CANVAS_WIDTH - player.width;
 
-                // Platformun üzerinden düştü mü?
+                // Falling off platform
                 if (player.x + player.width < p.x || player.x > p.x + p.width) {
                     player.isGrounded = false;
                     player.currentPlatform = null;
@@ -338,10 +348,12 @@
                 }
             }
 
-            // 4. Çarpışma (Sadece düşerken)
+            // 4. Collision Detection (Only when falling)
             if (player.vy > 0 && !player.isGrounded) {
+                // Optimization: Iterate backwards or just check relevant platforms
+                // Since this is a simple game, iterating all is fine, but we skip distant ones.
                 for (let p of platforms) {
-                    // Sadece ekrana yakın platformları kontrol et (Optimizasyon)
+                    // Optimization: Skip platforms far away from player
                     if (Math.abs(p.y - player.y) > 100) continue;
 
                     if (player.y + player.height >= p.y && player.y + player.height <= p.y + p.height + player.vy + 5) {
@@ -357,48 +369,40 @@
                 }
             }
 
-            // 5. Kamera Hareketi - Çift Yönlü
-            // YUKARI HAREKET: Karakter ekranın %40'ından yukarı çıkarsa kamera peşinden gelsin
+            // 5. Camera Logic
+            // Move Up: Player goes above 40% of screen
             let targetUp = player.y - CANVAS_HEIGHT * 0.4;
             if (targetUp < cameraY) {
                 cameraY += (targetUp - cameraY) * 0.1; 
             }
             
-            // AŞAĞI HAREKET: Karakter ekranın %70'inden aşağı düşerse kamera peşinden gelsin
+            // Move Down: Player falls below 70% of screen
             let targetDown = player.y - CANVAS_HEIGHT * 0.7;
             if (targetDown > cameraY) {
-                cameraY += (targetDown - cameraY) * 0.15; // Düşüş biraz daha hızlı takip etsin
+                cameraY += (targetDown - cameraY) * 0.15;
             }
 
-            // KAMERA SINIRI: Kamera Level 0'ın altına inemez (0 bizim başlangıç noktamız)
-            // Bizim koordinat sisteminde yukarı çıktıkça Y azalır (negatif olur).
-            // Level 0 noktası aslında kameraY = 0 olduğunda tam görünür.
+            // Camera Clamp: Cannot go below Level 0
             if (cameraY > 0) cameraY = 0;
 
-            // Skor Hesaplama (Kameranın ne kadar yukarı çıktığına göre - Mutlak değer)
+            // Score Calculation (Height based)
             let currentHeightScore = Math.floor(Math.abs(cameraY / 10));
-            // Skor sadece artar mı yoksa düşünce azalır mı? İsteğine göre düşerken azalmasını sağladım.
             score = currentHeightScore; 
             scoreEl.innerText = score;
 
-            // 6. Platform Yönetimi
-            // ARTIK SİLME İŞLEMİ YOK. Aşağı düşerken platformlar lazım olacak.
-            // Sadece çok yukarıda yeni platform üretimi var.
-            
-            // En üstteki platformu bul
+            // 6. Platform Generation
+            // Find highest platform
             let highestY = Infinity;
             platforms.forEach(p => { if(p.y < highestY) highestY = p.y; });
             
-            // Eğer en üst platform kameraya girdiyse daha da üste yeni bir tane ekle
+            // Generate new platform if we are close to the top
             if (highestY > cameraY - 200) {
-                // Yeni platformlar hareketli ve rastgele genişlikte olmalı
                 platforms.push(new Platform(highestY - PLATFORM_GAP_Y, true)); 
             }
 
-            // Platformları güncelle
+            // Update entities
             platforms.forEach(p => p.update());
             
-            // Parçacıkları güncelle
             particles.forEach((p, index) => {
                 p.update();
                 if (p.alpha <= 0) particles.splice(index, 1);
@@ -406,10 +410,11 @@
         }
 
         function draw() {
+            // Clear Screen
             ctx.fillStyle = '#222';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Arka plan ızgarası
+            // Background Grid
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -420,15 +425,17 @@
             }
             ctx.stroke();
 
+            // Draw Entities
             platforms.forEach(p => p.draw());
             particles.forEach(p => p.draw());
 
-            // Oyuncu
+            // Draw Player
             ctx.fillStyle = player.color;
             ctx.shadowBlur = 15;
             ctx.shadowColor = player.color;
+            
+            // Squash and Stretch effect
             let stretch = Math.abs(player.vy) * 0.5;
-            // Düşerken de biraz uzasın
             if (!player.isGrounded) {
                 ctx.fillRect(player.x + stretch/2, player.y - cameraY, player.width - stretch, player.height + stretch);
             } else {
@@ -436,7 +443,7 @@
             }
             ctx.shadowBlur = 0;
             
-            // Gözler
+            // Draw Eyes
             ctx.fillStyle = 'black';
             if (!player.isGrounded) {
                 ctx.fillRect(player.x + 5 + stretch/2, player.y - cameraY + 5, 4, 4);
@@ -455,6 +462,7 @@
             }
         }
 
+        // Init
         resize();
         draw();
 

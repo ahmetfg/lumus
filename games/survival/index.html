@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vampire Survivor Klonu (Canvas)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+            user-select: none;
+            touch-action: none; /* Mobilde kaydırmayı engeller */
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        /* ARAYÜZ (HUD) */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Tıklamalar canvas'a geçsin */
+        }
+
+        .hud-text {
+            position: absolute;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        #xp-bar-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background: #333;
+        }
+        #xp-bar-fill {
+            height: 100%;
+            background: #4caf50;
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        #timer { top: 30px; left: 50%; transform: translateX(-50%); font-size: 24px; }
+        #kill-count { top: 30px; right: 20px; font-size: 20px; color: #ff6b6b; }
+        #level-display { top: 30px; left: 20px; font-size: 20px; color: #4caf50; }
+        #hp-display { bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 20px; color: #ff4757; }
+
+        /* MENÜLER (Modal) */
+        .modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify_content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        .hidden { display: none !important; }
+
+        h1 { font-size: 48px; color: #ff4757; text-shadow: 3px 3px 0 #000; margin-bottom: 20px; text-align: center;}
+        p { font-size: 18px; color: #ccc; max-width: 600px; text-align: center; margin-bottom: 30px; padding: 0 20px;}
+
+        button {
+            background: #333;
+            color: white;
+            border: 2px solid #666;
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: inherit;
+            margin: 10px;
+            transition: 0.2s;
+        }
+        button:hover { background: #555; border-color: #fff; }
+
+        /* YÜKSELTME KARTLARI */
+        #upgrade-options {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .upgrade-card {
+            background: #2f3542;
+            border: 2px solid #747d8c;
+            padding: 20px;
+            width: 200px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .upgrade-card:hover { transform: translateY(-5px); border-color: #ffa502; }
+        .upgrade-title { color: #ffa502; font-size: 18px; margin-bottom: 10px; font-weight: bold;}
+        .upgrade-desc { font-size: 12px; color: #dfe4ea; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Oyun Alanı -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Katmanı -->
+    <div id="ui-layer">
+        <div id="xp-bar-container"><div id="xp-bar-fill"></div></div>
+        <div id="timer">00:00</div>
+        <div id="level-display">LVL 1</div>
+        <div id="kill-count">💀 0</div>
+        <div id="hp-display">HP: 100/100</div>
+    </div>
+
+    <!-- Başlangıç Ekranı -->
+    <div id="start-screen" class="modal">
+        <h1>SURVIVOR KLONU</h1>
+        <p>Bilgisayar: WASD / Ok Tuşları<br>Mobil: Ekrana dokun ve sürükle (Joystick)<br><br>Maviler XP, Kırmızılar Düşman.</p>
+        <button onclick="startGame()">OYUNA BAŞLA</button>
+    </div>
+
+    <!-- Level Up Ekranı -->
+    <div id="levelup-screen" class="modal hidden">
+        <h1 style="color: #ffa502">SEVİYE ATLADIN!</h1>
+        <div id="upgrade-options">
+            <!-- Kartlar JS ile buraya eklenecek -->
+        </div>
+    </div>
+
+    <!-- Game Over Ekranı -->
+    <div id="gameover-screen" class="modal hidden">
+        <h1>ÖLDÜN</h1>
+        <p id="final-stats"></p>
+        <button onclick="location.reload()">TEKRAR DENE</button>
+    </div>
+
+<script>
+/**
+ * --- AYARLAR VE SABİTLER ---
+ */
+const CANVAS = document.getElementById('gameCanvas');
+const CTX = CANVAS.getContext('2d');
+
+// Ekran Boyutlandırma
+CANVAS.width = window.innerWidth;
+CANVAS.height = window.innerHeight;
+
+const GAME_CONFIG = {
+    playerSpeed: 4,
+    baseEnemySpeed: 1.5,
+    enemySpawnRate: 60,
+    pickupRadius: 50,
+    maxEnemies: 300
+};
+
+/**
+ * --- OYUN DURUMU (STATE) ---
+ */
+let gameState = {
+    running: false,
+    paused: false,
+    frames: 0,
+    time: 0,
+    enemiesKilled: 0
+};
+
+let camera = { x: 0, y: 0 };
+
+/**
+ * --- JOYSTICK SİSTEMİ ---
+ */
+const joystick = {
+    active: false,
+    originX: 0,
+    originY: 0,
+    currentX: 0,
+    currentY: 0,
+    dx: 0, // Normalize edilmiş X yönü (-1 ile 1 arası)
+    dy: 0, // Normalize edilmiş Y yönü (-1 ile 1 arası)
+    maxRadius: 50 // Joystick hareket yarıçapı
+};
+
+// Touch Eventleri
+CANVAS.addEventListener('touchstart', e => {
+    if (!gameState.running || gameState.paused) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    joystick.active = true;
+    joystick.originX = touch.clientX;
+    joystick.originY = touch.clientY;
+    joystick.currentX = touch.clientX;
+    joystick.currentY = touch.clientY;
+    joystick.dx = 0;
+    joystick.dy = 0;
+}, {passive: false});
+
+CANVAS.addEventListener('touchmove', e => {
+    if (!joystick.active) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    joystick.currentX = touch.clientX;
+    joystick.currentY = touch.clientY;
+
+    const deltaX = joystick.currentX - joystick.originX;
+    const deltaY = joystick.currentY - joystick.originY;
+    const distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+
+    if (distance > 0) {
+        // Hareketi maxRadius ile sınırla ama yönü koru
+        const limitedDist = Math.min(distance, joystick.maxRadius);
+        joystick.dx = (deltaX / distance) * (limitedDist / joystick.maxRadius); // Oransal hız (analog hissi)
+        joystick.dy = (deltaY / distance) * (limitedDist / joystick.maxRadius);
+    } else {
+        joystick.dx = 0;
+        joystick.dy = 0;
+    }
+}, {passive: false});
+
+CANVAS.addEventListener('touchend', e => {
+    e.preventDefault();
+    joystick.active = false;
+    joystick.dx = 0;
+    joystick.dy = 0;
+});
+
+/**
+ * --- SINIFLAR ---
+ */
+
+class Player {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.width = 30;
+        this.height = 30;
+        this.color = '#3498db';
+        this.hp = 100;
+        this.maxHp = 100;
+        this.level = 1;
+        this.xp = 0;
+        this.xpToNextLevel = 10;
+        this.weapons = [];
+        this.modifiers = {
+            area: 1,
+            speed: 1,
+            power: 1,
+            moveSpeed: 1
+        };
+
+        this.addWeapon('magic_wand');
+    }
+
+    update() {
+        let dx = 0;
+        let dy = 0;
+
+        // Klavye Kontrolü
+        if (keys['w'] || keys['ArrowUp']) dy = -1;
+        if (keys['s'] || keys['ArrowDown']) dy = 1;
+        if (keys['a'] || keys['ArrowLeft']) dx = -1;
+        if (keys['d'] || keys['ArrowRight']) dx = 1;
+
+        // Vektör Normalizasyonu (Klavye için)
+        if (dx !== 0 || dy !== 0) {
+            const length = Math.sqrt(dx*dx + dy*dy);
+            dx /= length;
+            dy /= length;
+        }
+
+        // Joystick Kontrolü (Varsa klavyeyi ezer veya birleştirir)
+        if (joystick.active) {
+            dx = joystick.dx;
+            dy = joystick.dy;
+        }
+
+        // Hareketi uygula
+        if (dx !== 0 || dy !== 0) {
+            this.x += dx * GAME_CONFIG.playerSpeed * this.modifiers.moveSpeed;
+            this.y += dy * GAME_CONFIG.playerSpeed * this.modifiers.moveSpeed;
+        }
+
+        // Silahları güncelle
+        this.weapons.forEach(w => w.update(this));
+    }
+
+    draw() {
+        const screenX = CANVAS.width / 2;
+        const screenY = CANVAS.height / 2;
+        
+        // Karakter
+        CTX.fillStyle = this.color;
+        CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
+        
+        // Çerçeve
+        CTX.strokeStyle = 'white';
+        CTX.lineWidth = 2;
+        CTX.strokeRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
+
+        // --- GÖRSEL CAN BARI ---
+        const barWidth = 40;
+        const barHeight = 5;
+        const barX = screenX - barWidth / 2;
+        const barY = screenY - this.height / 2 - 12; // Karakterin hemen üstü
+
+        // Can barı arkaplanı (Kırmızı - boşluğu temsil eder)
+        CTX.fillStyle = '#e74c3c'; 
+        CTX.fillRect(barX, barY, barWidth, barHeight);
+
+        // Can barı dolu kısmı (Yeşil)
+        const hpPercent = Math.max(0, this.hp / this.maxHp);
+        CTX.fillStyle = '#2ecc71';
+        CTX.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+        
+        // Bar çerçevesi (opsiyonel ama şık durur)
+        CTX.strokeStyle = '#000';
+        CTX.lineWidth = 1;
+        CTX.strokeRect(barX, barY, barWidth, barHeight);
+    }
+    
+    // Silah efektlerini (örn: sarımsak halkası) çizmek için
+    drawWeapons() {
+        this.weapons.forEach(w => w.draw(this));
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        updateHUD();
+        if (this.hp <= 0) gameOver();
+    }
+
+    gainXp(amount) {
+        this.xp += amount;
+        if (this.xp >= this.xpToNextLevel) {
+            this.levelUp();
+        }
+        updateHUD();
+    }
+
+    levelUp() {
+        this.level++;
+        this.xp -= this.xpToNextLevel;
+        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5);
+        
+        // Joystick'i sıfırla ki menüde takılı kalmasın
+        joystick.active = false;
+        joystick.dx = 0;
+        joystick.dy = 0;
+
+        gameState.paused = true;
+        showUpgradeMenu();
+    }
+
+    addWeapon(type) {
+        const existing = this.weapons.find(w => w.type === type);
+        if (existing) {
+            existing.levelUp();
+        } else {
+            if (type === 'magic_wand') this.weapons.push(new MagicWand());
+            if (type === 'garlic') this.weapons.push(new Garlic());
+            if (type === 'axe') this.weapons.push(new Axe());
+        }
+    }
+}
+
+class Enemy {
+    constructor() {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.max(CANVAS.width, CANVAS.height) / 2 + 100;
+        
+        this.x = player.x + Math.cos(angle) * radius;
+        this.y = player.y + Math.sin(angle) * radius;
+        
+        this.width = 25;
+        this.height = 25;
+        this.color = '#e74c3c';
+        this.hp = 10 + (player.level * 2);
+        this.speed = GAME_CONFIG.baseEnemySpeed + (Math.random() * 0.5);
+        this.damage = 5;
+    }
+
+    update() {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist > 0) {
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+        }
+
+        if (dist < 30) {
+            player.takeDamage(this.damage * 0.05);
+        }
+    }
+
+    draw() {
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+
+        if (screenX < -50 || screenX > CANVAS.width + 50 || 
+            screenY < -50 || screenY > CANVAS.height + 50) return;
+
+        CTX.fillStyle = this.color;
+        CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
+    }
+}
+
+class Gem {
+    constructor(x, y, value) {
+        this.x = x;
+        this.y = y;
+        this.value = value;
+        this.radius = 6;
+        this.color = value > 10 ? '#34e7e4' : '#2ecc71';
+    }
+
+    update() {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < GAME_CONFIG.pickupRadius * 2) {
+            this.x += (dx / dist) * 8;
+            this.y += (dy / dist) * 8;
+        }
+
+        if (dist < 20) {
+            player.gainXp(this.value);
+            return true;
+        }
+        return false;
+    }
+
+    draw() {
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        
+        if (screenX < -20 || screenX > CANVAS.width + 20 || 
+            screenY < -20 || screenY > CANVAS.height + 20) return;
+
+        CTX.beginPath();
+        CTX.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+        CTX.fillStyle = this.color;
+        CTX.fill();
+        CTX.strokeStyle = '#000';
+        CTX.stroke();
+    }
+}
+
+class DamageText {
+    constructor(x, y, amount) {
+        this.x = x;
+        this.y = y;
+        this.amount = Math.floor(amount);
+        this.life = 30;
+        this.vy = -2;
+    }
+
+    update() {
+        this.y += this.vy;
+        this.life--;
+        return this.life <= 0;
+    }
+
+    draw() {
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        
+        CTX.fillStyle = `rgba(255, 255, 255, ${this.life / 30})`;
+        CTX.font = 'bold 16px Arial';
+        CTX.fillText(this.amount, screenX, screenY);
+    }
+}
+
+/**
+ * --- SİLAH SİSTEMİ ---
+ */
+
+class Weapon {
+    constructor(name, cooldown) {
+        this.name = name;
+        this.baseCooldown = cooldown;
+        this.timer = 0;
+        this.level = 1;
+        this.damage = 10;
+        this.type = '';
+    }
+
+    update(player) {
+        if (this.timer > 0) {
+            this.timer--;
+        } else {
+            this.fire(player);
+            this.timer = this.baseCooldown / player.modifiers.speed;
+        }
+    }
+    
+    // Çizim metodunu ekledik
+    draw(player) { /* Override */ }
+
+    levelUp() {
+        this.level++;
+        this.damage += 5;
+        this.baseCooldown *= 0.9;
+    }
+    
+    fire(player) { /* Override */ }
+}
+
+class MagicWand extends Weapon {
+    constructor() {
+        super('Asa', 60);
+        this.type = 'magic_wand';
+        this.damage = 15;
+    }
+
+    fire(player) {
+        let closest = null;
+        let minDist = Infinity;
+
+        enemies.forEach(e => {
+            const dx = e.x - player.x;
+            const dy = e.y - player.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            if (d < minDist) {
+                minDist = d;
+                closest = e;
+            }
+        });
+
+        if (closest && minDist < 400) {
+            projectiles.push(new Projectile(player.x, player.y, closest, this.damage));
+        }
+    }
+}
+
+class Garlic extends Weapon {
+    constructor() {
+        super('Sarımsak', 10);
+        this.type = 'garlic';
+        this.radius = 80;
+        this.damage = 2;
+    }
+
+    fire(player) {
+        enemies.forEach(e => {
+            const dx = e.x - player.x;
+            const dy = e.y - player.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < (this.radius * player.modifiers.area)) {
+                e.hp -= (this.damage * player.modifiers.power);
+                e.x += (dx/dist) * 5;
+                e.y += (dy/dist) * 5;
+                
+                if (gameState.frames % 10 === 0) {
+                    texts.push(new DamageText(e.x, e.y, this.damage));
+                }
+                
+                checkEnemyDeath(e);
+            }
+        });
+    }
+
+    // Çizim kodunu buraya taşıdık, artık "update" yerine "draw" içinde
+    draw(player) {
+        // Garlic oyuncunun olduğu yere çizilir, kamera offsetine gerek yok çünkü oyuncu merkezde
+        // Ancak dünya koordinatında çizmek daha tutarlı olur (kamera kayarsa diye)
+        const screenX = player.x - camera.x;
+        const screenY = player.y - camera.y;
+
+        CTX.beginPath();
+        CTX.arc(screenX, screenY, this.radius * player.modifiers.area, 0, Math.PI*2);
+        CTX.fillStyle = `rgba(255, 200, 200, ${0.1 + (Math.sin(gameState.frames * 0.1) * 0.05)})`;
+        CTX.fill();
+        CTX.strokeStyle = 'rgba(255, 100, 100, 0.3)';
+        CTX.stroke();
+    }
+}
+
+class Axe extends Weapon {
+    constructor() {
+        super('Balta', 90);
+        this.type = 'axe';
+        this.damage = 25;
+    }
+    
+    fire(player) {
+        let vx = (Math.random() - 0.5) * 4;
+        let vy = -8;
+        projectiles.push(new AxeProjectile(player.x, player.y, vx, vy, this.damage));
+    }
+}
+
+class Projectile {
+    constructor(x, y, target, damage) {
+        this.x = x;
+        this.y = y;
+        this.damage = damage;
+        this.speed = 7;
+        this.radius = 5;
+        this.markedForDeletion = false;
+
+        const dx = target.x - x;
+        const dy = target.y - y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        this.vx = (dx / dist) * this.speed;
+        this.vy = (dy / dist) * this.speed;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        if (screenX < -50 || screenX > CANVAS.width+50 || screenY < -50 || screenY > CANVAS.height+50) {
+            this.markedForDeletion = true;
+        }
+
+        for (let e of enemies) {
+            const dx = e.x - this.x;
+            const dy = e.y - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < e.width) {
+                e.hp -= this.damage;
+                texts.push(new DamageText(e.x, e.y, this.damage));
+                checkEnemyDeath(e);
+                this.markedForDeletion = true;
+                break;
+            }
+        }
+    }
+
+    draw() {
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        CTX.fillStyle = '#f1c40f';
+        CTX.beginPath();
+        CTX.arc(screenX, screenY, this.radius, 0, Math.PI*2);
+        CTX.fill();
+    }
+}
+
+class AxeProjectile {
+    constructor(x, y, vx, vy, damage) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.damage = damage;
+        this.gravity = 0.3;
+        this.markedForDeletion = false;
+        this.width = 15;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += this.gravity;
+
+        if (this.y > player.y + 400) this.markedForDeletion = true;
+
+        for (let e of enemies) {
+            const dx = e.x - this.x;
+            const dy = e.y - this.y;
+            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+                e.hp -= this.damage;
+                texts.push(new DamageText(e.x, e.y, this.damage));
+                checkEnemyDeath(e);
+            }
+        }
+    }
+
+    draw() {
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        CTX.fillStyle = '#95a5a6';
+        CTX.fillRect(screenX, screenY, this.width, this.width);
+    }
+}
+
+/**
+ * --- OYUN DÖNGÜSÜ DEĞİŞKENLERİ ---
+ */
+let player;
+let enemies = [];
+let gems = [];
+let projectiles = [];
+let texts = [];
+let keys = {};
+
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+function initGame() {
+    player = new Player();
+    enemies = [];
+    gems = [];
+    projectiles = [];
+    texts = [];
+    gameState = {
+        running: true,
+        paused: false,
+        frames: 0,
+        time: 0,
+        enemiesKilled: 0
+    };
+    updateHUD();
+    gameLoop();
+}
+
+function spawnEnemy() {
+    const spawnRate = Math.max(10, GAME_CONFIG.enemySpawnRate - Math.floor(gameState.time / 10));
+    
+    if (gameState.frames % spawnRate === 0) {
+        if (enemies.length < GAME_CONFIG.maxEnemies) {
+            enemies.push(new Enemy());
+        }
+    }
+}
+
+function checkEnemyDeath(enemy) {
+    if (enemy.hp <= 0) {
+        gems.push(new Gem(enemy.x, enemy.y, 10 + Math.random() * 5));
+        gameState.enemiesKilled++;
+    }
+}
+
+function update() {
+    if (!gameState.running || gameState.paused) return;
+
+    gameState.frames++;
+    if (gameState.frames % 60 === 0) {
+        gameState.time++;
+        document.getElementById('timer').innerText = new Date(gameState.time * 1000).toISOString().substr(14, 5);
+    }
+
+    player.update();
+    
+    camera.x = player.x - CANVAS.width / 2;
+    camera.y = player.y - CANVAS.height / 2;
+
+    spawnEnemy();
+
+    enemies = enemies.filter(e => e.hp > 0);
+    enemies.forEach(e => e.update());
+
+    projectiles.forEach(p => p.update());
+    projectiles = projectiles.filter(p => !p.markedForDeletion);
+
+    gems = gems.filter(g => !g.update());
+
+    texts = texts.filter(t => !t.update());
+}
+
+function draw() {
+    CTX.fillStyle = '#222';
+    CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
+
+    // Izgara
+    const gridSize = 100;
+    const offsetX = -camera.x % gridSize;
+    const offsetY = -camera.y % gridSize;
+    
+    CTX.strokeStyle = '#333';
+    CTX.lineWidth = 1;
+    CTX.beginPath();
+    for (let x = offsetX; x < CANVAS.width; x += gridSize) {
+        CTX.moveTo(x, 0);
+        CTX.lineTo(x, CANVAS.height);
+    }
+    for (let y = offsetY; y < CANVAS.height; y += gridSize) {
+        CTX.moveTo(0, y);
+        CTX.lineTo(CANVAS.width, y);
+    }
+    CTX.stroke();
+
+    gems.forEach(g => g.draw());
+    
+    // Silah efektleri oyuncunun altında görünsün
+    if(player) player.drawWeapons();
+
+    enemies.forEach(e => e.draw());
+    projectiles.forEach(p => p.draw());
+    
+    if(player) player.draw();
+    
+    texts.forEach(t => t.draw());
+
+    // Joystick Görselleştirmesi
+    if (joystick.active) {
+        CTX.beginPath();
+        CTX.arc(joystick.originX, joystick.originY, joystick.maxRadius, 0, Math.PI * 2);
+        CTX.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        CTX.lineWidth = 2;
+        CTX.stroke();
+
+        CTX.beginPath();
+        CTX.arc(joystick.currentX, joystick.currentY, 20, 0, Math.PI * 2);
+        CTX.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        CTX.fill();
+    }
+}
+
+function gameLoop() {
+    if (gameState.running) {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+/**
+ * --- UI FONKSİYONLARI ---
+ */
+function startGame() {
+    document.getElementById('start-screen').classList.add('hidden');
+    initGame();
+}
+
+function gameOver() {
+    gameState.running = false;
+    document.getElementById('gameover-screen').classList.remove('hidden');
+    document.getElementById('final-stats').innerText = 
+        `Süre: ${document.getElementById('timer').innerText} | Öldürülen: ${gameState.enemiesKilled} | Seviye: ${player.level}`;
+}
+
+function updateHUD() {
+    document.getElementById('kill-count').innerText = '💀 ' + gameState.enemiesKilled;
+    document.getElementById('level-display').innerText = 'LVL ' + player.level;
+    document.getElementById('hp-display').innerText = `HP: ${Math.floor(player.hp)}/${player.maxHp}`;
+    
+    const xpPercent = (player.xp / player.xpToNextLevel) * 100;
+    document.getElementById('xp-bar-fill').style.width = xpPercent + '%';
+}
+
+function showUpgradeMenu() {
+    const container = document.getElementById('upgrade-options');
+    container.innerHTML = '';
+    
+    const options = [
+        { id: 'magic_wand', title: 'Büyü Asası', desc: 'En yakın düşmana atış yapar.' },
+        { id: 'garlic', title: 'Sarımsak', desc: 'Etrafında hasar alanı oluşturur.' },
+        { id: 'axe', title: 'Balta', desc: 'Yukarı doğru ağır hasarlı balta atar.' },
+        { id: 'heal', title: 'Tavuk Budu', desc: '%30 Can Yeniler.' },
+        { id: 'speed', title: 'Hız İksiri', desc: 'Hareket hızını artırır.' }
+    ];
+
+    const choices = options.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+    choices.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'upgrade-card';
+        div.innerHTML = `<div class="upgrade-title">${opt.title}</div><div class="upgrade-desc">${opt.desc}</div>`;
+        div.onclick = () => selectUpgrade(opt.id);
+        container.appendChild(div);
+    });
+
+    document.getElementById('levelup-screen').classList.remove('hidden');
+}
+
+function selectUpgrade(id) {
+    if (id === 'heal') {
+        player.hp = Math.min(player.hp + 30, player.maxHp);
+    } else if (id === 'speed') {
+        player.modifiers.moveSpeed += 0.1;
+    } else {
+        player.addWeapon(id);
+    }
+    
+    document.getElementById('levelup-screen').classList.add('hidden');
+    gameState.paused = false;
+    // Joystick'i sıfırla ki aniden zıplamasın
+    joystick.active = false; 
+    updateHUD();
+}
+
+window.addEventListener('resize', () => {
+    CANVAS.width = window.innerWidth;
+    CANVAS.height = window.innerHeight;
+});
+
+</script>
+</body>
+</html>

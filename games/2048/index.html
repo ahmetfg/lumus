@@ -405,8 +405,8 @@
         const container = contentWidth(app) || (window.innerWidth || 360);
         const outerTarget = Math.min(420, Math.max(280, container));
 
-        const maxPad = 16, minPad = 10;
-        const maxGap = 14, minGap = 10;
+        const maxPad = 5, minPad = 3;
+        const maxGap = 5, minGap = 3;
 
         const pad = clamp(Math.round(outerTarget * 0.03), minPad, maxPad);
         const gap = clamp(Math.round(outerTarget * 0.03), minGap, maxGap);

@@ -206,18 +206,29 @@ CANVAS.addEventListener('touchmove', e => {
     if (!joystick.active) return;
     e.preventDefault();
     const touch = e.touches[0];
-    joystick.currentX = touch.clientX;
-    joystick.currentY = touch.clientY;
+    
+    // Ham farkları hesapla
+    let deltaX = touch.clientX - joystick.originX;
+    let deltaY = touch.clientY - joystick.originY;
+    let distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
 
-    const deltaX = joystick.currentX - joystick.originX;
-    const deltaY = joystick.currentY - joystick.originY;
-    const distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+    // Eğer mesafe maxRadius'tan büyükse, vektörü sınırla
+    // Bu, joystick topunun çemberden dışarı çıkmasını engeller
+    if (distance > joystick.maxRadius) {
+        const angle = Math.atan2(deltaY, deltaX);
+        deltaX = Math.cos(angle) * joystick.maxRadius;
+        deltaY = Math.sin(angle) * joystick.maxRadius;
+        distance = joystick.maxRadius; // Mesafeyi de kilitliyoruz
+    }
+
+    // Güncel konumu (sınırlandırılmış) ayarla
+    joystick.currentX = joystick.originX + deltaX;
+    joystick.currentY = joystick.originY + deltaY;
 
     if (distance > 0) {
-        // Hareketi maxRadius ile sınırla ama yönü koru
-        const limitedDist = Math.min(distance, joystick.maxRadius);
-        joystick.dx = (deltaX / distance) * (limitedDist / joystick.maxRadius); // Oransal hız (analog hissi)
-        joystick.dy = (deltaY / distance) * (limitedDist / joystick.maxRadius);
+        // Hızı normalize et (Mesafe zaten sınırlandığı için max 1.0 olur)
+        joystick.dx = deltaX / joystick.maxRadius;
+        joystick.dy = deltaY / joystick.maxRadius;
     } else {
         joystick.dx = 0;
         joystick.dy = 0;
@@ -246,7 +257,8 @@ class Player {
         this.maxHp = 100;
         this.level = 1;
         this.xp = 0;
-        this.xpToNextLevel = 10;
+        // DÜZELTME 1: Başlangıçta level atlamak zorlaştırıldı (10 -> 50)
+        this.xpToNextLevel = 50; 
         this.weapons = [];
         this.modifiers = {
             area: 1,
@@ -381,9 +393,15 @@ class Enemy {
         this.width = 25;
         this.height = 25;
         this.color = '#e74c3c';
-        this.hp = 10 + (player.level * 2);
+        
+        // DÜZELTME 2: Düşman dayanıklılığı artırıldı.
+        // Başlangıç silahı (Wand) 15 vuruyor. 
+        // 25 HP = En az 2 vuruş. 
+        // Seviye arttıkça can daha fazla artıyor.
+        this.hp = 25 + (player.level * 5); 
         this.speed = GAME_CONFIG.baseEnemySpeed + (Math.random() * 0.5);
-        this.damage = 5;
+        
+        this.damage = 10 + (player.level * 0.5);
     }
 
     update() {
@@ -396,6 +414,7 @@ class Enemy {
             this.y += (dy / dist) * this.speed;
         }
 
+        // Oyuncuya çarpma kontrolü
         if (dist < 30) {
             player.takeDamage(this.damage * 0.05);
         }

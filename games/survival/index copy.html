@@ -12,12 +12,11 @@
             font-family: 'Courier New', Courier, monospace;
             color: white;
             user-select: none;
-            touch-action: none;
+            touch-action: none; /* Mobilde kaydırmayı engeller */
         }
 
         #gameCanvas {
             display: block;
-            image-rendering: pixelated; /* Piksellerin net görünmesi için */
         }
 
         /* ARAYÜZ (HUD) */
@@ -27,7 +26,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
+            pointer-events: none; /* Tıklamalar canvas'a geçsin */
         }
 
         .hud-text {
@@ -52,8 +51,8 @@
         }
 
         #timer { top: 30px; left: 50%; transform: translateX(-50%); font-size: 24px; }
-        #kill-count { padding-left: 20px; font-size: 20px; color: #ff6b6b; }
-        #level-display { padding-top: 20px; padding-left: 20px; font-size: 20px; color: #4caf50; }
+        #kill-count { top: 30px; right: 20px; font-size: 20px; color: #ff6b6b; }
+        #level-display { top: 30px; left: 20px; font-size: 20px; color: #4caf50; }
         #hp-display { bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 20px; color: #ff4757; }
 
         /* MENÜLER (Modal) */
@@ -109,8 +108,10 @@
 </head>
 <body>
 
+    <!-- Oyun Alanı -->
     <canvas id="gameCanvas"></canvas>
 
+    <!-- UI Katmanı -->
     <div id="ui-layer">
         <div id="xp-bar-container"><div id="xp-bar-fill"></div></div>
         <div id="timer">00:00</div>
@@ -119,17 +120,22 @@
         <div id="hp-display">HP: 100/100</div>
     </div>
 
+    <!-- Başlangıç Ekranı -->
     <div id="start-screen" class="modal">
         <h1>SURVIVOR KLONU</h1>
         <p>Bilgisayar: WASD / Ok Tuşları<br>Mobil: Ekrana dokun ve sürükle (Joystick)<br><br>Maviler XP, Kırmızılar Düşman.</p>
         <button onclick="startGame()">OYUNA BAŞLA</button>
     </div>
 
+    <!-- Level Up Ekranı -->
     <div id="levelup-screen" class="modal hidden">
         <h1 style="color: #ffa502">SEVİYE ATLADIN!</h1>
-        <div id="upgrade-options"></div>
+        <div id="upgrade-options">
+            <!-- Kartlar JS ile buraya eklenecek -->
+        </div>
     </div>
 
+    <!-- Game Over Ekranı -->
     <div id="gameover-screen" class="modal hidden">
         <h1>ÖLDÜN</h1>
         <p id="final-stats"></p>
@@ -143,6 +149,7 @@
 const CANVAS = document.getElementById('gameCanvas');
 const CTX = CANVAS.getContext('2d');
 
+// Ekran Boyutlandırma
 CANVAS.width = window.innerWidth;
 CANVAS.height = window.innerHeight;
 
@@ -153,14 +160,6 @@ const GAME_CONFIG = {
     pickupRadius: 50,
     maxEnemies: 300
 };
-
-// --- SPRITE YÜKLEME ---
-// NOT: Bu URL'leri kendi yüklediğin görsellerin yolları ile değiştir.
-const playerSprite = new Image();
-playerSprite.src = "walkLeftLow.webp"; // Oyuncu Sprite Sheet URL
-
-const enemySprite = new Image();
-enemySprite.src = "orgWalkLeft.webp"; // Düşman Sprite Sheet URL (BOŞ BIRAKTIM, KENDİN EKLE)
 
 /**
  * --- OYUN DURUMU (STATE) ---
@@ -184,11 +183,12 @@ const joystick = {
     originY: 0,
     currentX: 0,
     currentY: 0,
-    dx: 0,
-    dy: 0,
-    maxRadius: 50
+    dx: 0, // Normalize edilmiş X yönü (-1 ile 1 arası)
+    dy: 0, // Normalize edilmiş Y yönü (-1 ile 1 arası)
+    maxRadius: 50 // Joystick hareket yarıçapı
 };
 
+// Touch Eventleri
 CANVAS.addEventListener('touchstart', e => {
     if (!gameState.running || gameState.paused) return;
     e.preventDefault();
@@ -207,21 +207,26 @@ CANVAS.addEventListener('touchmove', e => {
     e.preventDefault();
     const touch = e.touches[0];
     
+    // Ham farkları hesapla
     let deltaX = touch.clientX - joystick.originX;
     let deltaY = touch.clientY - joystick.originY;
     let distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
 
+    // Eğer mesafe maxRadius'tan büyükse, vektörü sınırla
+    // Bu, joystick topunun çemberden dışarı çıkmasını engeller
     if (distance > joystick.maxRadius) {
         const angle = Math.atan2(deltaY, deltaX);
         deltaX = Math.cos(angle) * joystick.maxRadius;
         deltaY = Math.sin(angle) * joystick.maxRadius;
-        distance = joystick.maxRadius;
+        distance = joystick.maxRadius; // Mesafeyi de kilitliyoruz
     }
 
+    // Güncel konumu (sınırlandırılmış) ayarla
     joystick.currentX = joystick.originX + deltaX;
     joystick.currentY = joystick.originY + deltaY;
 
     if (distance > 0) {
+        // Hızı normalize et (Mesafe zaten sınırlandığı için max 1.0 olur)
         joystick.dx = deltaX / joystick.maxRadius;
         joystick.dy = deltaY / joystick.maxRadius;
     } else {
@@ -245,15 +250,14 @@ class Player {
     constructor() {
         this.x = 0;
         this.y = 0;
-        // Hitbox boyutu (Çarpışma için)
-        this.width = 30; 
+        this.width = 30;
         this.height = 30;
-        
         this.color = '#3498db';
         this.hp = 100;
         this.maxHp = 100;
         this.level = 1;
         this.xp = 0;
+        // DÜZELTME 1: Başlangıçta level atlamak zorlaştırıldı (10 -> 50)
         this.xpToNextLevel = 50; 
         this.weapons = [];
         this.modifiers = {
@@ -262,21 +266,6 @@ class Player {
             power: 1,
             moveSpeed: 1
         };
-
-        // --- SPRITE ANIMASYON AYARLARI ---
-        // Görsel: 751x169, 8 Frame
-        this.spriteWidth = 751; 
-        this.spriteHeight = 169;
-        this.totalFrames = 8;
-        this.frameWidth = this.spriteWidth / this.totalFrames; 
-        this.frameHeight = this.spriteHeight;
-        
-        this.currentFrame = 0;
-        this.gameFrame = 0;
-        this.staggerFrames = 5; 
-        
-        this.facingRight = true; 
-        this.isMoving = false;
 
         this.addWeapon('magic_wand');
     }
@@ -291,40 +280,23 @@ class Player {
         if (keys['a'] || keys['ArrowLeft']) dx = -1;
         if (keys['d'] || keys['ArrowRight']) dx = 1;
 
+        // Vektör Normalizasyonu (Klavye için)
         if (dx !== 0 || dy !== 0) {
             const length = Math.sqrt(dx*dx + dy*dy);
             dx /= length;
             dy /= length;
         }
 
-        // Joystick Kontrolü
+        // Joystick Kontrolü (Varsa klavyeyi ezer veya birleştirir)
         if (joystick.active) {
             dx = joystick.dx;
             dy = joystick.dy;
         }
 
-        // Hareketi uygula ve Animasyon Durumunu Güncelle
+        // Hareketi uygula
         if (dx !== 0 || dy !== 0) {
             this.x += dx * GAME_CONFIG.playerSpeed * this.modifiers.moveSpeed;
             this.y += dy * GAME_CONFIG.playerSpeed * this.modifiers.moveSpeed;
-            this.isMoving = true;
-            
-            // Yönü belirle (Sağ mı Sol mu?)
-            if (dx > 0) this.facingRight = true;
-            if (dx < 0) this.facingRight = false;
-
-        } else {
-            this.isMoving = false;
-        }
-
-        // Animasyon Frame Hesabı
-        if (this.isMoving) {
-            this.gameFrame++;
-            if (this.gameFrame % this.staggerFrames === 0) {
-                this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
-            }
-        } else {
-            this.currentFrame = 0; 
         }
 
         // Silahları güncelle
@@ -335,60 +307,37 @@ class Player {
         const screenX = CANVAS.width / 2;
         const screenY = CANVAS.height / 2;
         
-        // --- SPRITE ÇİZİMİ ---
-        if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
-            CTX.save(); 
-            
-            const displayH = 80;
-            const displayW = displayH * (this.frameWidth / this.frameHeight);
-
-            CTX.translate(screenX, screenY);
-
-            if (this.facingRight) {
-                CTX.scale(-1, 1);
-            }
-
-            CTX.drawImage(
-                playerSprite,
-                this.currentFrame * this.frameWidth, 
-                0, 
-                this.frameWidth, 
-                this.frameHeight, 
-                -displayW / 2, 
-                -displayH / 2, 
-                displayW, 
-                displayH  
-            );
-
-            CTX.restore();
-        } else {
-            // FALLBACK
-            CTX.fillStyle = this.color;
-            CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
-            CTX.strokeStyle = 'white';
-            CTX.lineWidth = 2;
-            CTX.strokeRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
-        }
+        // Karakter
+        CTX.fillStyle = this.color;
+        CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
+        
+        // Çerçeve
+        CTX.strokeStyle = 'white';
+        CTX.lineWidth = 2;
+        CTX.strokeRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
 
         // --- GÖRSEL CAN BARI ---
         const barWidth = 40;
         const barHeight = 5;
-        const barOffset = (playerSprite.complete && playerSprite.naturalWidth !== 0) ? 50 : 20;
         const barX = screenX - barWidth / 2;
-        const barY = screenY - barOffset;
+        const barY = screenY - this.height / 2 - 12; // Karakterin hemen üstü
 
+        // Can barı arkaplanı (Kırmızı - boşluğu temsil eder)
         CTX.fillStyle = '#e74c3c'; 
         CTX.fillRect(barX, barY, barWidth, barHeight);
 
+        // Can barı dolu kısmı (Yeşil)
         const hpPercent = Math.max(0, this.hp / this.maxHp);
         CTX.fillStyle = '#2ecc71';
         CTX.fillRect(barX, barY, barWidth * hpPercent, barHeight);
         
+        // Bar çerçevesi (opsiyonel ama şık durur)
         CTX.strokeStyle = '#000';
         CTX.lineWidth = 1;
         CTX.strokeRect(barX, barY, barWidth, barHeight);
     }
     
+    // Silah efektlerini (örn: sarımsak halkası) çizmek için
     drawWeapons() {
         this.weapons.forEach(w => w.draw(this));
     }
@@ -412,6 +361,7 @@ class Player {
         this.xp -= this.xpToNextLevel;
         this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5);
         
+        // Joystick'i sıfırla ki menüde takılı kalmasın
         joystick.active = false;
         joystick.dx = 0;
         joystick.dy = 0;
@@ -440,28 +390,18 @@ class Enemy {
         this.x = player.x + Math.cos(angle) * radius;
         this.y = player.y + Math.sin(angle) * radius;
         
-        this.width = 25; // Hitbox
+        this.width = 25;
         this.height = 25;
         this.color = '#e74c3c';
         
+        // DÜZELTME 2: Düşman dayanıklılığı artırıldı.
+        // Başlangıç silahı (Wand) 15 vuruyor. 
+        // 25 HP = En az 2 vuruş. 
+        // Seviye arttıkça can daha fazla artıyor.
         this.hp = 25 + (player.level * 5); 
         this.speed = GAME_CONFIG.baseEnemySpeed + (Math.random() * 0.5);
+        
         this.damage = 10 + (player.level * 0.5);
-
-        // --- DÜŞMAN SPRITE AYARLARI ---
-        // Lütfen bu değerleri kendi sprite sheet'ine göre güncelle:
-        this.spriteWidth = 751; 
-        this.spriteHeight = 169;
-        this.totalFrames = 8;
-        this.frameWidth = this.spriteWidth / this.totalFrames;
-        this.frameHeight = this.spriteHeight;
-
-        // "Robot Ordusu" etkisini kırmak için rastgele başlangıç:
-        this.currentFrame = Math.floor(Math.random() * this.totalFrames);
-        this.gameFrame = Math.floor(Math.random() * 10);
-        this.staggerFrames = 8; // Düşmanlar biraz daha yavaş veya farklı hızda animate olabilir
-
-        this.facingRight = true;
     }
 
     update() {
@@ -472,18 +412,9 @@ class Enemy {
         if (dist > 0) {
             this.x += (dx / dist) * this.speed;
             this.y += (dy / dist) * this.speed;
-            
-            // Yön belirleme
-            if (dx > 0) this.facingRight = true;
-            else this.facingRight = false;
-
-            // Animasyon İlerlemesi
-            this.gameFrame++;
-            if (this.gameFrame % this.staggerFrames === 0) {
-                this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
-            }
         }
 
+        // Oyuncuya çarpma kontrolü
         if (dist < 30) {
             player.takeDamage(this.damage * 0.05);
         }
@@ -493,41 +424,11 @@ class Enemy {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
 
-        // Culling (Ekran dışı çizim engelleme)
         if (screenX < -50 || screenX > CANVAS.width + 50 || 
             screenY < -50 || screenY > CANVAS.height + 50) return;
 
-        // --- SPRITE ÇİZİMİ ---
-        if (enemySprite.complete && enemySprite.naturalWidth !== 0) {
-            CTX.save();
-
-            const displayH = 100; // Düşman boyutu (Görsel olarak)
-            const displayW = displayH * (this.frameWidth / this.frameHeight);
-
-            CTX.translate(screenX, screenY);
-
-            if (this.facingRight) {
-                CTX.scale(-1, 1);
-            }
-
-            CTX.drawImage(
-                enemySprite,
-                this.currentFrame * this.frameWidth,
-                0,
-                this.frameWidth,
-                this.frameHeight,
-                -displayW / 2,
-                -displayH / 2,
-                displayW,
-                displayH
-            );
-
-            CTX.restore();
-        } else {
-            // FALLBACK (Görsel yoksa Kırmızı Kare)
-            CTX.fillStyle = this.color;
-            CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
-        }
+        CTX.fillStyle = this.color;
+        CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
     }
 }
 
@@ -621,6 +522,7 @@ class Weapon {
         }
     }
     
+    // Çizim metodunu ekledik
     draw(player) { /* Override */ }
 
     levelUp() {
@@ -687,7 +589,10 @@ class Garlic extends Weapon {
         });
     }
 
+    // Çizim kodunu buraya taşıdık, artık "update" yerine "draw" içinde
     draw(player) {
+        // Garlic oyuncunun olduğu yere çizilir, kamera offsetine gerek yok çünkü oyuncu merkezde
+        // Ancak dünya koordinatında çizmek daha tutarlı olur (kamera kayarsa diye)
         const screenX = player.x - camera.x;
         const screenY = player.y - camera.y;
 
@@ -880,6 +785,7 @@ function draw() {
     CTX.fillStyle = '#222';
     CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
+    // Izgara
     const gridSize = 100;
     const offsetX = -camera.x % gridSize;
     const offsetY = -camera.y % gridSize;
@@ -899,6 +805,7 @@ function draw() {
 
     gems.forEach(g => g.draw());
     
+    // Silah efektleri oyuncunun altında görünsün
     if(player) player.drawWeapons();
 
     enemies.forEach(e => e.draw());
@@ -908,6 +815,7 @@ function draw() {
     
     texts.forEach(t => t.draw());
 
+    // Joystick Görselleştirmesi
     if (joystick.active) {
         CTX.beginPath();
         CTX.arc(joystick.originX, joystick.originY, joystick.maxRadius, 0, Math.PI * 2);
@@ -990,6 +898,7 @@ function selectUpgrade(id) {
     
     document.getElementById('levelup-screen').classList.add('hidden');
     gameState.paused = false;
+    // Joystick'i sıfırla ki aniden zıplamasın
     joystick.active = false; 
     updateHUD();
 }

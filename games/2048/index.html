@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>2048</title>
+  <title>2048 - Fast Swipe</title>
   <style>
     :root{
       --bg:#faf8ef;
@@ -16,8 +16,7 @@
       --pad:12px;
       --gap:12px;
       --tile:78px;
-      /* Overshoot'un hissedilmesi için süreyi çok az artırdık */
-      --move-ms:250ms;
+      --move-ms:160ms; /* Daha seri hissetmesi için süreyi biraz kıstım */
       --board-size: calc(2*var(--pad) + 4*var(--tile) + 3*var(--gap));
     }
 
@@ -31,7 +30,8 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      overscroll-behavior: none; /* Sayfa kaydırmasını engelle */
+      overscroll-behavior: none; 
+      touch-action: none; /* Tüm sayfa için browser zoom/pan engelle */
     }
 
     .app{
@@ -118,11 +118,9 @@
       text-align: right;
     }
     
-    /* Responsive Hint Logic */
     .msg-desktop { display: inline; }
     .msg-mobile { display: none; }
 
-    /* Dokunmatik cihazlarda veya çok küçük ekranlarda metni değiştir */
     @media (hover: none) and (pointer: coarse), (max-width: 520px) {
       .msg-desktop { display: none; }
       .msg-mobile { display: inline; }
@@ -137,7 +135,7 @@
       width: var(--board-size);
       height: var(--board-size);
       margin: 0 auto;
-      touch-action:none; /* Tarayıcı kaydırmasını engelle */
+      touch-action:none;
       user-select:none;
       will-change: transform;
       transform: translate3d(0,0,0);
@@ -169,7 +167,6 @@
       width:var(--tile);
       height:var(--tile);
       transform:translate(0px, 0px);
-      /* OVERSHOOT EFFECT: cubic-bezier(0.2, 0.6, 0.2, 1.25) gibi davranarak hedefini biraz geçer ve geri döner */
       transition:transform var(--move-ms) cubic-bezier(0.1, 0.1, 0.1, 1.2);
       will-change:transform;
       z-index: 10;
@@ -298,7 +295,7 @@
         <b>How to play:</b> Use your <strong>arrow keys</strong> or <strong>WASD</strong> to move the tiles. Tiles with the same number merge into one when they touch.
       </div>
       <div class="msg-mobile">
-        <b>How to play:</b> <strong>Swipe</strong> with your fingers to move the tiles. Tiles with the same number merge into one when they touch.
+        <b>How to play:</b> <strong>Swipe</strong> instantly to move. No need to lift your finger!
       </div>
     </footer>
   </div>
@@ -306,10 +303,8 @@
   <script>
     (() => {
       const GRID_SIZE = 4;
-      const MOVE_MS = 250; // CSS ile eşleşmeli (160ms)
-      const BEST_KEY = "bestScore2048_single_v2";
-
-      const DEBUG_TESTS = new URLSearchParams(location.search).has('test');
+      const MOVE_MS = 160; // CSS ile eşleştirdim, daha hızlı animasyon
+      const BEST_KEY = "bestScore2048_fastswipe";
 
       const elScore = document.getElementById("score");
       const elBest  = document.getElementById("best");
@@ -332,7 +327,7 @@
       let score = 0;
       let best = 0;
       let won = false;
-      let locked = false; // move sırasında input kilidi
+      let locked = false; 
       let idSeq = 1;
 
       // ====== Tile Model ======
@@ -399,7 +394,6 @@
         render();
       }
 
-      // ====== Boyut (responsive) ======
       function updateSizing(){
         const app = elBoard.closest('.app');
         const contentWidth = (el) => {
@@ -509,8 +503,7 @@
 
             if (within(next.r,next.c) && grid[next.r][next.c] && grid[next.r][next.c].value === tile.value && !grid[next.r][next.c].merged){
               const target = grid[next.r][next.c];
-
-              // Merge logic
+              
               grid[r][c] = null;
               tile.row = next.r;
               tile.col = next.c;
@@ -543,11 +536,8 @@
         }
 
         setScore(score + gained);
-        
-        // Animasyon için render
         render();
 
-        // Animasyon bitişi sonrası cleanup ve spawn
         setTimeout(() => {
           for (const t of removals){
             tilesById.delete(t.id);
@@ -629,7 +619,6 @@
             elTiles.appendChild(outer);
           } else {
             inner = outer.firstElementChild;
-            // Parent kontrolü (nadiren DOM'dan düşerse diye)
             if (!outer.parentNode) elTiles.appendChild(outer);
           }
 
@@ -645,7 +634,6 @@
           if (tile.justSpawned) outer.classList.add("pop");
           if (tile.justMerged) outer.classList.add("merge");
 
-          // Merge olacak tile arkada kalsın
           outer.style.zIndex = tile.toRemove ? "5" : "10";
           if (tile.justMerged) outer.style.zIndex = "20";
 
@@ -655,11 +643,9 @@
           nextDom.set(tile.id, outer);
         }
 
-        // Temizlik
         for (const [id, el] of domById.entries()){
           if (!nextDom.has(id)) el.remove();
         }
-
         domById = nextDom;
       }
 
@@ -691,11 +677,9 @@
         elOverlay.classList.remove("show");
       }
 
-      // ====== Girdi ======
       function onKeyDown(e){
         if (locked) return;
         const key = e.key.toLowerCase();
-        // Sadece oyun tuşları basıldığında scroll'u engelle
         if (["arrowleft","arrowright","arrowup","arrowdown","a","d","w","s"].includes(key)) {
           e.preventDefault();
         }
@@ -706,45 +690,56 @@
         if (key === "arrowdown" || key === "s") return move("down");
       }
 
-      // --- Yeni Basit Swipe ---
+      // ====== GELİŞMİŞ SWIPE (Touch Move Detection) ======
       let touchStartX = 0;
       let touchStartY = 0;
+      let hasSwiped = false; // Bu flag, tek parmak hareketiyle birden fazla hamle yapılmasını engeller
 
       function onTouchStart(e){
         if (locked) return;
-        if (e.touches.length > 1) return; // Multitouch'u yoksay
+        if (e.touches.length > 1) return; 
         
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
+        hasSwiped = false; // Yeni dokunuş, yeni şans
       }
 
       function onTouchMove(e){
-        if (locked) return;
-        e.preventDefault(); // Scroll'u engellemek için
-      }
+        // Browser'ın native scroll/refresh hareketlerini engelle
+        if (e.cancelable) e.preventDefault();
 
-      function onTouchEnd(e){
-        if (locked) return;
-        if (e.changedTouches.length === 0) return;
+        // Eğer animasyon sürüyorsa veya bu dokunuşla zaten hamle yapıldıysa çık
+        if (locked || hasSwiped) return;
 
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-
-        const dx = touchEndX - touchStartX;
-        const dy = touchEndY - touchStartY;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        
+        const dx = currentX - touchStartX;
+        const dy = currentY - touchStartY;
         const absDx = Math.abs(dx);
         const absDy = Math.abs(dy);
 
-        // Ufak dokunuşları swipe sayma
-        const THRESHOLD = 30; 
+        // HASSASİYET EŞİĞİ (Threshold)
+        // Çok düşük olursa parmak titremesinde bile hamle yapar.
+        // 40px ideal bir dengedir.
+        const THRESHOLD = 40; 
 
         if (Math.max(absDx, absDy) > THRESHOLD) {
+          // Eşik aşıldı, hamleyi tetikle
           if (absDx > absDy) {
             move(dx > 0 ? "right" : "left");
           } else {
             move(dy > 0 ? "down" : "up");
           }
+          
+          // CRITICAL: Bu hareket için hakkını kullandı. 
+          // Artık parmağını kaldırana kadar (TouchEnd) yeni hamle yapamaz.
+          hasSwiped = true;
         }
+      }
+
+      function onTouchEnd(e){
+        // Temizliğe gerek yok, hasSwiped bir sonraki touchStart'ta sıfırlanıyor.
       }
 
       function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
@@ -758,9 +753,9 @@
           won = false;
         });
 
-        // Passive: false, çünkü preventDefault kullanıyoruz (touch-action:none olsa bile garanti olsun)
+        // Touch eventleri
         document.addEventListener("touchstart", onTouchStart, {passive:false});
-        document.addEventListener("touchmove", onTouchMove, {passive:false});
+        document.addEventListener("touchmove", onTouchMove, {passive:false}); // passive:false önemli (preventDefault için)
         document.addEventListener("touchend", onTouchEnd, {passive:false});
 
         window.addEventListener("resize", () => {

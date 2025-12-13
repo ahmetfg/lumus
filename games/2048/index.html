@@ -16,7 +16,7 @@
       --pad:12px;
       --gap:12px;
       --tile:78px;
-      --move-ms:160ms; /* Daha seri hissetmesi için süreyi biraz kıstım */
+      --move-ms:200ms; /* Daha seri hissetmesi için süreyi biraz kıstım */
       --board-size: calc(2*var(--pad) + 4*var(--tile) + 3*var(--gap));
     }
 
@@ -303,7 +303,7 @@
   <script>
     (() => {
       const GRID_SIZE = 4;
-      const MOVE_MS = 160; // CSS ile eşleştirdim, daha hızlı animasyon
+      const MOVE_MS = 200; // CSS ile eşleştirdim, daha hızlı animasyon
       const BEST_KEY = "bestScore2048_fastswipe";
 
       const elScore = document.getElementById("score");

@@ -1,0 +1,35 @@
+(function(){const a=document.createElement("link").relList;if(a&&a.supports&&a.supports("modulepreload"))return;for(const t of document.querySelectorAll('link[rel="modulepreload"]'))i(t);new MutationObserver(t=>{for(const o of t)if(o.type==="childList")for(const l of o.addedNodes)l.tagName==="LINK"&&l.rel==="modulepreload"&&i(l)}).observe(document,{childList:!0,subtree:!0});function n(t){const o={};return t.integrity&&(o.integrity=t.integrity),t.referrerPolicy&&(o.referrerPolicy=t.referrerPolicy),t.crossOrigin==="use-credentials"?o.credentials="include":t.crossOrigin==="anonymous"?o.credentials="omit":o.credentials="same-origin",o}function i(t){if(t.ep)return;t.ep=!0;const o=n(t);fetch(t.href,o)}})();const v="/lumus/";document.addEventListener("gesturestart",function(e){e.preventDefault()});document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:!1});document.body.addEventListener("touchmove",function(e){e.target.closest(".carousel-track")||e.preventDefault()},{passive:!1});const c=[{id:"Survivors",title:"Survivors",desc:"How long can you survive against endless waves of enemies?",category:"Roguelike",tags:["Roguelike","Action"],image:"games/survival/image.png",hero:"games/survival/hero.png",path:"games/survival/index.html",locked:!1},{id:"jomp",title:"JOMP",desc:"Test your reflexes! Bounce over obstacles and reach new heights.",category:"Arcade",tags:["Arcade","Skill"],image:"games/snake/icon.png",hero:"games/snake/hero.png",path:"games/snake/index.html",locked:!1},{id:"2048",title:"2048",desc:"Merge the numbers, build your strategy, and reach the 2048 tile.",category:"Puzzle",tags:["Puzzle","Logic"],image:"games/2048/image.png",hero:"games/2048/hero.png",path:"games/2048/index.html",locked:!1},{id:"Pacman",title:"Pacman",desc:"The classic maze chase. Eat the dots and avoid the ghosts!",category:"Arcade",tags:["Arcade","Classic"],image:"games/pacman/image.png",hero:"games/pacman/hero.png",path:"games/pacman/index.html",locked:!1},{id:"ninja",title:"Ninja",desc:"Become a shadow warrior. Move silently and take down your foes.",category:"Action",tags:["Action","Stealth"],image:"https://placehold.co/600x600/10b981/ffffff?text=Ninja",hero:"https://placehold.co/600x600/10b981/ffffff?text=.",path:"games/ninja/index.html",locked:!1},{id:"6",title:"Coming Soon",desc:"New games are arriving here very soon!",tags:["Coming Soon"],image:"https://placehold.co/600x600/e5e7eb/9ca3af?text=...",hero:"https://placehold.co/1920x1080/e5e7eb/9ca3af?text=SOON",locked:!0},{id:"7",title:"Coming Soon",desc:"New games are arriving here very soon!",tags:["Coming Soon"],image:"https://placehold.co/600x600/e5e7eb/9ca3af?text=...",hero:"https://placehold.co/1920x1080/e5e7eb/9ca3af?text=SOON",locked:!0}];document.querySelector("#app").innerHTML=`
+  <div class="hero-background" id="hero-bg"></div>
+
+  <header class="app-header">
+    <div class="brand-logo-background">
+      <div class="brand-logo">LUMUS<span>GAMES</span></div>
+    </div>
+    <div class="user-avatar"><img src="https://placehold.co/100x100/ffff/fffff?text=U"></div>
+  </header>
+
+  <div id="carousel-container">
+    <div class="carousel-track" id="track">
+        ${c.map((e,a)=>`
+            <div class="game-card ${a===0?"active":""} ${e.locked?"locked":""}">
+                <img src="${e.image}">
+            </div>
+        `).join("")}
+    </div>
+  </div>
+
+  <div class="info-section">
+    <h1 class="game-title-large" id="d-title">${c[0].title}</h1>
+    <div class="tags-row" id="d-tags"></div>
+    <p class="game-description" id="d-desc">${c[0].desc}</p>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="fav-btn">★ Favorite</button>
+    <button class="play-action-btn" id="play-btn">PLAY NOW</button>
+  </div>
+
+  <div id="game-container">
+    <button id="close-btn">✕</button>
+  </div>
+`;let s=0;const y=document.getElementById("track"),g=document.querySelectorAll(".game-card"),b=document.getElementById("hero-bg"),w=document.getElementById("d-title"),k=document.getElementById("d-desc"),E=document.getElementById("d-tags");function x(){return window.innerWidth>=1024?{cardWidth:150,gap:20,activeGrowth:0}:{cardWidth:140,gap:20,activeGrowth:20}}function d(e){g.forEach(t=>t.classList.remove("active")),g[e].classList.add("active");const a=x(),n=e*(a.cardWidth+a.gap);y.style.transform=`translateX(-${n}px)`;const i=c[e];w.innerText=i.title,k.innerText=i.desc,E.innerHTML=i.tags.map(t=>`<span class="tag-badge">${t}</span>`).join(""),b.innerHTML=`<img src="${i.hero}" class="hero-image" style="animation: fadeIn 0.4s">`}d(0);window.addEventListener("resize",()=>d(s));let f=0,m=!1;const h=document.getElementById("carousel-container");h.addEventListener("touchstart",e=>{f=e.touches[0].clientX,m=!0},{passive:!0});h.addEventListener("touchend",e=>{if(!m)return;const a=f-e.changedTouches[0].clientX;Math.abs(a)>30&&(a>0&&s<c.length-1?s++:a<0&&s>0&&s--,d(s)),m=!1});const u=document.getElementById("game-container"),L=document.getElementById("close-btn"),S=document.getElementById("play-btn");let r=null;function p(){const e=c[s];if(e.locked||!e.path)return;const a=`${v}${e.path}`,n=document.createElement("iframe");n.src=a,n.sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock",n.allow="autoplay; fullscreen",u.appendChild(n),u.style.display="block",r=n,n.onload=()=>n.contentWindow.focus()}g.forEach((e,a)=>{e.addEventListener("click",()=>{s=a,d(s),window.innerWidth>=1024&&p()})});S.addEventListener("click",p);L.addEventListener("click",()=>{r&&(r.src="about:blank",r.remove(),r=null),u.style.display="none"});

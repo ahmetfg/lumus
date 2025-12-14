@@ -155,12 +155,10 @@ const GAME_CONFIG = {
 };
 
 // --- SPRITE YÜKLEME ---
-// NOT: Bu URL'leri kendi yüklediğin görsellerin yolları ile değiştir.
 const playerSprite = new Image();
 playerSprite.src = "walkLeftLow.webp"; // Oyuncu Sprite Sheet URL
 
-const enemySprite = new Image();
-enemySprite.src = "orgWalkLeft.webp"; // Düşman Sprite Sheet URL (BOŞ BIRAKTIM, KENDİN EKLE)
+// NOT: Düşman sprite'ları artık Enemy sınıfının içinde yönetiliyor.
 
 /**
  * --- OYUN DURUMU (STATE) ---
@@ -245,7 +243,6 @@ class Player {
     constructor() {
         this.x = 0;
         this.y = 0;
-        // Hitbox boyutu (Çarpışma için)
         this.width = 30; 
         this.height = 30;
         
@@ -263,8 +260,7 @@ class Player {
             moveSpeed: 1
         };
 
-        // --- SPRITE ANIMASYON AYARLARI ---
-        // Görsel: 751x169, 8 Frame
+        // Player Sprite Config
         this.spriteWidth = 751; 
         this.spriteHeight = 169;
         this.totalFrames = 8;
@@ -285,7 +281,6 @@ class Player {
         let dx = 0;
         let dy = 0;
 
-        // Klavye Kontrolü
         if (keys['w'] || keys['ArrowUp']) dy = -1;
         if (keys['s'] || keys['ArrowDown']) dy = 1;
         if (keys['a'] || keys['ArrowLeft']) dx = -1;
@@ -297,27 +292,21 @@ class Player {
             dy /= length;
         }
 
-        // Joystick Kontrolü
         if (joystick.active) {
             dx = joystick.dx;
             dy = joystick.dy;
         }
 
-        // Hareketi uygula ve Animasyon Durumunu Güncelle
         if (dx !== 0 || dy !== 0) {
             this.x += dx * GAME_CONFIG.playerSpeed * this.modifiers.moveSpeed;
             this.y += dy * GAME_CONFIG.playerSpeed * this.modifiers.moveSpeed;
             this.isMoving = true;
-            
-            // Yönü belirle (Sağ mı Sol mu?)
             if (dx > 0) this.facingRight = true;
             if (dx < 0) this.facingRight = false;
-
         } else {
             this.isMoving = false;
         }
 
-        // Animasyon Frame Hesabı
         if (this.isMoving) {
             this.gameFrame++;
             if (this.gameFrame % this.staggerFrames === 0) {
@@ -327,7 +316,6 @@ class Player {
             this.currentFrame = 0; 
         }
 
-        // Silahları güncelle
         this.weapons.forEach(w => w.update(this));
     }
 
@@ -335,7 +323,6 @@ class Player {
         const screenX = CANVAS.width / 2;
         const screenY = CANVAS.height / 2;
         
-        // --- SPRITE ÇİZİMİ ---
         if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
             CTX.save(); 
             
@@ -362,7 +349,6 @@ class Player {
 
             CTX.restore();
         } else {
-            // FALLBACK
             CTX.fillStyle = this.color;
             CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
             CTX.strokeStyle = 'white';
@@ -370,7 +356,6 @@ class Player {
             CTX.strokeRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
         }
 
-        // --- GÖRSEL CAN BARI ---
         const barWidth = 40;
         const barHeight = 5;
         const barOffset = (playerSprite.complete && playerSprite.naturalWidth !== 0) ? 50 : 20;
@@ -433,34 +418,90 @@ class Player {
 }
 
 class Enemy {
+    // Tüm düşman tiplerini tutan statik dizi
+    static types = [];
+
+    /**
+     * Yeni bir düşman tipi ekler
+     * @param {Object} config - Düşman ayarları
+     * @param {string} config.sprite - Resim yolu (örn: 'monster.webp')
+     * @param {number} config.spawnAtLevel - Düşmanın spawn olmaya başlayacağı oyuncu seviyesi
+     * @param {Object} config.stats - { hp: 20, speed: 1.5, damage: 10 } gibi
+     * @param {Object} config.frameConfig - { width: 751, height: 169, frames: 8 } gibi (Sprite sheet detayları)
+     * @param {number} config.scale - Görsel çizim boyutu (varsayılan 100px yükseklik)
+     * @param {string} config.fallbackColor - Resim yoksa görünecek renk
+     */
+    static addNewType(config) {
+        const img = new Image();
+        img.src = config.sprite;
+        
+        Enemy.types.push({
+            spriteImg: img,
+            spawnAtLevel: config.spawnAtLevel || 1,
+            stats: config.stats || { hp: 25, speed: 1.5, damage: 10 },
+            frameConfig: config.frameConfig || { width: 64, height: 64, frames: 1 },
+            scale: config.scale || 100,
+            fallbackColor: config.fallbackColor || '#e74c3c'
+        });
+    }
+
     constructor() {
+        // Doğacak yeri hesapla (ekran dışı)
         const angle = Math.random() * Math.PI * 2;
         const radius = Math.max(CANVAS.width, CANVAS.height) / 2 + 100;
         
         this.x = player.x + Math.cos(angle) * radius;
         this.y = player.y + Math.sin(angle) * radius;
+
+        // --- TİP SEÇİMİ ---
+        // Oyuncunun seviyesine uygun olanları filtrele
+        const eligibleTypes = Enemy.types.filter(t => player.level >= t.spawnAtLevel);
         
+        // Eğer uygun tip yoksa (örneğin level 1'de hiç tanım yoksa), listenin ilkini al, o da yoksa varsayılan yap
+        let selectedType;
+        if (eligibleTypes.length > 0) {
+            selectedType = eligibleTypes[Math.floor(Math.random() * eligibleTypes.length)];
+        } else if (Enemy.types.length > 0) {
+             // Level yetmiyor ama tanımlı düşman var, en düşüğünü al
+            selectedType = Enemy.types[0];
+        } else {
+            // Hiç düşman tanımlanmamışsa fallback
+            selectedType = null; 
+        }
+
+        // Seçilen tipe göre özellikleri ata
+        if (selectedType) {
+            this.img = selectedType.spriteImg;
+            this.frameConfig = selectedType.frameConfig;
+            this.scale = selectedType.scale;
+            this.color = selectedType.fallbackColor;
+
+            // Statları level çarpanıyla biraz güçlendir
+            this.hp = selectedType.stats.hp + (player.level * 2);
+            this.speed = selectedType.stats.speed + (Math.random() * 0.2);
+            this.damage = selectedType.stats.damage + (player.level * 0.2);
+        } else {
+            // Varsayılan (Eğer Enemy.addNewType hiç çağrılmazsa)
+            this.img = null;
+            this.frameConfig = { width: 0, height: 0, frames: 1 };
+            this.scale = 40;
+            this.color = '#ff0000';
+            this.hp = 20;
+            this.speed = 1.5;
+            this.damage = 10;
+        }
+
         this.width = 25; // Hitbox
         this.height = 25;
-        this.color = '#e74c3c';
-        
-        this.hp = 25 + (player.level * 5); 
-        this.speed = GAME_CONFIG.baseEnemySpeed + (Math.random() * 0.5);
-        this.damage = 10 + (player.level * 0.5);
 
-        // --- DÜŞMAN SPRITE AYARLARI ---
-        // Lütfen bu değerleri kendi sprite sheet'ine göre güncelle:
-        this.spriteWidth = 751; 
-        this.spriteHeight = 169;
-        this.totalFrames = 8;
-        this.frameWidth = this.spriteWidth / this.totalFrames;
-        this.frameHeight = this.spriteHeight;
+        // Sprite Animasyon değişkenleri
+        this.totalFrames = this.frameConfig.frames;
+        this.frameWidth = this.frameConfig.width / this.totalFrames;
+        this.frameHeight = this.frameConfig.height;
 
-        // "Robot Ordusu" etkisini kırmak için rastgele başlangıç:
         this.currentFrame = Math.floor(Math.random() * this.totalFrames);
         this.gameFrame = Math.floor(Math.random() * 10);
-        this.staggerFrames = 8; // Düşmanlar biraz daha yavaş veya farklı hızda animate olabilir
-
+        this.staggerFrames = 8;
         this.facingRight = true;
     }
 
@@ -473,11 +514,10 @@ class Enemy {
             this.x += (dx / dist) * this.speed;
             this.y += (dy / dist) * this.speed;
             
-            // Yön belirleme
             if (dx > 0) this.facingRight = true;
             else this.facingRight = false;
 
-            // Animasyon İlerlemesi
+            // Animasyon
             this.gameFrame++;
             if (this.gameFrame % this.staggerFrames === 0) {
                 this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
@@ -493,15 +533,13 @@ class Enemy {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
 
-        // Culling (Ekran dışı çizim engelleme)
         if (screenX < -50 || screenX > CANVAS.width + 50 || 
             screenY < -50 || screenY > CANVAS.height + 50) return;
 
-        // --- SPRITE ÇİZİMİ ---
-        if (enemySprite.complete && enemySprite.naturalWidth !== 0) {
+        if (this.img && this.img.complete && this.img.naturalWidth !== 0) {
             CTX.save();
 
-            const displayH = 100; // Düşman boyutu (Görsel olarak)
+            const displayH = this.scale; 
             const displayW = displayH * (this.frameWidth / this.frameHeight);
 
             CTX.translate(screenX, screenY);
@@ -511,7 +549,7 @@ class Enemy {
             }
 
             CTX.drawImage(
-                enemySprite,
+                this.img,
                 this.currentFrame * this.frameWidth,
                 0,
                 this.frameWidth,
@@ -524,7 +562,6 @@ class Enemy {
 
             CTX.restore();
         } else {
-            // FALLBACK (Görsel yoksa Kırmızı Kare)
             CTX.fillStyle = this.color;
             CTX.fillRect(screenX - this.width/2, screenY - this.height/2, this.width, this.height);
         }
@@ -814,6 +851,64 @@ let keys = {};
 
 window.addEventListener('keydown', e => keys[e.key] = true);
 window.addEventListener('keyup', e => keys[e.key] = false);
+
+/**
+ * --- DÜŞMAN TANIMLAMALARI BURADA ---
+ */
+
+// 1. TİP: Temel Ork (Level 1)
+Enemy.addNewType({
+    sprite: "orgWalkLeft.webp",
+    spawnAtLevel: 1,
+    stats: { hp: 25, speed: 1.5, damage: 10 },
+    frameConfig: { width: 751, height: 169, frames: 8 },
+    scale: 100,
+    fallbackColor: '#e74c3c'
+});
+
+// 2. TİP: ÖRNEK GÜÇLÜ DÜŞMAN (Level 3)
+// NOT: Bu örnek için aynı resmi kullandım ama farklı ayarlarla.
+// Kendi "monster.webp" görselini buraya ekleyebilirsin.
+Enemy.addNewType({
+    sprite: "orgTwoWalk.webp", // Buraya "monster.webp" yazabilirsin
+    spawnAtLevel: 2,
+    stats: { hp: 80, speed: 1.2, damage: 25 }, // Daha canı çok ama yavaş
+    frameConfig: { width: 751, height: 169, frames: 8 },
+    scale: 110, // Daha büyük görünür
+    fallbackColor: '#8e44ad' // Resim yoksa Mor görünür
+});
+Enemy.addNewType({
+    sprite: "orgThreeWalk.webp", 
+    spawnAtLevel: 2,
+    stats: { hp: 40*2, speed: 1.2, damage: 25 }, // Daha canı çok ama yavaş
+    frameConfig: { width: 751, height: 169, frames: 8 },
+    scale: 100, // Daha büyük görünür
+    fallbackColor: '#8e44ad' // Resim yoksa Mor görünür
+});
+Enemy.addNewType({
+    sprite: "slymeWalk.webp", 
+    spawnAtLevel: 3,
+    stats: { hp: 40*3, speed: 1.2, damage: 30 }, // Daha canı çok ama yavaş
+    frameConfig: { width: 751, height: 169, frames: 8 },
+    scale: 100, // Daha büyük görünür
+    fallbackColor: '#8e44ad' // Resim yoksa Mor görünür
+});
+Enemy.addNewType({
+    sprite: "zombieWalk.webp", 
+    spawnAtLevel: 4,
+    stats: { hp: 40*4, speed: 1, damage: 40 }, // Daha canı çok ama yavaş
+    frameConfig: { width: 751, height: 169, frames: 8 },
+    scale: 80, // Daha büyük görünür
+    fallbackColor: '#8e44ad' // Resim yoksa Mor görünür
+});
+Enemy.addNewType({
+    sprite: "frankenstainWalk.webp", 
+    spawnAtLevel: 5,
+    stats: { hp: 40*8, speed: .6, damage: 50 }, // Daha canı çok ama yavaş
+    frameConfig: { width: 751, height: 169, frames: 8 },
+    scale: 80*2, // Daha büyük görünür
+    fallbackColor: '#8e44ad' // Resim yoksa Mor görünür
+});
 
 function initGame() {
     player = new Player();

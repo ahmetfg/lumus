@@ -17,29 +17,31 @@
             width: 100vw;
             color: white;
             font-family: 'Courier New', Courier, monospace;
-            touch-action: none;
+            touch-action: none; /* Mobilde kaydırmayı engelle */
         }
 
         #game-wrapper {
             position: relative;
-            /* Flex ile ortala ama boyut zorlama */
-            width: 100vw;
-            height: 100vh;
+            /* Orijinal en/boy oranı (19 birim en, 22 birim boy + skor alanı) */
+            aspect-ratio: 19 / 23; 
+            height: 95vh;
+            max-width: 100vw;
+            margin: auto;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0;
         }
 
         #pacman {
-            /* Canvas boyutu neyse o olsun */
-            display: block;
-            position: relative; /* Overlay için referans */
+            width: 100%;
+            height: 100%;
         }
 
         canvas {
             display: block;
-            image-rendering: pixelated;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated; /* Retro görünüm için */
         }
 
         #overlay {
@@ -90,8 +92,6 @@
 <body>
 
     <div id="game-wrapper">
-        <!-- Overlay artık pacman div'i içinde değil ama JS ile boyutlar ayarlandığı için sorun yok. 
-             Hatta tam ortalamak için wrapper içinde olması daha iyi. -->
         <div id="overlay">
             <div class="title">PACMAN</div>
             <div id="overlay-msg" class="msg">LOADING...</div>
@@ -687,17 +687,8 @@
             }
 
             function init(wrapper) {
-                // Calculate best fit block size based on viewport
-                // Width constraint: 19 blocks
-                // Height constraint: 22 blocks + 30px footer
-                // Add some safe margin
-                var w = window.innerWidth * 0.98;
-                var h = window.innerHeight * 0.98;
-                
-                var bsW = w / 19;
-                var bsH = (h - 30) / 22;
-                
-                var blockSize = Math.min(bsW, bsH);
+                // Calculate size based on explicit dimensions now enforced by CSS
+                var blockSize = wrapper.offsetWidth / 19;
                 
                 canvas = document.createElement("canvas");
                 canvas.setAttribute("width", (blockSize * 19) + "px");
@@ -753,12 +744,6 @@
             var el = document.getElementById("pacman");
             PACMAN.init(el);
             document.getElementById("overlay").addEventListener("click", PACMAN.handleOverlayClick);
-            
-            // Reload on resize to fix layout
-            window.addEventListener('resize', function() {
-                // Debounce simple reload
-                setTimeout(function(){ window.location.reload(); }, 500);
-            });
         };
 
     </script>

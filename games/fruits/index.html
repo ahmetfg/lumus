@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Meyve Samurayı - Ultimate Web Clone</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Shojumaru&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Mobilde kaydırmayı engeller */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, #4a3b2a 0%, #1a1510 100%); /* Dojo ahşap havası */
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Katmanı */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .score-box {
+            color: #ffeb3b;
+            font-family: 'Shojumaru', cursive;
+            font-size: 40px;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        .score-label {
+            font-size: 14px;
+            color: #aaa;
+            display: block;
+            font-family: sans-serif;
+        }
+
+        .lives-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        .life-icon {
+            font-size: 30px;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+        .life-lost {
+            opacity: 0.2;
+            filter: grayscale(100%);
+        }
+
+        /* Menü Ekranları */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            color: #f44336;
+            font-family: 'Shojumaru', cursive;
+            font-size: 60px;
+            margin: 0 0 20px 0;
+            text-shadow: 3px 3px 0px #fff, 5px 5px 10px #000;
+            text-align: center;
+        }
+
+        button {
+            background: linear-gradient(to bottom, #ff9800, #f57c00);
+            border: 2px solid #fff;
+            color: white;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-family: 'Shojumaru', cursive;
+            cursor: pointer;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background: linear-gradient(to bottom, #ffac33, #ff9800);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .combo-text {
+            position: absolute;
+            color: #00e676;
+            font-weight: bold;
+            font-size: 30px;
+            text-shadow: 2px 2px 0 #000;
+            pointer-events: none;
+            animation: popUp 1s forwards;
+            font-family: 'Shojumaru', cursive;
+        }
+
+        @keyframes popUp {
+            0% { transform: scale(0.5) translateY(0); opacity: 0; }
+            20% { transform: scale(1.2) translateY(-20px); opacity: 1; }
+            100% { transform: scale(1) translateY(-50px); opacity: 0; }
+        }
+
+        #final-score {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        /* Küçük ekran uyarlamaları */
+        @media (max-width: 600px) {
+            h1 { font-size: 40px; }
+            .score-box { font-size: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div class="score-box">
+                <span class="score-label">SKOR</span>
+                <span id="score-val">0</span>
+            </div>
+            <div class="lives-box" id="lives-container">
+                <div class="life-icon">❌</div>
+                <div class="life-icon">❌</div>
+                <div class="life-icon">❌</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Başlangıç Menüsü -->
+    <div id="start-screen" class="overlay">
+        <h1>MEYVE<br>SAMURAYI</h1>
+        <p style="color: #ccc; margin-bottom: 30px; font-size: 18px;">Bombaları kesme, meyveleri kaçırma!</p>
+        <button onclick="game.startGame()">OYUNA BAŞLA</button>
+    </div>
+
+    <!-- Oyun Sonu Menüsü -->
+    <div id="game-over-screen" class="overlay hidden">
+        <h1>OYUN BİTTİ</h1>
+        <div id="final-score">Skor: 0</div>
+        <button onclick="game.resetGame()">TEKRAR OYNA</button>
+    </div>
+</div>
+
+<script>
+/**
+ * OYUN MANTIĞI VE FİZİK MOTORU
+ */
+
+// Yardımcı Fonksiyonlar
+const rand = (min, max) => Math.random() * (max - min) + min;
+const randColor = () => `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`;
+
+// Ses Sentezleyicisi (Basit ses efektleri için Web Audio API)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const playSound = (type) => {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'slice') {
+        // Kesme sesi (Yüksek frekanslı sweep)
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'bomb') {
+        // Bomba sesi (Düşük frekanslı gürültümsü)
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+    } else if (type === 'throw') {
+        // Fırlatma sesi
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(400, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+    }
+};
+
+// Vektör/Nokta Sınıfı
+class Point {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.life = 1.0; // İzi silmek için
+    }
+}
+
+// Partikül (Sıçrama Efekti)
+class Particle {
+    constructor(x, y, color, speedVal = 1) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 * speedVal + 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.life = 1.0;
+        this.decay = rand(0.01, 0.03);
+        this.gravity = 0.2;
+        this.size = rand(2, 5);
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += this.gravity;
+        this.life -= this.decay;
+    }
+
+    draw(ctx) {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+// Yüzen Metin (Combo vs)
+class FloatingText {
+    constructor(x, y, text, color) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.life = 1.0;
+        this.vy = -2;
+    }
+    update() {
+        this.y += this.vy;
+        this.life -= 0.02;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.font = "bold 30px 'Shojumaru', sans-serif";
+        ctx.strokeText(this.text, this.x, this.y);
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+// Meyve / Nesne Sınıfı
+class Fruit {
+    constructor(w, h) {
+        this.active = true;
+        this.radius = 35;
+        // Başlangıç konumu (Ekranın altından rastgele)
+        this.x = rand(50, w - 50);
+        this.y = h + this.radius;
+        
+        // Hız vektörleri (Merkeze doğru hafif yönelim)
+        this.vx = (w / 2 - this.x) * 0.01 + rand(-2, 2); 
+        this.vy = rand(-13, -17); // Yukarı fırlatma gücü
+        
+        this.gravity = 0.25;
+        this.rotation = 0;
+        this.rotationSpeed = rand(-0.2, 0.2);
+        
+        // Tip belirleme
+        const typeRoll = Math.random();
+        if (typeRoll < 0.15) {
+            this.type = 'bomb';
+            this.color = '#111';
+            this.innerColor = '#f00';
+        } else {
+            this.type = 'fruit';
+            // Rastgele meyve renkleri
+            const fruits = [
+                {c: '#F44336', i: '#ffcdd2', name: 'Karpuz'}, // Kırmızı
+                {c: '#FFEB3B', i: '#FFF9C4', name: 'Limon'}, // Sarı
+                {c: '#4CAF50', i: '#C8E6C9', name: 'Kivi'}, // Yeşil
+                {c: '#FF9800', i: '#FFE0B2', name: 'Portakal'}, // Turuncu
+                {c: '#9C27B0', i: '#E1BEE7', name: 'Erik'} // Mor
+            ];
+            const f = fruits[Math.floor(Math.random() * fruits.length)];
+            this.color = f.c;
+            this.innerColor = f.i;
+        }
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += this.gravity;
+        this.rotation += this.rotationSpeed;
+
+        // Ekran dışına çıktı mı?
+        return (this.y > window.innerHeight + 50 && this.vy > 0); 
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        if (this.type === 'bomb') {
+            // Bomba Çizimi
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Parlama efekti
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(50, 50, 50, 1)';
+            ctx.arc(-10, -10, 8, 0, Math.PI*2);
+            ctx.fill();
+
+            // Fitil (Kırmızı yanıp sönen)
+            if (Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.radius);
+                ctx.quadraticCurveTo(10, -this.radius - 15, 20, -this.radius - 10);
+                ctx.stroke();
+                
+                // Kıvılcım
+                ctx.fillStyle = '#ffeb3b';
+                ctx.beginPath();
+                ctx.arc(20, -this.radius - 10, 4, 0, Math.PI*2);
+                ctx.fill();
+            }
+            
+            // Kuru kafa simgesi (basit)
+            ctx.fillStyle = '#333';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('☠️', 0, 0);
+
+        } else {
+            // Meyve Çizimi
+            // Dış kabuk
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // İç kısım
+            ctx.fillStyle = this.innerColor;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius - 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Çekirdekler (Detay)
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            for(let i=0; i<5; i++) {
+                let ang = (i * 72) * Math.PI/180;
+                ctx.beginPath();
+                ctx.arc(Math.cos(ang)*15, Math.sin(ang)*15, 2, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+}
+
+// Ana Oyun Sınıfı
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        
+        this.state = 'menu'; // menu, playing, gameover
+        this.score = 0;
+        this.lives = 3;
+        
+        // Nesneler
+        this.fruits = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.bladeTrail = [];
+        
+        // Oyun Döngüsü değişkenleri
+        this.lastTime = 0;
+        this.spawnTimer = 0;
+        this.spawnInterval = 2000; // Başlangıçta yavaş
+        this.difficultyTimer = 0;
+
+        // Mouse/Touch Takibi
+        this.input = { x: 0, y: 0, isDown: false, prevX: 0, prevY: 0 };
+        this.comboCount = 0;
+        this.comboTimer = 0;
+
+        this.initListeners();
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    initListeners() {
+        window.addEventListener('resize', () => this.resize());
+        
+        const startMove = (x, y) => {
+            this.input.isDown = true;
+            this.input.x = x;
+            this.input.y = y;
+            this.input.prevX = x;
+            this.input.prevY = y;
+            this.bladeTrail = []; // Yeni kesik başlangıcı
+        };
+
+        const move = (x, y) => {
+            if (this.input.isDown) {
+                this.input.prevX = this.input.x;
+                this.input.prevY = this.input.y;
+                this.input.x = x;
+                this.input.y = y;
+                
+                // Trail'e nokta ekle
+                this.bladeTrail.push(new Point(x, y));
+                if (this.bladeTrail.length > 20) this.bladeTrail.shift();
+                
+                // Çarpışma kontrolü
+                this.checkCollisions();
+            }
+        };
+
+        const endMove = () => {
+            this.input.isDown = false;
+            this.comboCount = 0; // Combo sıfırla
+        };
+
+        // Mouse Events
+        this.canvas.addEventListener('mousedown', e => startMove(e.clientX, e.clientY));
+        this.canvas.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+        window.addEventListener('mouseup', endMove);
+
+        // Touch Events
+        this.canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            startMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        this.canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            move(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        this.canvas.addEventListener('touchend', endMove);
+    }
+
+    startGame() {
+        this.score = 0;
+        this.lives = 3;
+        this.fruits = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.bladeTrail = [];
+        this.spawnInterval = 2000;
+        this.difficultyTimer = 0;
+        this.updateUI();
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        
+        // Ses kilidini aç
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        this.state = 'playing';
+    }
+
+    resetGame() {
+        this.startGame();
+    }
+
+    gameOver() {
+        this.state = 'gameover';
+        document.getElementById('final-score').innerText = `Skor: ${this.score}`;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        playSound('bomb'); // Oyun bitiş sesi
+    }
+
+    spawnFruit() {
+        // Zorluk arttıkça aynı anda birden fazla at
+        let count = 1;
+        if (this.score > 50) count = rand(1, 2);
+        if (this.score > 150) count = rand(1, 3);
+        if (this.score > 300) count = rand(2, 4);
+
+        for (let i = 0; i < count; i++) {
+            // Biraz gecikmeli at ki hepsi üst üste binmesin
+            setTimeout(() => {
+                if(this.state === 'playing') {
+                    this.fruits.push(new Fruit(this.canvas.width, this.canvas.height));
+                    playSound('throw');
+                }
+            }, i * 200);
+        }
+    }
+
+    checkCollisions() {
+        if (this.state !== 'playing') return;
+
+        // Line segment collision detection (Basit versiyon)
+        const p1 = {x: this.input.prevX, y: this.input.prevY};
+        const p2 = {x: this.input.x, y: this.input.y};
+        
+        // Hız kontrolü: Çok yavaş hareket ediyorsa kesme sayılmaz (Sürükleme vs kesme farkı)
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (dist < 5) return; // Çok yavaş
+
+        this.fruits.forEach(fruit => {
+            if (!fruit.active) return;
+
+            // Meyve ile çizgi arasındaki mesafe
+            // Basitlik için sadece meyve merkezinin çizgiye yakınlığına ve yarıçapa bakıyoruz
+            const fruitDist = Math.hypot(fruit.x - p2.x, fruit.y - p2.y);
+            
+            // Daha hassas: Nokta-Doğru parçası uzaklığı
+            const lenSq = dist * dist;
+            let t = ((fruit.x - p1.x) * (p2.x - p1.x) + (fruit.y - p1.y) * (p2.y - p1.y)) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const projX = p1.x + t * (p2.x - p1.x);
+            const projY = p1.y + t * (p2.y - p1.y);
+            const distanceToLine = Math.hypot(fruit.x - projX, fruit.y - projY);
+
+            if (distanceToLine < fruit.radius) {
+                // KESİLDİ!
+                this.sliceFruit(fruit);
+            }
+        });
+    }
+
+    sliceFruit(fruit) {
+        fruit.active = false;
+        
+        if (fruit.type === 'bomb') {
+            // Bomba patladı
+            this.createExplosion(fruit.x, fruit.y);
+            this.lives = 0; // Tek seferde oyun biter
+            this.updateUI();
+            this.gameOver();
+        } else {
+            // Meyve kesildi
+            this.score += 10;
+            this.comboCount++;
+            this.comboTimer = 20; // 20 frame içinde başka keserse combo artar
+
+            // Combo bonusu
+            if (this.comboCount > 1) {
+                this.score += this.comboCount * 2;
+                this.floatingTexts.push(new FloatingText(fruit.x, fruit.y - 50, `${this.comboCount}x COMBO!`, '#FFEB3B'));
+            }
+
+            this.updateUI();
+            playSound('slice');
+            this.createSplatter(fruit.x, fruit.y, fruit.color);
+        }
+    }
+
+    createSplatter(x, y, color) {
+        // Meyve suyu partikülleri
+        for (let i = 0; i < 20; i++) {
+            this.particles.push(new Particle(x, y, color));
+        }
+        // İki yarım parça efekti (Basitleştirilmiş: iki büyük partikül)
+        for(let i=0; i<2; i++) {
+             let p = new Particle(x, y, color, 2);
+             p.size = 20;
+             p.decay = 0.02; // Yavaş kaybolsun
+             this.particles.push(p);
+        }
+    }
+
+    createExplosion(x, y) {
+        for (let i = 0; i < 50; i++) {
+            this.particles.push(new Particle(x, y, '#fff', 3));
+            this.particles.push(new Particle(x, y, '#f00', 2));
+        }
+        // Tüm ekranı bir an beyazlat
+        this.ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+    }
+
+    updateUI() {
+        document.getElementById('score-val').innerText = this.score;
+        const livesContainer = document.getElementById('lives-container');
+        const icons = livesContainer.getElementsByClassName('life-icon');
+        for (let i = 0; i < 3; i++) {
+            if (i < this.lives) {
+                icons[i].classList.remove('life-lost');
+            } else {
+                icons[i].classList.add('life-lost');
+            }
+        }
+    }
+
+    loop(timestamp) {
+        const dt = timestamp - this.lastTime;
+        this.lastTime = timestamp;
+
+        // Temizle
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        if (this.state === 'playing') {
+            // Zorluk ve Spawning
+            this.spawnTimer += dt;
+            this.difficultyTimer += dt;
+            
+            // Her 10 saniyede bir hızlan
+            if (this.difficultyTimer > 10000 && this.spawnInterval > 500) {
+                this.spawnInterval -= 100;
+                this.difficultyTimer = 0;
+            }
+
+            if (this.spawnTimer > this.spawnInterval) {
+                this.spawnFruit();
+                this.spawnTimer = 0;
+            }
+
+            // Combo zamanlayıcısı
+            if (this.comboTimer > 0) this.comboTimer--;
+            else this.comboCount = 0;
+        }
+
+        // Meyveleri Güncelle/Çiz
+        for (let i = this.fruits.length - 1; i >= 0; i--) {
+            let f = this.fruits[i];
+            if (!f.active) {
+                this.fruits.splice(i, 1);
+                continue;
+            }
+            let isOut = f.update();
+            f.draw(this.ctx);
+
+            if (isOut) {
+                // Meyve kaçtı (Bomba kaçarsa sorun yok)
+                if (f.type !== 'bomb' && this.state === 'playing') {
+                    this.lives--;
+                    this.updateUI();
+                    this.floatingTexts.push(new FloatingText(f.x, this.canvas.height - 50, "KAÇTI!", "#F44336"));
+                    if (this.lives <= 0) this.gameOver();
+                }
+                this.fruits.splice(i, 1);
+            }
+        }
+
+        // Partikülleri Güncelle/Çiz
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.update();
+            p.draw(this.ctx);
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        // Yüzen Yazıları Güncelle/Çiz
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            let ft = this.floatingTexts[i];
+            ft.update();
+            ft.draw(this.ctx);
+            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+        }
+
+        // Kılıç İzini Çiz (Blade Trail)
+        if (this.bladeTrail.length > 1) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.bladeTrail[0].x, this.bladeTrail[0].y);
+            
+            // Işıklı kılıç efekti
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            
+            // Dış glow
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'cyan';
+            this.ctx.lineWidth = 8;
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            
+            // Path oluştur
+            for (let i = 1; i < this.bladeTrail.length; i++) {
+                this.ctx.lineTo(this.bladeTrail[i].x, this.bladeTrail[i].y);
+            }
+            this.ctx.stroke();
+
+            // Efekti sıfırla
+            this.ctx.shadowBlur = 0;
+
+            // Eski noktaları sil (İzin kuyruğu kısalsın)
+            this.bladeTrail.shift();
+        }
+
+        requestAnimationFrame(this.loop);
+    }
+}
+
+// Oyunu Başlat
+const game = new Game();
+
+</script>
+</body>
+</html>

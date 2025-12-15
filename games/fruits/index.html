@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Meyve Samurayı - Ultimate Web Clone</title>
+    <title>Fruit Samurai - Ultimate Web Clone</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Shojumaru&display=swap');
 
@@ -66,6 +66,10 @@
         .lives-box {
             display: flex;
             gap: 10px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 20px; /* UI padding ile aynı hizada olması için */
         }
 
         .life-icon {
@@ -170,7 +174,7 @@
     <div id="ui-layer">
         <div class="hud-top">
             <div class="score-box">
-                <span class="score-label">SKOR</span>
+                <span class="score-label">SCORE</span>
                 <span id="score-val">0</span>
             </div>
             <div class="lives-box" id="lives-container">
@@ -183,16 +187,16 @@
 
     <!-- Başlangıç Menüsü -->
     <div id="start-screen" class="overlay">
-        <h1>MEYVE<br>SAMURAYI</h1>
-        <p style="color: #ccc; margin-bottom: 30px; font-size: 18px;">Bombaları kesme, meyveleri kaçırma!</p>
-        <button onclick="game.startGame()">OYUNA BAŞLA</button>
+        <h1>FRUIT<br>SAMURAI</h1>
+        <p style="color: #ccc; margin-bottom: 30px; font-size: 18px;">Don't slice bombs, don't miss fruits!</p>
+        <button onclick="game.startGame()">START GAME</button>
     </div>
 
     <!-- Oyun Sonu Menüsü -->
     <div id="game-over-screen" class="overlay hidden">
-        <h1>OYUN BİTTİ</h1>
-        <div id="final-score">Skor: 0</div>
-        <button onclick="game.resetGame()">TEKRAR OYNA</button>
+        <h1>GAME OVER</h1>
+        <div id="final-score">Score: 0</div>
+        <button onclick="game.resetGame()">PLAY AGAIN</button>
     </div>
 </div>
 
@@ -340,11 +344,11 @@ class Fruit {
             this.type = 'fruit';
             // Rastgele meyve renkleri
             const fruits = [
-                {c: '#F44336', i: '#ffcdd2', name: 'Karpuz'}, // Kırmızı
-                {c: '#FFEB3B', i: '#FFF9C4', name: 'Limon'}, // Sarı
-                {c: '#4CAF50', i: '#C8E6C9', name: 'Kivi'}, // Yeşil
-                {c: '#FF9800', i: '#FFE0B2', name: 'Portakal'}, // Turuncu
-                {c: '#9C27B0', i: '#E1BEE7', name: 'Erik'} // Mor
+                {c: '#F44336', i: '#ffcdd2', name: 'Watermelon'}, // Kırmızı
+                {c: '#FFEB3B', i: '#FFF9C4', name: 'Lemon'}, // Sarı
+                {c: '#4CAF50', i: '#C8E6C9', name: 'Kiwi'}, // Yeşil
+                {c: '#FF9800', i: '#FFE0B2', name: 'Orange'}, // Turuncu
+                {c: '#9C27B0', i: '#E1BEE7', name: 'Plum'} // Mor
             ];
             const f = fruits[Math.floor(Math.random() * fruits.length)];
             this.color = f.c;
@@ -544,7 +548,7 @@ class Game {
 
     gameOver() {
         this.state = 'gameover';
-        document.getElementById('final-score').innerText = `Skor: ${this.score}`;
+        document.getElementById('final-score').innerText = `Score: ${this.score}`;
         document.getElementById('game-over-screen').classList.remove('hidden');
         playSound('bomb'); // Oyun bitiş sesi
     }
@@ -707,7 +711,7 @@ class Game {
                 if (f.type !== 'bomb' && this.state === 'playing') {
                     this.lives--;
                     this.updateUI();
-                    this.floatingTexts.push(new FloatingText(f.x, this.canvas.height - 50, "KAÇTI!", "#F44336"));
+                    this.floatingTexts.push(new FloatingText(f.x, this.canvas.height - 50, "MISSED!", "#F44336"));
                     if (this.lives <= 0) this.gameOver();
                 }
                 this.fruits.splice(i, 1);

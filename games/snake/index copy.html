@@ -63,9 +63,7 @@
                 3px 3px 0px #302b63;
             letter-spacing: 4px;
         }
-        
-        /* Ekran Stilleri */
-        .screen-overlay {
+        #start-screen {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -74,42 +72,23 @@
             padding: 40px;
             border-radius: 20px;
             text-align: center;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            border: 2px solid #4cd137;
+            box-shadow: 0 0 30px rgba(76, 209, 55, 0.2);
             display: flex;
             flex-direction: column;
             gap: 20px;
             z-index: 10;
-            min-width: 250px;
-            max-width: 90%;
-            backdrop-filter: blur(5px);
+            min-width: 280px;
+            max-width: 90%; 
         }
-
-        #start-screen {
-            border: 2px solid #4cd137;
-            box-shadow: 0 0 30px rgba(76, 209, 55, 0.2);
-        }
-
-        #game-over-screen {
-            border: 2px solid #ff4757;
-            box-shadow: 0 0 30px rgba(255, 71, 87, 0.3);
-        }
-
         .hidden {
             display: none !important;
         }
-
-        /* Buton Grubu */
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-top: 10px;
-        }
-
         button {
             padding: 15px 30px;
             font-family: 'Orbitron', sans-serif;
-            font-size: 18px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #4cd137, #2ecc71);
             border: none;
             color: #000;
             font-weight: 900;
@@ -118,37 +97,20 @@
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 2px;
-            min-height: 50px; 
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+            min-height: 44px; 
             touch-action: manipulation;
         }
-        
-        /* Yeşil Buton (Free Fall) */
-        .btn-green {
-            background: linear-gradient(135deg, #4cd137, #2ecc71);
-            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
-        }
-        .btn-green:hover {
+        button:hover {
             transform: scale(1.05) translateY(-2px);
             box-shadow: 0 8px 20px rgba(46, 204, 113, 0.6);
         }
-
-        /* Kırmızı Buton (Classic/Game Over) */
-        .btn-red {
-            background: linear-gradient(135deg, #ff6b6b, #ee5253);
-            color: white;
-            box-shadow: 0 5px 15px rgba(238, 82, 83, 0.4);
-        }
-        .btn-red:hover {
-            transform: scale(1.05) translateY(-2px);
-            box-shadow: 0 8px 20px rgba(238, 82, 83, 0.6);
-        }
-
         button:active {
             transform: scale(0.95);
         }
-        
         p {
             color: #ccc;
+            max-width: 300px;
             margin: 0 auto;
             line-height: 1.6;
             font-size: 14px;
@@ -156,9 +118,6 @@
         }
         h2 {
             font-family: 'Orbitron', sans-serif;
-            letter-spacing: 4px;
-            margin: 0;
-            text-shadow: 0 0 10px currentColor;
         }
     </style>
 </head>
@@ -168,29 +127,10 @@
         <div id="score-board">0</div>
     </div>
 
-    <!-- START SCREEN -->
-    <div id="start-screen" class="screen-overlay">
-        <h2 style="color: #4cd137; font-size: 42px;">JOMP</h2>
-        <p>Choose your mode:</p>
-        
-        <div class="btn-group">
-            <button class="btn-green" onclick="startGame('FREE_FALL')">FREE FALL MODE</button>
-            <button class="btn-red" onclick="startGame('CLASSIC')">CLASSIC MODE</button>
-        </div>
-        
-        <p style="font-size: 12px; opacity: 0.7; margin-top:5px;">
-            Free Fall: No death, relax.<br>
-            Classic: Don't fall off screen!
-        </p>
-    </div>
-
-    <!-- GAME OVER SCREEN -->
-    <div id="game-over-screen" class="screen-overlay hidden">
-        <h2 style="color: #ff4757; font-size: 36px;">GAME OVER</h2>
-        <p id="final-score" style="font-size: 24px; color: white; font-family: 'Orbitron', sans-serif;">Score: 0</p>
-        <div class="btn-group">
-            <button class="btn-red" onclick="returnToMenu()">TRY AGAIN</button>
-        </div>
+    <div id="start-screen">
+        <h2 style="color: #4cd137; margin:0; font-size: 42px; letter-spacing: 4px; text-shadow: 0 0 15px rgba(76, 209, 55, 0.4);">JOMP</h2>
+        <p>Climb high.<br>Don't look down.<br>Reach for the stars.</p>
+        <button onclick="startGame()">JUMP!</button>
     </div>
 
     <canvas id="gameCanvas" tabindex="1"></canvas>
@@ -200,13 +140,13 @@
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score-board');
         const startScreen = document.getElementById('start-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const finalScoreEl = document.getElementById('final-score');
 
         // --- Game Constants ---
+        // Oyunun yatay çözünürlüğünü 480 birim olarak sabitliyoruz.
+        // Dikey çözünürlük ise ekrana göre dinamik olacak.
         const CANVAS_WIDTH = 480; 
         
-        let CANVAS_HEIGHT = 800; // Başlangıç değeri
+        let CANVAS_HEIGHT = 800; // Başlangıç değeri, resize ile değişecek
         let FLOOR_LEVEL = CANVAS_HEIGHT - 100;
         
         // Physics & Gameplay
@@ -218,8 +158,7 @@
         const PLATFORM_GAP_Y = 140; 
         
         // --- Game State ---
-        let gameState = 'MENU'; // MENU, PLAYING, GAME_OVER
-        let gameMode = 'FREE_FALL'; // 'FREE_FALL' or 'CLASSIC'
+        let gameState = 'MENU'; 
         let score = 0;
         let platforms = [];
         let particles = [];
@@ -238,32 +177,43 @@
             currentPlatform: null
         };
 
-        // --- Resize Logic ---
+        // --- BASİTLEŞTİRİLMİŞ RESIZE MANTIĞI ---
         function resize() {
+            // 1. Pencerenin güncel boyutlarını al
+            // Güvenlik Önlemi: Eğer genişlik 0 dönerse (iframe yüklenirken), 1 kabul et ki Infinity hatası almayalım.
             const windowW = window.innerWidth || 1; 
             const windowH = window.innerHeight || 1;
+
+            // 2. Ekranın En/Boy oranını hesapla
             const ratio = windowH / windowW;
 
+            // 3. Oyunun iç yüksekliğini (Internal Height) bu orana göre ayarla.
             CANVAS_HEIGHT = CANVAS_WIDTH * ratio;
 
+            // Ekstra Güvenlik: Eğer hala bir şekilde Infinite/NaN ise varsayılan değere dön
             if (!Number.isFinite(CANVAS_HEIGHT) || CANVAS_HEIGHT <= 0) {
                 CANVAS_HEIGHT = 800;
             }
 
+            // 4. Canvas'ın çözünürlüğünü güncelle
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
 
+            // 5. CSS ile canvas'ı ekrana tam oturt
             canvas.style.width = '100vw';
             canvas.style.height = '100dvh';
 
+            // 6. Zemin seviyesini yeni yüksekliğe göre güncelle
             FLOOR_LEVEL = CANVAS_HEIGHT - 100;
 
+            // Menüdeysek zemini ve karakteri hemen düzelt
             if (gameState === 'MENU' && platforms.length > 0) {
                  platforms[0].y = FLOOR_LEVEL;
                  player.y = platforms[0].y - player.height;
             }
         }
         
+        // Hem yüklemede hem de ekran döndürmede/boyutlandırmada çalışır
         window.addEventListener('resize', resize);
         resize();
 
@@ -388,27 +338,23 @@
 
         function initBackground() {
             bgStars = [];
+            // Yüksekliğe göre yıldız sayısı (boş kalmasın)
             let starCount = Math.floor(CANVAS_HEIGHT / 15);
             for(let i=0; i<starCount; i++) {
                 bgStars.push(new BgStar());
             }
         }
 
-        function startGame(mode) {
-            resize(); 
+        function startGame() {
+            resize(); // Emin olmak için tekrar çağır
 
             gameState = 'PLAYING';
-            gameMode = mode; // Seçilen mod
             score = 0;
             cameraY = 0;
             scoreEl.innerText = score;
-            
             platforms = [];
             particles = [];
-            
-            // Ekranları gizle
             startScreen.classList.add('hidden');
-            gameOverScreen.classList.add('hidden');
             
             initBackground();
 
@@ -434,33 +380,15 @@
             gameLoop();
         }
 
-        function triggerGameOver() {
-            gameState = 'GAME_OVER';
-            finalScoreEl.innerText = `SCORE: ${score}`;
-            gameOverScreen.classList.remove('hidden');
-        }
-
-        function returnToMenu() {
-            gameState = 'MENU';
-            gameOverScreen.classList.add('hidden');
-            startScreen.classList.remove('hidden');
-            
-            // Arka planda boş bir sahne olsun
-            platforms = [];
-            platforms.push(new Platform(FLOOR_LEVEL, false));
-            player.y = FLOOR_LEVEL - player.height;
-            cameraY = 0;
-            draw();
-        }
-
         function handleInput(e) {
-            // Filtreleme
             if (e.type === 'keydown' && e.code !== 'Space') return;
             if (e.target.tagName === 'BUTTON') return;
             if (e.type !== 'keydown' && e.cancelable) e.preventDefault();
 
-            // Sadece PLAYING durumunda zıplama
-            if (gameState === 'PLAYING' && player.isGrounded) {
+            if (gameState === 'MENU') {
+                startGame();
+            } 
+            else if (gameState === 'PLAYING' && player.isGrounded) {
                 player.vy = JUMP_FORCE;
                 player.isGrounded = false;
                 player.currentPlatform = null;
@@ -484,39 +412,12 @@
             player.vy += GRAVITY;
             player.y += player.vy;
 
-            // --- Floor & Death Logic ---
-            
-            // Zemin Çarpışması
-            // FREE_FALL: Zemin her zaman katıdır.
-            // CLASSIC: Zemin katıdır, AMA kamera yukarı çıktıysa zemin aşağıda (ekran dışı) kalır.
-            // Bu durumda oyuncu "off-screen" kontrolüne takılır ve ölür.
+            // Floor Collision
             if (player.y + player.height > FLOOR_LEVEL) {
-                 if (gameMode === 'FREE_FALL') {
-                     // Eski mantık: Zemine bas ve dur
-                     player.y = FLOOR_LEVEL - player.height;
-                     player.vy = 0;
-                     player.isGrounded = true;
-                     player.currentPlatform = platforms[0];
-                 } else {
-                     // CLASSIC Modu:
-                     // Eğer zemin ekranın içindeyse (oyun başı), tutunabilirsin.
-                     // Eğer zemin ekranın dışındaysa, buradaki kod çalışsa bile
-                     // birazdan yapılacak "Game Over Check" oyuncuyu öldürecektir.
-                     player.y = FLOOR_LEVEL - player.height;
-                     player.vy = 0;
-                     player.isGrounded = true;
-                     player.currentPlatform = platforms[0];
-                 }
-            }
-
-            // --- Game Over Check (Sadece CLASSIC için) ---
-            if (gameMode === 'CLASSIC') {
-                // Ekranın görünen alt kısmı: cameraY + CANVAS_HEIGHT
-                // Oyuncu bunun altına düşerse ölür.
-                if (player.y > cameraY + CANVAS_HEIGHT + 50) { // +50px tolerans (tamamen çıksın)
-                    triggerGameOver();
-                    return;
-                }
+                player.y = FLOOR_LEVEL - player.height;
+                player.vy = 0;
+                player.isGrounded = true;
+                player.currentPlatform = platforms[0];
             }
 
             // Platform Movement
@@ -536,7 +437,7 @@
                 }
             }
 
-            // Collision Detection (Platforms)
+            // Collision Detection
             if (player.vy > 0 && !player.isGrounded) {
                 for (let p of platforms) {
                     if (Math.abs(p.y - player.y) > 100) continue;
@@ -554,19 +455,15 @@
                 }
             }
 
-            // --- Camera Logic ---
-            // Move Up (Her iki modda da çalışır)
+            // Camera Logic
             let targetUp = player.y - CANVAS_HEIGHT * 0.4;
             if (targetUp < cameraY) {
                 cameraY += (targetUp - cameraY) * 0.1; 
             }
             
-            // Move Down (SADECE FREE FALL MODUNDA)
-            if (gameMode === 'FREE_FALL') {
-                let targetDown = player.y - CANVAS_HEIGHT * 0.7;
-                if (targetDown > cameraY) {
-                    cameraY += (targetDown - cameraY) * 0.15;
-                }
+            let targetDown = player.y - CANVAS_HEIGHT * 0.7;
+            if (targetDown > cameraY) {
+                cameraY += (targetDown - cameraY) * 0.15;
             }
 
             if (cameraY > 0) cameraY = 0;
@@ -592,6 +489,8 @@
         }
 
         function draw() {
+            // Background
+            // Güvenlik önlemi olarak son bir kontrol daha yapıyoruz, ama resize() zaten bunu çözmeli.
             let safeHeight = Number.isFinite(CANVAS_HEIGHT) ? CANVAS_HEIGHT : 800;
             let gradient = ctx.createLinearGradient(0, 0, 0, safeHeight);
             
@@ -657,7 +556,7 @@
 
         resize();
         
-        // Zemin Platformunu Ekle
+        // Zemin Platformunu Ekle (Boş kalmasın)
         platforms.push(new Platform(FLOOR_LEVEL, false));
         player.y = FLOOR_LEVEL - player.height;
         player.currentPlatform = platforms[0];

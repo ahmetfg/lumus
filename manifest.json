@@ -1,0 +1,9 @@
+{
+  "short_name": "Lumus",
+  "name": "LumusGames",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#0b1220"
+}
+ 

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural Planetary Entry</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0;
+            pointer-events: none;
+        }
+        .hud-panel {
+            background: rgba(0, 20, 0, 0.5);
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin-bottom: 10px;
+            width: 250px;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; border-bottom: 1px solid #0f0; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 2px;
+            background: #0f0;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui-layer">
+    <div class="hud-panel">
+        <h1>Telemetri</h1>
+        <div class="data-row"><span>Hız:</span> <span id="speed-val">0 km/s</span></div>
+        <div class="data-row"><span>İrtifa:</span> <span id="alt-val">--</span></div>
+        <div class="data-row"><span>Hedef:</span> <span id="target-val">Derin Uzay</span></div>
+    </div>
+</div>
+
+<div id="crosshair"></div>
+<div id="controls-hint">
+    W/S: İleri/Geri (Gaz)<br>
+    A/D: Sağa/Sola Yatış (Roll)<br>
+    Mouse: Yönlendirme (Pitch/Yaw)<br>
+    SHIFT: Turbo İtiş
+</div>
+
+<div id="canvas-container"></div>
+
+<!-- Three.js Kütüphanesi -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Simplex Noise için hafif bir kütüphane -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+<script>
+    // --- GENEL AYARLAR ---
+    const CONFIG = {
+        camSpeedBase: 100, // Temel hız
+        camSpeedMax: 5000, // Turbo hızı
+        planetRadius: 1000, // Gezegen yarıçapı (Birim)
+        planetDetail: 120, // Geometri segment sayısı (Yüksek tutuyoruz ama performansı gözetiyoruz)
+        chunkSize: 50 // Gürültü ölçeği
+    };
+
+    let scene, camera, renderer, simplex;
+    let planets = [];
+    let stars;
+    
+    // Gemi Fiziği
+    const ship = {
+        velocity: new THREE.Vector3(),
+        speed: 0,
+        maxSpeed: 200,
+        acceleration: 2.0,
+        roll: 0,
+        pitch: 0,
+        yaw: 0
+    };
+
+    const keys = { w: false, a: false, s: false, d: false, shift: false };
+    const mouse = { x: 0, y: 0 };
+
+    // --- SHADERLAR (Büyünün olduğu yer) ---
+
+    // 1. Gezegen Yüzey Shader'ı (Vertex Displacement + Biome Coloring)
+    const planetVertexShader = `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying float vElevation;
+
+        uniform float time;
+        uniform float radius;
+        
+        // Basit 3D Noise fonksiyonu (Simplex'e benzer)
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+        
+        float snoise(vec3 v) {
+            const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+            const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+            
+            vec3 i  = floor(v + dot(v, C.yyy) );
+            vec3 x0 = v - i + dot(i, C.xxx) ;
+            
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min( g.xyz, l.zxy );
+            vec3 i2 = max( g.xyz, l.zxy );
+            
+            vec3 x1 = x0 - i1 + C.xxx;
+            vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+            vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+            
+            i = mod289(i);
+            vec4 p = permute( permute( permute( 
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                    + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+                    + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                    
+            float n_ = 0.142857142857; // 1.0/7.0
+            vec3  ns = n_ * D.wyz - D.xzx;
+            
+            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+            
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+            
+            vec4 x = x_ *ns.x + ns.yyyy;
+            vec4 y = y_ *ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+            
+            vec4 b0 = vec4( x.xy, y.xy );
+            vec4 b1 = vec4( x.zw, y.zw );
+            
+            vec4 s0 = floor(b0)*2.0 + 1.0;
+            vec4 s1 = floor(b1)*2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+            
+            vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+            vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+            
+            vec3 p0 = vec3(a0.xy,h.x);
+            vec3 p1 = vec3(a0.zw,h.y);
+            vec3 p2 = vec3(a1.xy,h.z);
+            vec3 p3 = vec3(a1.zw,h.w);
+            
+            vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+            p0 *= norm.x;
+            p1 *= norm.y;
+            p2 *= norm.z;
+            p3 *= norm.w;
+            
+            vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+            m = m * m;
+            return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                        dot(p2,x2), dot(p3,x3) ) );
+        }
+
+        // Fraktal Gürültü (FBM) - Detay eklemek için
+        float fbm(vec3 x) {
+            float v = 0.0;
+            float a = 0.5;
+            vec3 shift = vec3(100.0);
+            for (int i = 0; i < 6; ++i) { // 6 Katmanlı detay
+                v += a * snoise(x);
+                x = x * 2.0 + shift;
+                a *= 0.5;
+            }
+            return v;
+        }
+
+        void main() {
+            vUv = uv;
+            vNormal = normal;
+            vPosition = position;
+            
+            // Yüzey deformasyonu
+            float noiseVal = fbm(position * 0.003); // Geniş şekiller
+            float detailVal = fbm(position * 0.02); // Küçük detaylar (Dağların üzerindeki kayalar)
+            
+            // Okyanus tabanı düzleştirme
+            float elevation = noiseVal * 120.0 + detailVal * 10.0;
+            
+            // Eğer yükseklik belli bir seviyenin altındaysa (okyanus), düzleştir
+            if(elevation < 0.0) elevation = elevation * 0.3; 
+            
+            vElevation = elevation;
+
+            vec3 newPosition = position + normal * elevation;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+    `;
+
+    const planetFragmentShader = `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying float vElevation;
+
+        uniform vec3 colorDeep;
+        uniform vec3 colorShallow;
+        uniform vec3 colorBeach;
+        uniform vec3 colorLand;
+        uniform vec3 colorMountain;
+        uniform vec3 colorSnow;
+        uniform vec3 lightDirection;
+
+        // Fragment içinde daha ince detay için gürültü (Tessellation illüzyonu)
+        // Bu, kameraya yaklaştıkça piksellerin bulanıklaşmasını engeller
+        float random(vec3 scale, float seed) {
+            return fract(sin(dot(gl_FragCoord.xyz + seed, scale)) * 43758.5453 + seed);
+        }
+
+        void main() {
+            // Işıklandırma (Lambert)
+            vec3 lightDir = normalize(vec3(1.0, 0.5, 1.0));
+            float diff = max(dot(vNormal, lightDir), 0.0);
+            
+            // Atmosferik ışıklandırma etkisi (Fresnel benzeri)
+            vec3 viewDir = normalize(cameraPosition - vPosition);
+            float rim = 1.0 - max(dot(viewDir, vNormal), 0.0);
+            rim = pow(rim, 4.0);
+
+            // Renk Karıştırma (Yükseklik tabanlı)
+            vec3 finalColor;
+            
+            float level = vElevation; // -50 to 150 approx
+
+            // İnce detay gürültüsü
+            float microDetail = random(vec3(12.9898, 78.233, 151.7182), 0.0) * 0.05;
+
+            if (level < -5.0) {
+                finalColor = mix(colorDeep, colorShallow, (level + 50.0) / 45.0); // Okyanus
+            } else if (level < 5.0) {
+                finalColor = colorBeach; // Sahil
+            } else if (level < 60.0) {
+                finalColor = mix(colorLand, colorMountain, (level - 5.0) / 55.0); // Yeşil alanlar
+            } else if (level < 90.0) {
+                finalColor = colorMountain; // Dağlar
+            } else {
+                finalColor = colorSnow; // Kar
+            }
+
+            // Gölge ve Işık ekle
+            vec3 ambient = vec3(0.05);
+            vec3 diffuse = finalColor * diff;
+            vec3 atmosphere = vec3(0.2, 0.4, 0.8) * rim * 0.5;
+
+            gl_FragColor = vec4(diffuse + ambient + atmosphere + microDetail, 1.0);
+        }
+    `;
+
+    // 2. Atmosfer Shader'ı (Gezegenin etrafındaki mavi halka)
+    const atmosphereVertexShader = `
+        varying vec3 vNormal;
+        void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
+
+    const atmosphereFragmentShader = `
+        varying vec3 vNormal;
+        uniform vec3 color;
+        void main() {
+            float intensity = pow(0.65 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
+            gl_FragColor = vec4(color, 1.0) * intensity * 1.5;
+        }
+    `;
+
+
+    function init() {
+        // Sahne Kurulumu
+        scene = new THREE.Scene();
+        // Uzay sisi ekleyelim derinlik için
+        scene.fog = new THREE.FogExp2(0x000000, 0.00002); 
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000000);
+        camera.position.set(0, 0, 8000); // Gezegenden uzakta başla
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        simplex = new SimplexNoise();
+
+        // Işıklar
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        sunLight.position.set(10000, 5000, 10000);
+        scene.add(sunLight);
+        scene.add(new THREE.AmbientLight(0x111111));
+
+        // Yıldız Alanı
+        createStars();
+
+        // Gezegenleri Oluştur
+        createPlanet(new THREE.Vector3(0, 0, 0), {
+            deep: new THREE.Color(0x001e0f),
+            shallow: new THREE.Color(0x006994),
+            beach: new THREE.Color(0xd2b48c),
+            land: new THREE.Color(0x228b22),
+            mountain: new THREE.Color(0x555555),
+            snow: new THREE.Color(0xffffff)
+        }, 1.05); // Dünya benzeri
+
+        createPlanet(new THREE.Vector3(8000, -2000, -15000), {
+            deep: new THREE.Color(0x330000),
+            shallow: new THREE.Color(0x660000),
+            beach: new THREE.Color(0x8B0000),
+            land: new THREE.Color(0xA52A2A),
+            mountain: new THREE.Color(0x331111),
+            snow: new THREE.Color(0xFF6347)
+        }, 1.2); // Mars benzeri (Daha büyük)
+
+        // Event Listeners
+        window.addEventListener('resize', onWindowResize, false);
+        document.addEventListener('keydown', (e) => handleKey(e, true));
+        document.addEventListener('keyup', (e) => handleKey(e, false));
+        document.addEventListener('mousemove', onMouseMove);
+
+        animate();
+    }
+
+    function createStars() {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        for (let i = 0; i < 5000; i++) {
+            vertices.push(
+                (Math.random() - 0.5) * 200000,
+                (Math.random() - 0.5) * 200000,
+                (Math.random() - 0.5) * 200000
+            );
+        }
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const material = new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false });
+        stars = new THREE.Points(geometry, material);
+        scene.add(stars);
+    }
+
+    function createPlanet(position, colors, sizeMult) {
+        const radius = CONFIG.planetRadius * sizeMult;
+        
+        // --- Gezegen Yüzeyi ---
+        // Icosahedron kullanıyoruz çünkü küreye en yakın ve segmentleri eşit dağılan geometridir.
+        // detail: 80-120 arası yüksek detay sağlar ama CPU'yu yorar. 
+        // Gerçek NMS'de bu LOD sistemiyle dinamik yüklenir. Burada sabit yüksek detay kullanıyoruz.
+        const geometry = new THREE.IcosahedronGeometry(radius, 60); 
+
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                radius: { value: radius },
+                colorDeep: { value: colors.deep },
+                colorShallow: { value: colors.shallow },
+                colorBeach: { value: colors.beach },
+                colorLand: { value: colors.land },
+                colorMountain: { value: colors.mountain },
+                colorSnow: { value: colors.snow },
+                lightDirection: { value: new THREE.Vector3(1, 0.5, 1) }
+            },
+            vertexShader: planetVertexShader,
+            fragmentShader: planetFragmentShader,
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(position);
+        scene.add(mesh);
+        planets.push(mesh);
+
+        // --- Atmosfer (Glow) ---
+        const atmGeometry = new THREE.IcosahedronGeometry(radius * 1.2, 10);
+        const atmMaterial = new THREE.ShaderMaterial({
+            vertexShader: atmosphereVertexShader,
+            fragmentShader: atmosphereFragmentShader,
+            uniforms: {
+                color: { value: new THREE.Color(0x4488ff) }
+            },
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide,
+            transparent: true,
+            depthWrite: false
+        });
+        const atmMesh = new THREE.Mesh(atmGeometry, atmMaterial);
+        mesh.add(atmMesh); // Gezegene child olarak ekle
+    }
+
+    function handleKey(e, isDown) {
+        const key = e.key.toLowerCase();
+        if (keys.hasOwnProperty(key)) keys[key] = isDown;
+        if (e.key === 'Shift') keys.shift = isDown;
+    }
+
+    function onMouseMove(e) {
+        // Mouse merkezden ne kadar uzak? (-1 ile 1 arası)
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    }
+
+    function updatePhysics() {
+        // Gemi Kontrolleri
+        // Mouse X -> Roll (Dönüş) & Yaw (Yön)
+        // Mouse Y -> Pitch (Burun yukarı/aşağı)
+        
+        ship.yaw = -mouse.x * 0.5;
+        ship.pitch = mouse.y * 0.5;
+        
+        if (keys.a) ship.roll += 0.05;
+        if (keys.d) ship.roll -= 0.05;
+        // Otomatik roll düzeltme
+        if (!keys.a && !keys.d) ship.roll *= 0.95;
+
+        // Quaternion dönüşleri
+        camera.rotateZ(ship.roll * 0.02);
+        camera.rotateY(ship.yaw * 0.02);
+        camera.rotateX(ship.pitch * 0.02);
+
+        // İvmelenme ve Hızlanma
+        let targetSpeed = 0;
+        if (keys.w) targetSpeed = keys.shift ? CONFIG.camSpeedMax : CONFIG.camSpeedBase;
+        if (keys.s) targetSpeed = -CONFIG.camSpeedBase / 2;
+
+        // "Devasallık" hissi için önemli: 
+        // Yüzeye yaklaştıkça hız azalmalı, yoksa çarparız.
+        let closestDist = Infinity;
+        let targetPlanetName = "Derin Uzay";
+
+        planets.forEach(p => {
+            const dist = camera.position.distanceTo(p.position) - p.geometry.parameters.radius;
+            if (dist < closestDist) {
+                closestDist = dist;
+                targetPlanetName = (dist < 2000) ? "Atmosfer Girişi" : "Yörünge";
+                if(dist < 200) targetPlanetName = "Yüzey Yaklaşımı";
+            }
+        });
+
+        // Hız Sınırlayıcı (Yaklaştıkça yavaşla - Scale trick)
+        // Eğer 500 birimden yakındaysak, hızı radikal şekilde düşür.
+        let proximityFactor = Math.max(0.05, Math.min(1.0, closestDist / 2000));
+        let actualMaxSpeed = targetSpeed * proximityFactor;
+        
+        // Hız interpolasyonu (Yumuşak kalkış/duruş)
+        ship.speed += (actualMaxSpeed - ship.speed) * 0.05;
+
+        camera.translateZ(-ship.speed * 0.1);
+
+        // UI Güncelleme
+        document.getElementById('speed-val').innerText = Math.floor(ship.speed * 10) + " m/s";
+        document.getElementById('alt-val').innerText = (closestDist < 100000) ? Math.floor(closestDist) + " birim" : "N/A";
+        document.getElementById('target-val').innerText = targetPlanetName;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        updatePhysics();
+        
+        // Shaderlardaki 'time' değişkenini güncelle (suyun hareketi vs için opsiyonel)
+        // planets.forEach(p => p.material.uniforms.time.value += 0.01);
+
+        renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    init();
+
+</script>
+</body>
+</html>

@@ -603,8 +603,8 @@
         let inputPitch = inputState.mouseY * 0.5; 
         
         if (inputState.joyRightX !== 0 || inputState.joyRightY !== 0) {
-            inputYaw = inputState.joyRightX * -0.8; 
-            inputPitch = inputState.joyRightY * -0.8; 
+            inputYaw = inputState.joyRightX * -0.2; 
+            inputPitch = inputState.joyRightY * -0.2; 
         }
 
         // --- YUMUŞATMA (MOMENTUM) ---
@@ -656,7 +656,7 @@
         if (inputState.joyLeftY !== 0) {
             if (inputState.joyLeftY > 0) {
                 // İleri
-                let maxS = inputState.shift ? CONFIG.camSpeedMax : CONFIG.camSpeedBase * 2; 
+                let maxS = inputState.shift ? CONFIG.camSpeedMax : CONFIG.camSpeedBase; 
                 targetSpeed = inputState.joyLeftY * maxS;
             } else {
                 // Geri

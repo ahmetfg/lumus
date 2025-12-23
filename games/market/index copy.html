@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Monkey Mart Clone - Phase 36 (Crate Fix)</title>
+    <title>Mini Mart Tycoon</title>
     <style>
         body {
             margin: 0;
@@ -97,8 +97,9 @@
         #hygiene-fill { background-color: #3498db; }
         #satisfaction-fill { background-color: #2ecc71; }
 
+
         #mobile-controls-hint {
-            display: none;
+            display: none; /* Usually handled by tutorial, keeping hidden or removed for cleaner look */
             position: absolute;
             bottom: 50px;
             width: 100%;
@@ -117,7 +118,7 @@
             <span>$</span><span id="money-count">0</span>
         </div>
         <div class="hud-panel">
-            <div style="font-size: 14px; margin-bottom: 5px; opacity: 0.8">INVENTORY</div>
+            <div style="font-size: 14px; margin-bottom: 5px; opacity: 0.8; text-transform: uppercase; font-weight: 600;">BAG</div>
             <span id="stack-count" style="font-weight:bold; font-size:18px">0</span> / <span id="stack-max">0</span>
         </div>
     </div>
@@ -131,7 +132,7 @@
             </div>
         </div>
         <div class="stat-row">
-            <div class="stat-icon" title="Customer Satisfaction">😊</div>
+            <div class="stat-icon" title="Satisfaction">😊</div>
             <div class="bar-container">
                 <div id="satisfaction-fill" class="bar-fill"></div>
             </div>
@@ -161,10 +162,6 @@
             customerSpawnRate: 100,
             targetItemSize: 18,
             joystickRadius: 50,
-            // Economy Settings
-            startingMoney: 20,
-            crateCost: 5,      // Cost to buy a crate from cargo
-            itemSellPrice: 3,  // Price per item sold
             colors: {
                 bg: '#34495e',
                 player: '#3498db',
@@ -174,7 +171,7 @@
                 shelf: '#d35400',
                 checkout: '#9b59b6',
                 banana: '#f1c40f',
-                grape: '#e67e22',
+                grape: '#9b59b6',
                 money: '#2ecc71',
                 locked: '#7f8c8d',
                 milk: '#ffffff',
@@ -199,6 +196,8 @@
             offsetX: -500,
             offsetY: -487,
             scale: 1.0,
+            rotation: 0,
+            skewX: 0,
             zIndexOffset: 0 
         };
 
@@ -455,6 +454,8 @@
                 ctx.strokeStyle = "rgba(255,255,255,0.3)";
                 ctx.lineWidth = 1;
                 ctx.strokeRect(this.pos.x - this.size / 2 + 2, this.pos.y - this.size / 2 + 2, this.size - 4, this.size - 4);
+                
+                // Keeping $ symbol on the money particle itself as it's a particle effect
                 ctx.fillStyle = "rgba(0,50,0,0.6)";
                 ctx.font = "bold 12px sans-serif";
                 ctx.textAlign = "center";
@@ -508,7 +509,7 @@
                 this.radius = 25;
                 this.maxStack = CONFIG.maxStack;
                 this.speed = CONFIG.playerSpeed;
-                this.money = CONFIG.startingMoney;
+                this.money = 5000;
 
                 this.idleSprite = new Image();
                 this.idleSprite.src = 'catIdleSheet.webp';
@@ -615,8 +616,8 @@
 
                     ctx.drawImage(
                         sprite,
-                        this.currentFrame * fW, 0, fW, fH, // Kaynak (Sheet)
-                        -targetWidth / 2, -targetHeight + 20, targetWidth, targetHeight // Hedef (Canvas)
+                        this.currentFrame * fW, 0, fW, fH, // Source
+                        -targetWidth / 2, -targetHeight + 20, targetWidth, targetHeight // Destination
                     );
                     ctx.restore();
 
@@ -841,33 +842,32 @@
             drawContent(ctx) { }
         }
 
-        // GÜNCELLENEN: CargoZone (İzometrik Yığın - Dinamik & Generic)
+        // CargoZone (Isometric Stack - Dynamic & Generic)
         class CargoZone extends Zone {
             constructor(x, y, productType = 'banana') {
                 super(x, y, 140, 140, CONFIG.colors.cargoZone);
-                this.productType = productType; // Ürün tipi ('banana' veya 'grape')
+                this.productType = productType; // product type ('banana' or 'grape')
                 this.timer = 0;
-                this.items = []; // Koliler
+                this.items = []; // Crates
                 this.maxGroundItems = 6; 
-                this.label = "KARGO ALANI";
-                this.renderConfig = { zIndexOffset: 0.0 }; // Yerde
+                this.renderConfig = { zIndexOffset: 0.0 }; // On ground
 
-                // GÖRSELLER
+                // SPRITES
                 this.bgSprite = new Image();
                 this.bgSprite.src = 'cargoArea.webp';
                 this.bgSpriteLoaded = false;
                 this.bgSprite.onload = () => { this.bgSpriteLoaded = true; };
 
                 this.crateSprite = new Image();
-                this.crateSprite.src = productType == 'banana' ? 'crateBanana.webp' : 'crateCorn.webp';
+                this.crateSprite.src = productType == 'banana'? 'crateBanana.webp':'crateCorn.webp';
                 this.crateSpriteLoaded = false;
                 this.crateSprite.onload = () => { this.crateSpriteLoaded = true; };
 
-                // Dinamik Koli Boyutu (42 * 3.3 = 138.6)
+                // Dynamic Crate Size (42 * 3.3 = 138.6)
                 this.crateSize = 42 * 2; 
             }
 
-            // Belirtilen index'e göre koli pozisyonunu (offset) ve katmanını döndürür
+            // Returns crate offset and layer based on index
             getStackOffset(index) {
                 const s = this.crateSize;
                 
@@ -881,17 +881,17 @@
                 const vBack = { x: s * rBackX, y: s * rBackY };
                 const vTop  = { x: 0,          y: s * rTopY };
 
-                // 0: Merkez - Layer 0
+                // 0: Center - Layer 0
                 if (index === 0) return { x: 0, y: 0, layer: 0 };
-                // 1: Yanına - Layer 0
+                // 1: Side - Layer 0
                 if (index === 1) return { x: vSide.x, y: vSide.y, layer: 0 };
-                // 2: Arkasına - Layer 0
+                // 2: Back - Layer 0
                 if (index === 2) return { x: vBack.x, y: vBack.y, layer: 0 };
-                // 3: Üstüne (Merkez Üstü) - Layer 1
+                // 3: Top (Center Top) - Layer 1
                 if (index === 3) return { x: vTop.x,  y: vTop.y, layer: 1 };
-                // 4: Yan Üstü (Yan + Üst) - Layer 1
+                // 4: Side Top - Layer 1
                 if (index === 4) return { x: vSide.x + vTop.x, y: vSide.y + vTop.y, layer: 1 };
-                // 5: Arka Üstü (Arka + Üst) - Layer 1
+                // 5: Back Top - Layer 1
                 if (index === 5) return { x: vBack.x + vTop.x, y: vBack.y + vTop.y, layer: 1 };
 
                 return { x: 0, y: 0, layer: 0 };
@@ -900,11 +900,11 @@
             update(player) {
                 this.isActive = this.checkCollision(player);
                 
-                // Koli üretimi
+                // Crate production
                 if (this.items.length < this.maxGroundItems) {
                     this.timer++;
                     if (this.timer > CONFIG.productionSpeed * 1.5) {
-                        // Yeni koli oluştur
+                        // Create new crate
                         let index = this.items.length;
                         let offset = this.getStackOffset(index);
                         
@@ -914,38 +914,33 @@
                         let targetX = baseX + offset.x;
                         let targetY = baseY + offset.y;
 
-                        let item = new Item(targetX, targetY - 100, 'crate'); // Yukarıdan düşsün
+                        let item = new Item(targetX, targetY - 100, 'crate'); // Fall from above
                         item.targetPos = new Vector2(targetX, targetY);
-                        item.zLayer = offset.layer; // Katman bilgisini ata
+                        item.zLayer = offset.layer; // Assign layer
                         this.items.push(item);
                         this.timer = 0;
                     }
                 }
 
-                // Koli toplama mantığı (EKONOMİ KONTROLÜ)
+                // Crate collection logic
                 if (this.isActive && this.items.length > 0) {
                     for (let i = this.items.length - 1; i >= 0; i--) {
                         let crate = this.items[i];
                         if (player.pos.distance(crate.pos) < 30) {
                              if (player.stack.length < player.maxStack) {
-                                // Para Kontrolü
-                                if (player.money >= CONFIG.crateCost) {
-                                    player.money -= CONFIG.crateCost;
-                                    
-                                    this.items.splice(i, 1);
-                                    this.rearrangeCrates();
+                                this.items.splice(i, 1);
+                                this.rearrangeCrates();
 
-                                    for(let k=0; k<4; k++) {
-                                        if(player.stack.length < player.maxStack) {
-                                            // Dinamik ürün tipi kullanılıyor
-                                            let product = new Item(player.pos.x, player.pos.y - 40, this.productType);
-                                            player.addToStack(product);
-                                        } else {
-                                            break;
-                                        }
+                                for(let k=0; k<4; k++) {
+                                    if(player.stack.length < player.maxStack) {
+                                        // Use dynamic product type
+                                        let product = new Item(player.pos.x, player.pos.y - 40, this.productType);
+                                        player.addToStack(product);
+                                    } else {
+                                        break;
                                     }
-                                    break; 
                                 }
+                                break; 
                             }
                         }
                     }
@@ -958,7 +953,7 @@
                 for(let i=0; i<this.items.length; i++) {
                     let offset = this.getStackOffset(i);
                     this.items[i].targetPos = new Vector2(baseX + offset.x, baseY + offset.y);
-                    this.items[i].zLayer = offset.layer; // Katman bilgisini güncelle
+                    this.items[i].zLayer = offset.layer; // Update layer
                 }
             }
 
@@ -971,7 +966,7 @@
                     ctx.stroke();
                 }
 
-                // Zemin Çizimi
+                // Ground Drawing
                 if (this.bgSpriteLoaded) {
                      ctx.drawImage(this.bgSprite, this.pos.x-20, this.pos.y - 40, this.w*1.5, this.h*1.5);
                 } else {
@@ -988,14 +983,14 @@
             }
 
             drawContent(ctx) {
-                // Katmanlı ve Y eksenli çizim sırası
+                // Layered and Y-sorted drawing
                 let drawList = [...this.items];
                 drawList.sort((a, b) => {
-                    // Önce katman önceliği (Küçük katman önce çizilir)
+                    // First sort by layer
                     if ((a.zLayer || 0) !== (b.zLayer || 0)) {
                         return (a.zLayer || 0) - (b.zLayer || 0);
                     }
-                    // Aynı katmanda Y eksenine göre (Arkadan öne)
+                    // Then by Y position
                     return a.pos.y - b.pos.y;
                 });
 
@@ -1022,17 +1017,16 @@
                 this.eatTimer = 0;
                 this.eatDuration = CONFIG.cowEatSpeed;
                 this.fillTimer = 0;
-                this.label = "İNEK";
                 this.renderConfig = { zIndexOffset: 0.5 };
 
                 this.sprite = new Image();
                 this.sprite.src = 'cowIdleSheet.webp';
                 this.spriteLoaded = false;
                 this.sprite.onload = () => { this.spriteLoaded = true; };
-                this.totalFrames = 16;
+                this.totalFrames = 18;
                 this.currentFrame = 0;
                 this.animTimer = 0;
-                this.animSpeed = 4;
+                this.animSpeed = 7;
             }
 
             update(player) {
@@ -1101,7 +1095,7 @@
                     let frameW = this.sprite.naturalWidth / this.totalFrames;
                     let frameH = this.sprite.naturalHeight;
                     
-                    let targetW = 120;
+                    let targetW = 150;
                     let scale = targetW / frameW;
                     let targetH = frameH * scale;
 
@@ -1153,11 +1147,7 @@
                 this.foodStock.forEach(item => { item.update(null, null); item.draw(ctx); });
                 this.outputItems.forEach(item => { item.update(null, null); item.draw(ctx); });
 
-                // METİN KALDIRILDI
-                // ctx.fillStyle = "rgba(255,255,255,0.9)";
-                // ctx.font = "bold 14px sans-serif";
-                // ctx.textAlign = "center";
-                // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
+                // Text Removed
                 
                 if(this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     let barW = 60;
@@ -1182,7 +1172,6 @@
                 this.eatTimer = 0;
                 this.eatDuration = CONFIG.cowEatSpeed; 
                 this.fillTimer = 0;
-                this.label = "TAVUK";
                 this.renderConfig = { zIndexOffset: 0.5 };
 
                 // SPRITE AYARLARI
@@ -1252,34 +1241,34 @@
                     ctx.strokeRect(this.pos.x-5, this.pos.y-5, this.w+10, this.h+10);
                 }
 
-                // --- SPRITE ÇİZİMİ (FALLBACK OLARAK GEOMETRİK) ---
+                // --- SPRITE DRAWING ---
                 if (this.spriteLoaded) {
-                    // Animasyon Güncelleme
+                    // Animation Update
                     this.animTimer++;
                     if (this.animTimer > this.animSpeed) {
                         this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
                         this.animTimer = 0;
                     }
 
-                    // Çizim
+                    // Drawing
                     let frameW = this.sprite.naturalWidth / this.totalFrames;
                     let frameH = this.sprite.naturalHeight;
 
-                    // Boyutlandırma
-                    let targetW = 70; // Tavuk biraz daha küçük
+                    // Sizing
+                    let targetW = 70;
                     let scale = targetW / frameW;
                     let targetH = frameH * scale;
 
-                    // Konumlandırma (Merkezleme)
+                    // Positioning
                     let drawX = (this.pos.x + 80) - (targetW / 2);
-                    let drawY = (this.pos.y + 60) - (targetH / 2) - 10; // Hafif yukarı ofset
+                    let drawY = (this.pos.y + 60) - (targetH / 2) - 10;
 
                     ctx.drawImage(this.sprite,
                         this.currentFrame * frameW, 0, frameW, frameH,
                         drawX, drawY, targetW, targetH
                     );
                 } else {
-                    // Fallback: Geometrik Tavuk
+                    // Fallback: Geometric Chicken
                     let cx = this.pos.x + 80;
                     let cy = this.pos.y + 60;
                     
@@ -1319,11 +1308,7 @@
                 this.foodStock.forEach(item => { item.update(null, null); item.draw(ctx); });
                 this.outputItems.forEach(item => { item.update(null, null); item.draw(ctx); });
 
-                // METİN KALDIRILDI
-                // ctx.fillStyle = "rgba(255,255,255,0.9)";
-                // ctx.font = "bold 14px sans-serif";
-                // ctx.textAlign = "center";
-                // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
+                // Text Removed
                 
                 if(this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     let barW = 40;
@@ -1350,7 +1335,6 @@
                 this.cookTimer = 0;
                 this.cookDuration = CONFIG.bakeryCookSpeed;
                 this.fillTimer = 0;
-                this.label = "PASTANE";
                 this.renderConfig = { zIndexOffset: 0.5 };
             }
 
@@ -1360,7 +1344,7 @@
                 if (this.isActive && player.stack.length > 0) {
                     this.fillTimer++;
                     if (this.fillTimer > 5) {
-                        // Süt kabul et
+                        // Accept Milk
                         if (this.milkStock.length < this.milkCapacity) {
                             let milkIdx = -1;
                             for(let i=player.stack.length-1; i>=0; i--){
@@ -1379,7 +1363,7 @@
                             }
                         }
                         
-                        // Yumurta kabul et (Süt almadıysa buna da bak)
+                        // Accept Egg
                         if (this.eggStock.length < this.eggCapacity && this.fillTimer > 5) {
                             let eggIdx = -1;
                             for(let i=player.stack.length-1; i>=0; i--){
@@ -1400,16 +1384,16 @@
                     }
                 }
 
-                // Pişirme Mantığı
+                // Cooking Logic
                 if (this.milkStock.length > 0 && this.eggStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     this.cookTimer++;
                     if (this.cookTimer > this.cookDuration) {
-                        // Tüket
+                        // Consume
                         this.milkStock.shift();
                         this.eggStock.shift();
                         this.cookTimer = 0;
                         
-                        // Üret
+                        // Produce
                         let rx = this.pos.x + 60 + Math.random() * 60;
                         let ry = this.pos.y + 40 + Math.random() * 40;
                         this.outputItems.push(new Item(rx, ry, 'cake'));
@@ -1440,17 +1424,17 @@
                     ctx.strokeRect(this.pos.x-5, this.pos.y-5, this.w+10, this.h+10);
                 }
 
-                // Fırın Gövdesi
+                // Oven Body
                 ctx.fillStyle = CONFIG.colors.bakery;
                 ctx.beginPath();
                 ctx.roundRect(this.pos.x + 40, this.pos.y + 20, 100, 80, 5);
                 ctx.fill();
                 
-                // Fırın Camı
+                // Oven Window
                 ctx.fillStyle = "#34495e";
                 ctx.fillRect(this.pos.x + 55, this.pos.y + 40, 70, 40);
                 
-                // Kap 1 (Süt - Sol)
+                // Bowl 1 (Milk - Left)
                 ctx.fillStyle = CONFIG.colors.bowl;
                 ctx.beginPath();
                 ctx.roundRect(this.pos.x + 10, this.pos.y + this.h - 35, 60, 25, 5);
@@ -1459,25 +1443,21 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Kap 2 (Yumurta - Sağ)
+                // Bowl 2 (Egg - Right)
                 ctx.fillStyle = CONFIG.colors.bowl;
                 ctx.beginPath();
                 ctx.roundRect(this.pos.x + 90, this.pos.y + this.h - 35, 60, 25, 5);
                 ctx.fill();
                 ctx.stroke();
 
-                // İçerikler
+                // Contents
                 this.milkStock.forEach(item => { item.update(null, null); item.draw(ctx); });
                 this.eggStock.forEach(item => { item.update(null, null); item.draw(ctx); });
                 this.outputItems.forEach(item => { item.update(null, null); item.draw(ctx); });
 
-                // METİN KALDIRILDI
-                // ctx.fillStyle = "rgba(255,255,255,0.9)";
-                // ctx.font = "bold 14px sans-serif";
-                // ctx.textAlign = "center";
-                // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
+                // Text Removed
                 
-                // Pişirme Barı
+                // Cooking Bar
                 if(this.milkStock.length > 0 && this.eggStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     let barW = 80;
                     let pct = this.cookTimer / this.cookDuration;
@@ -1496,7 +1476,6 @@
                 this.timer = 0;
                 this.items = [];
                 this.maxGroundItems = 4;
-                this.label = productType === 'banana' ? "MUZ" : "ÜZÜM";
             }
 
             update(player) {
@@ -1523,14 +1502,11 @@
                     i.update(null, null);
                     i.draw(ctx);
                 });
-
-                ctx.fillStyle = "rgba(255,255,255,0.9)";
-                ctx.font = "bold 14px sans-serif";
-                ctx.textAlign = "center";
-                ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
+                // Text removed
             }
         }
 
+        // Shelf (3 Tiers, Rotation)
         class Shelf extends Zone {
             constructor(x, y, acceptedType = 'banana') {
                 let color = CONFIG.colors.shelf;
@@ -1545,12 +1521,6 @@
                 this.maxWaitingLine = 8;
                 this.capacity = 12;
                 
-                if(acceptedType === 'banana') this.label = "MUZ RAFI";
-                else if(acceptedType === 'grape') this.label = "ÜZÜM RAFI";
-                else if(acceptedType === 'milk') this.label = "SÜT RAFI";
-                else if(acceptedType === 'egg') this.label = "YUMURTA RAFI";
-                else if(acceptedType === 'cake') this.label = "PASTA RAFI";
-
                 this.fillTimer = 0;
 
                 this.sprite = new Image();
@@ -1628,7 +1598,7 @@
             }
 
             rearrangeItems() {
-                // CONFIG: 3 Kat, 4 Ürün/Kat
+                // CONFIG: 3 Tiers, 4 Items/Tier
                 const itemsPerRow = 4;
                 const shelfStartY = -25;
                 const shelfGapY = 36;
@@ -1645,7 +1615,7 @@
                     let row = Math.floor(i / itemsPerRow); // 0, 1, 2
                     let col = i % itemsPerRow;             // 0, 1, 2, 3
 
-                    // Katın başlangıç noktası
+                    // Tier start point
                     let originX = this.pos.x + startXOffset;
                     let originY = this.pos.y + shelfStartY + (row * shelfGapY);
                     
@@ -1679,7 +1649,7 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 2. GÖRSEL
+                // 2. VISUAL
                 if (this.spriteLoaded) {
                     ctx.save();
                     let centerX = this.pos.x + this.w / 2;
@@ -1710,31 +1680,19 @@
                     ctx.fill();
                 }
 
-                // 3. İÇERİK
+                // 3. CONTENT
                 this.drawContent(ctx);
             }
 
             drawContent(ctx) {
                 this.storedItems.forEach(i => { i.update(null, null); i.draw(ctx); });
-                
-                ctx.font = "11px sans-serif";
-                if (this.waitingLine.length >= this.maxWaitingLine) {
-                    ctx.fillStyle = "#e74c3c";
-                    ctx.fillText(`FULL!`, this.pos.x + this.w / 2, this.pos.y + this.h + 25);
-                } else if (this.waitingLine.length > 0 && this.storedItems.length === 0) {
-                    ctx.fillStyle = "#f39c12";
-                    ctx.fillText(`Waiting...`, this.pos.x + this.w / 2, this.pos.y + this.h + 25);
-                } else {
-                    ctx.fillStyle = "white";
-                    ctx.fillText(`${this.storedItems.length}/${this.capacity}`, this.pos.x + this.w / 2, this.pos.y + this.h + 15);
-                }
+                // Text removed
             }
         }
 
         class Checkout extends Zone {
             constructor(x, y) {
                 super(x, y, 100, 100, CONFIG.colors.checkout);
-                this.label = "KASA";
                 this.queue = [];
                 this.processTimer = 0;
                 this.moneyGrid = [];
@@ -1761,7 +1719,7 @@
             }
 
             spawnMoneyStack(totalAmount) {
-                const unitValue = CONFIG.itemSellPrice; // Use config price
+                const unitValue = 2;
                 const count = Math.ceil(totalAmount / unitValue);
 
                 let existingMoneyCount = moneys.filter(m => !m.collected && m.state !== 'flying').length;
@@ -1799,10 +1757,7 @@
                         this.processTimer++;
                         if (this.processTimer > 20) {
                             let customer = this.queue.shift();
-                            let totalItems = customer.stack.length;
-                            let totalCost = totalItems * CONFIG.itemSellPrice;
-                            
-                            this.spawnMoneyStack(totalCost);
+                            this.spawnMoneyStack(10);
                             customer.state = 'leaving';
                             this.processTimer = 0;
                         }
@@ -1848,15 +1803,17 @@
                 }
 
                 if (this.queue.length > 0 && !this.isActive) {
+                    // Alert icon removed/simplified if strictly no text, but "!" is universal.
+                    // To be strictly "no text", we can draw a red bubble.
                     ctx.fillStyle = "#e74c3c";
-                    ctx.font = "bold 20px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText("!", this.pos.x + this.w / 2, this.pos.y + this.h / 2 + 5);
+                    ctx.beginPath();
+                    ctx.arc(this.pos.x + this.w / 2, this.pos.y + this.h / 2, 10, 0, Math.PI * 2);
+                    ctx.fill();
                 }
             }
 
             drawContent(ctx) {
-                
+                // Text removed
             }
         }
 
@@ -1868,7 +1825,6 @@
                 this.paid = 0;
                 this.typeToSpawn = typeToSpawn;
                 this.spawnParams = spawnParams;
-                this.label = "KİLİTLİ";
                 this.payTimer = 0;
             }
 
@@ -1876,25 +1832,20 @@
                 this.isActive = this.checkCollision(player);
 
                 if (this.isActive && player.money > 0 && this.paid < this.cost) {
-                    let amountPerFrame = Math.ceil(this.initialCost / 180); 
-                    let amount = Math.min(amountPerFrame, player.money, this.cost - this.paid);
-                    player.money -= amount;
-                    this.paid += amount;
+                    this.payTimer++;
+                    if (this.payTimer > 3) {
+                        player.money -= 1;
+                        this.paid += 1;
+                        this.payTimer = 0;
+                    }
                 }
 
                 if (this.paid >= this.cost) {
                     this.shouldDestroy = true;
-                    // GÜNCELLENEN: Artık Producer yerine CargoZone doğuruyoruz
                     if (this.typeToSpawn === 'Producer' || this.typeToSpawn === 'CargoZone') {
                         zones.push(new CargoZone(this.pos.x, this.pos.y, ...this.spawnParams));
                     } else if (this.typeToSpawn === 'Shelf') {
                         zones.push(new Shelf(this.pos.x, this.pos.y, ...this.spawnParams));
-                    } else if (this.typeToSpawn === 'CowZone') { 
-                        zones.push(new CowZone(this.pos.x, this.pos.y));
-                    } else if (this.typeToSpawn === 'ChickenZone') { 
-                        zones.push(new ChickenZone(this.pos.x, this.pos.y));
-                    } else if (this.typeToSpawn === 'BakeryZone') { 
-                        zones.push(new BakeryZone(this.pos.x, this.pos.y));
                     }
                 }
             }
@@ -1909,11 +1860,8 @@
                 ctx.fillStyle = "white";
                 ctx.font = "bold 16px sans-serif";
                 ctx.textAlign = "center";
+                // Keeping numerical cost value as it is critical gameplay info, not label text
                 ctx.fillText(`$${this.cost - this.paid}`, this.pos.x + this.w / 2, this.pos.y + this.h / 2 + 6);
-                
-                // METİN KALDIRILDI
-                // ctx.font = "bold 12px sans-serif";
-                // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y + 20);
                 
                 ctx.font = "24px sans-serif";
                 ctx.fillText("🔒", this.pos.x + this.w / 2, this.pos.y + this.h - 20);
@@ -1932,30 +1880,27 @@
         let moneys = [];
         let stains = []; 
         let customerSpawnTimer = 0;
-        let draggedZone = null;
-        let dragOffset = new Vector2(0, 0);
 
         function initLevel() {
-            // YENİ: CargoZone (Muz için)
+            // CargoZone (Banana)
             zones.push(new CargoZone(100, 200, 'banana')); 
             
-            // Kilitli Alanlar - Artık hepsi CargoZone açıyor
+            // Unlock Zones
             zones.push(new UnlockZone(100, 400, 140, 140, 50, 'CargoZone', ['banana']));
             zones.push(new UnlockZone(100, 600, 140, 140, 150, 'CargoZone', ['grape']));
             
             zones.push(new Shelf(400, 250, 'banana'));
-            zones.push(new UnlockZone(400, 400, 120, 80, 30, 'Shelf', ['banana']));
+            zones.push(new UnlockZone(400, 430, 120, 80, 30, 'Shelf', ['banana']));
             zones.push(new UnlockZone(400, 630, 120, 80, 100, 'Shelf', ['grape']));
             
-            // YENİ KİLİTLİ ALANLAR (Faz 32)
-            zones.push(new UnlockZone(100, 800, 160, 140, 300, 'CowZone')); // İnek
-            zones.push(new UnlockZone(400, 800, 120, 80, 150, 'Shelf', ['milk'])); // Süt Rafı
+            zones.push(new CowZone(100, 800));
+            zones.push(new Shelf(400, 800, 'milk'));
 
-            zones.push(new UnlockZone(100, 1000, 160, 140, 600, 'ChickenZone')); // Tavuk
-            zones.push(new UnlockZone(400, 1000, 120, 80, 300, 'Shelf', ['egg'])); // Yumurta Rafı
-
-            zones.push(new UnlockZone(600, 800, 180, 140, 1200, 'BakeryZone')); // Pastane
-            zones.push(new UnlockZone(850, 800, 120, 80, 800, 'Shelf', ['cake'])); // Pasta Rafı
+            zones.push(new ChickenZone(100, 1000));
+            zones.push(new Shelf(400, 1000, 'egg'));
+            
+            zones.push(new BakeryZone(600, 800));
+            zones.push(new Shelf(850, 800, 'cake'));
 
             zones.push(new Checkout(700, 300));
         }
@@ -1981,12 +1926,10 @@
         window.addEventListener('pointerup', () => {
             isMouseDown = false;
             joystickStart = null;
-            draggedZone = null;
         });
 
         function resize() {
             const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
             const logicalWidth = window.innerWidth;
             const logicalHeight = window.innerHeight;
             canvas.style.width = logicalWidth + 'px';
@@ -2057,7 +2000,7 @@
             camera.y += (targetCamY - camera.y) * 0.2;
 
             uiStack.innerText = player.stack.length;
-            uiMoney.innerText = Math.floor(player.money); // Show integer money
+            uiMoney.innerText = player.money;
 
             let hygieneLevel = Math.max(0, 100 - (stains.length * 5));
             document.getElementById('hygiene-fill').style.width = hygieneLevel + '%';
@@ -2144,5 +2087,4 @@
 
     </script>
 </body>
-
 </html>

@@ -2,10 +2,20 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procedural Planetary Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Procedural Planetary Entry - Mobile</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+            font-family: 'Courier New', Courier, monospace;
+            /* Mobil için kritik: Kaydırma ve seçmeyi engelle */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+        }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
         #ui-layer {
             position: absolute;
@@ -14,6 +24,7 @@
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
             pointer-events: none;
+            z-index: 10;
         }
         .hud-panel {
             background: rgba(0, 20, 0, 0.5);
@@ -24,13 +35,52 @@
         }
         h1 { margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; border-bottom: 1px solid #0f0; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        
         #controls-hint {
             position: absolute;
             bottom: 20px;
             left: 20px;
             color: rgba(255, 255, 255, 0.5);
             font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
         }
+        
+        /* Joystick Görselleri */
+        .joystick-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            z-index: 5;
+            /* Debug için border açılabilir: border: 1px solid rgba(255,0,0,0.2); */
+        }
+        #zone-left { left: 0; }
+        #zone-right { right: 0; }
+
+        .joystick-indicator {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid rgba(0, 255, 0, 0.3);
+            border-radius: 50%;
+            display: none; /* Dokununca görünür */
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        
+        .joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 255, 0, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #0f0;
+        }
+
         #crosshair {
             position: absolute;
             top: 50%;
@@ -40,6 +90,7 @@
             border: 1px solid rgba(0, 255, 0, 0.5);
             transform: translate(-50%, -50%);
             pointer-events: none;
+            z-index: 9;
         }
         #crosshair::after {
             content: '';
@@ -66,11 +117,17 @@
 
 <div id="crosshair"></div>
 <div id="controls-hint">
-    W/S: İleri/Geri (Gaz)<br>
-    A/D: Sağa/Sola Yatış (Roll)<br>
-    Mouse: Yönlendirme (Pitch/Yaw)<br>
-    SHIFT: Turbo İtiş
+    PC: W/S (Gaz), Mouse (Yön), A/D (Roll)<br>
+    MOBİL: Sol (Gaz + Roll), Sağ (Yön)
 </div>
+
+<!-- Dokunmatik Alanlar -->
+<div id="zone-left" class="joystick-zone"></div>
+<div id="zone-right" class="joystick-zone"></div>
+
+<!-- Dinamik Joystick Görselleri -->
+<div id="joy-left" class="joystick-indicator"><div class="joystick-knob"></div></div>
+<div id="joy-right" class="joystick-indicator"><div class="joystick-knob"></div></div>
 
 <div id="canvas-container"></div>
 
@@ -85,7 +142,7 @@
         camSpeedBase: 100, // Temel hız
         camSpeedMax: 5000, // Turbo hızı
         planetRadius: 1000, // Gezegen yarıçapı (Birim)
-        planetDetail: 120, // Geometri segment sayısı (Yüksek tutuyoruz ama performansı gözetiyoruz)
+        planetDetail: 120, // Geometri segment sayısı
         chunkSize: 50 // Gürültü ölçeği
     };
 
@@ -101,15 +158,25 @@
         acceleration: 2.0,
         roll: 0,
         pitch: 0,
-        yaw: 0
+        yaw: 0,
+        // Yumuşatma için hedef değerler
+        targetPitch: 0,
+        targetYaw: 0,
+        targetRoll: 0
     };
 
-    const keys = { w: false, a: false, s: false, d: false, shift: false };
-    const mouse = { x: 0, y: 0 };
+    // Kontrol Durumları
+    const inputState = {
+        w: false, s: false, a: false, d: false, shift: false,
+        mouseX: 0, mouseY: 0,
+        joyLeftX: 0,  // -1 (Sol) ile 1 (Sağ) arası -- YENİ
+        joyLeftY: 0,  // -1 (Geri) ile 1 (İleri) arası
+        joyRightX: 0, // -1 (Sol) ile 1 (Sağ) arası
+        joyRightY: 0  // -1 (Aşağı) ile 1 (Yukarı) arası
+    };
 
-    // --- SHADERLAR (Büyünün olduğu yer) ---
-
-    // 1. Gezegen Yüzey Shader'ı (Vertex Displacement + Biome Coloring)
+    // --- SHADERLAR ---
+    // (Orijinal shader kodları korundu)
     const planetVertexShader = `
         varying vec2 vUv;
         varying vec3 vNormal;
@@ -119,7 +186,6 @@
         uniform float time;
         uniform float radius;
         
-        // Basit 3D Noise fonksiyonu (Simplex'e benzer)
         vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
         vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
         vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -138,8 +204,8 @@
             vec3 i2 = max( g.xyz, l.zxy );
             
             vec3 x1 = x0 - i1 + C.xxx;
-            vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-            vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+            vec3 x2 = x0 - i2 + C.yyy;
+            vec3 x3 = x0 - D.yyy;
             
             i = mod289(i);
             vec4 p = permute( permute( permute( 
@@ -147,13 +213,13 @@
                     + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
                     + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
                     
-            float n_ = 0.142857142857; // 1.0/7.0
+            float n_ = 0.142857142857;
             vec3  ns = n_ * D.wyz - D.xzx;
             
-            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
             
             vec4 x_ = floor(j * ns.z);
-            vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+            vec4 y_ = floor(j - 7.0 * x_ );
             
             vec4 x = x_ *ns.x + ns.yyyy;
             vec4 y = y_ *ns.x + ns.yyyy;
@@ -186,12 +252,11 @@
                                         dot(p2,x2), dot(p3,x3) ) );
         }
 
-        // Fraktal Gürültü (FBM) - Detay eklemek için
         float fbm(vec3 x) {
             float v = 0.0;
             float a = 0.5;
             vec3 shift = vec3(100.0);
-            for (int i = 0; i < 6; ++i) { // 6 Katmanlı detay
+            for (int i = 0; i < 6; ++i) {
                 v += a * snoise(x);
                 x = x * 2.0 + shift;
                 a *= 0.5;
@@ -204,14 +269,11 @@
             vNormal = normal;
             vPosition = position;
             
-            // Yüzey deformasyonu
-            float noiseVal = fbm(position * 0.003); // Geniş şekiller
-            float detailVal = fbm(position * 0.02); // Küçük detaylar (Dağların üzerindeki kayalar)
+            float noiseVal = fbm(position * 0.003);
+            float detailVal = fbm(position * 0.02);
             
-            // Okyanus tabanı düzleştirme
             float elevation = noiseVal * 120.0 + detailVal * 10.0;
             
-            // Eğer yükseklik belli bir seviyenin altındaysa (okyanus), düzleştir
             if(elevation < 0.0) elevation = elevation * 0.3; 
             
             vElevation = elevation;
@@ -235,43 +297,35 @@
         uniform vec3 colorSnow;
         uniform vec3 lightDirection;
 
-        // Fragment içinde daha ince detay için gürültü (Tessellation illüzyonu)
-        // Bu, kameraya yaklaştıkça piksellerin bulanıklaşmasını engeller
         float random(vec3 scale, float seed) {
             return fract(sin(dot(gl_FragCoord.xyz + seed, scale)) * 43758.5453 + seed);
         }
 
         void main() {
-            // Işıklandırma (Lambert)
             vec3 lightDir = normalize(vec3(1.0, 0.5, 1.0));
             float diff = max(dot(vNormal, lightDir), 0.0);
             
-            // Atmosferik ışıklandırma etkisi (Fresnel benzeri)
             vec3 viewDir = normalize(cameraPosition - vPosition);
             float rim = 1.0 - max(dot(viewDir, vNormal), 0.0);
             rim = pow(rim, 4.0);
 
-            // Renk Karıştırma (Yükseklik tabanlı)
             vec3 finalColor;
-            
-            float level = vElevation; // -50 to 150 approx
+            float level = vElevation;
 
-            // İnce detay gürültüsü
             float microDetail = random(vec3(12.9898, 78.233, 151.7182), 0.0) * 0.05;
 
             if (level < -5.0) {
-                finalColor = mix(colorDeep, colorShallow, (level + 50.0) / 45.0); // Okyanus
+                finalColor = mix(colorDeep, colorShallow, (level + 50.0) / 45.0);
             } else if (level < 5.0) {
-                finalColor = colorBeach; // Sahil
+                finalColor = colorBeach;
             } else if (level < 60.0) {
-                finalColor = mix(colorLand, colorMountain, (level - 5.0) / 55.0); // Yeşil alanlar
+                finalColor = mix(colorLand, colorMountain, (level - 5.0) / 55.0);
             } else if (level < 90.0) {
-                finalColor = colorMountain; // Dağlar
+                finalColor = colorMountain;
             } else {
-                finalColor = colorSnow; // Kar
+                finalColor = colorSnow;
             }
 
-            // Gölge ve Işık ekle
             vec3 ambient = vec3(0.05);
             vec3 diffuse = finalColor * diff;
             vec3 atmosphere = vec3(0.2, 0.4, 0.8) * rim * 0.5;
@@ -280,7 +334,6 @@
         }
     `;
 
-    // 2. Atmosfer Shader'ı (Gezegenin etrafındaki mavi halka)
     const atmosphereVertexShader = `
         varying vec3 vNormal;
         void main() {
@@ -298,15 +351,137 @@
         }
     `;
 
+    // --- JOYSTICK MANTIĞI ---
+    const joyState = {
+        left: { id: null, origin: {x:0, y:0}, curr: {x:0, y:0} },
+        right: { id: null, origin: {x:0, y:0}, curr: {x:0, y:0} }
+    };
+    const MAX_JOY_DIST = 50; // Joystick'in maksimum hareket yarıçapı
+
+    function initJoysticks() {
+        // Tüm document üzerinde dinle ki parmak kayarsa kaçırmayalım
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    }
+
+    function handleTouchStart(e) {
+        e.preventDefault(); // Zoom/Scroll engelle
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            const halfWidth = window.innerWidth / 2;
+
+            if (t.clientX < halfWidth) {
+                // SOL TARAF - GAZ
+                if (joyState.left.id === null) {
+                    joyState.left.id = t.identifier;
+                    joyState.left.origin = { x: t.clientX, y: t.clientY };
+                    joyState.left.curr = { x: t.clientX, y: t.clientY };
+                    showJoystick('joy-left', t.clientX, t.clientY);
+                }
+            } else {
+                // SAĞ TARAF - YÖN
+                if (joyState.right.id === null) {
+                    joyState.right.id = t.identifier;
+                    joyState.right.origin = { x: t.clientX, y: t.clientY };
+                    joyState.right.curr = { x: t.clientX, y: t.clientY };
+                    showJoystick('joy-right', t.clientX, t.clientY);
+                }
+            }
+        }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            
+            if (t.identifier === joyState.left.id) {
+                updateJoystick(joyState.left, t, 'joy-left');
+                
+                // Hız kontrolü (Y ekseni)
+                let dy = joyState.left.origin.y - t.clientY;
+                inputState.joyLeftY = Math.max(-1, Math.min(1, dy / MAX_JOY_DIST));
+
+                // Roll kontrolü (X ekseni) - YENİ
+                let dx = t.clientX - joyState.left.origin.x;
+                inputState.joyLeftX = Math.max(-1, Math.min(1, dx / MAX_JOY_DIST));
+
+            } else if (t.identifier === joyState.right.id) {
+                updateJoystick(joyState.right, t, 'joy-right');
+                // Yön kontrolü
+                let dx = t.clientX - joyState.right.origin.x;
+                let dy = t.clientY - joyState.right.origin.y; 
+                
+                inputState.joyRightX = Math.max(-1, Math.min(1, dx / MAX_JOY_DIST));
+                inputState.joyRightY = Math.max(-1, Math.min(1, dy / MAX_JOY_DIST));
+            }
+        }
+    }
+
+    function handleTouchEnd(e) {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            
+            if (t.identifier === joyState.left.id) {
+                joyState.left.id = null;
+                inputState.joyLeftY = 0; 
+                inputState.joyLeftX = 0; // Bırakınca roll sıfırlansın
+                hideJoystick('joy-left');
+            } else if (t.identifier === joyState.right.id) {
+                joyState.right.id = null;
+                inputState.joyRightX = 0;
+                inputState.joyRightY = 0;
+                hideJoystick('joy-right');
+            }
+        }
+    }
+
+    function updateJoystick(joyObj, touch, elId) {
+        joyObj.curr.x = touch.clientX;
+        joyObj.curr.y = touch.clientY;
+        
+        const dx = joyObj.curr.x - joyObj.origin.x;
+        const dy = joyObj.curr.y - joyObj.origin.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        let moveX = dx;
+        let moveY = dy;
+        
+        // Görseli sınırla
+        if (dist > MAX_JOY_DIST) {
+            const angle = Math.atan2(dy, dx);
+            moveX = Math.cos(angle) * MAX_JOY_DIST;
+            moveY = Math.sin(angle) * MAX_JOY_DIST;
+        }
+
+        const knob = document.querySelector(`#${elId} .joystick-knob`);
+        knob.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px))`;
+    }
+
+    function showJoystick(elId, x, y) {
+        const el = document.getElementById(elId);
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.display = 'block';
+        // Knob'u merkeze sıfırla
+        const knob = el.querySelector('.joystick-knob');
+        knob.style.transform = `translate(-50%, -50%)`;
+    }
+
+    function hideJoystick(elId) {
+        document.getElementById(elId).style.display = 'none';
+    }
+
 
     function init() {
-        // Sahne Kurulumu
         scene = new THREE.Scene();
-        // Uzay sisi ekleyelim derinlik için
         scene.fog = new THREE.FogExp2(0x000000, 0.00002); 
 
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000000);
-        camera.position.set(0, 0, 8000); // Gezegenden uzakta başla
+        camera.position.set(0, 0, 8000);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -314,16 +489,13 @@
 
         simplex = new SimplexNoise();
 
-        // Işıklar
         const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
         sunLight.position.set(10000, 5000, 10000);
         scene.add(sunLight);
         scene.add(new THREE.AmbientLight(0x111111));
 
-        // Yıldız Alanı
         createStars();
 
-        // Gezegenleri Oluştur
         createPlanet(new THREE.Vector3(0, 0, 0), {
             deep: new THREE.Color(0x001e0f),
             shallow: new THREE.Color(0x006994),
@@ -331,7 +503,7 @@
             land: new THREE.Color(0x228b22),
             mountain: new THREE.Color(0x555555),
             snow: new THREE.Color(0xffffff)
-        }, 1.05); // Dünya benzeri
+        }, 1.05);
 
         createPlanet(new THREE.Vector3(8000, -2000, -15000), {
             deep: new THREE.Color(0x330000),
@@ -340,13 +512,28 @@
             land: new THREE.Color(0xA52A2A),
             mountain: new THREE.Color(0x331111),
             snow: new THREE.Color(0xFF6347)
-        }, 1.2); // Mars benzeri (Daha büyük)
+        }, 1.2);
 
-        // Event Listeners
         window.addEventListener('resize', onWindowResize, false);
-        document.addEventListener('keydown', (e) => handleKey(e, true));
-        document.addEventListener('keyup', (e) => handleKey(e, false));
-        document.addEventListener('mousemove', onMouseMove);
+        
+        // PC Kontrolleri
+        document.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if(inputState.hasOwnProperty(k)) inputState[k] = true;
+            if(e.key === 'Shift') inputState.shift = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if(inputState.hasOwnProperty(k)) inputState[k] = false;
+            if(e.key === 'Shift') inputState.shift = false;
+        });
+        document.addEventListener('mousemove', (e) => {
+            inputState.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            inputState.mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // Mobil Kontrolleri Başlat
+        initJoysticks();
 
         animate();
     }
@@ -369,11 +556,6 @@
 
     function createPlanet(position, colors, sizeMult) {
         const radius = CONFIG.planetRadius * sizeMult;
-        
-        // --- Gezegen Yüzeyi ---
-        // Icosahedron kullanıyoruz çünkü küreye en yakın ve segmentleri eşit dağılan geometridir.
-        // detail: 80-120 arası yüksek detay sağlar ama CPU'yu yorar. 
-        // Gerçek NMS'de bu LOD sistemiyle dinamik yüklenir. Burada sabit yüksek detay kullanıyoruz.
         const geometry = new THREE.IcosahedronGeometry(radius, 60); 
 
         const material = new THREE.ShaderMaterial({
@@ -397,7 +579,6 @@
         scene.add(mesh);
         planets.push(mesh);
 
-        // --- Atmosfer (Glow) ---
         const atmGeometry = new THREE.IcosahedronGeometry(radius * 1.2, 10);
         const atmMaterial = new THREE.ShaderMaterial({
             vertexShader: atmosphereVertexShader,
@@ -411,46 +592,79 @@
             depthWrite: false
         });
         const atmMesh = new THREE.Mesh(atmGeometry, atmMaterial);
-        mesh.add(atmMesh); // Gezegene child olarak ekle
-    }
-
-    function handleKey(e, isDown) {
-        const key = e.key.toLowerCase();
-        if (keys.hasOwnProperty(key)) keys[key] = isDown;
-        if (e.key === 'Shift') keys.shift = isDown;
-    }
-
-    function onMouseMove(e) {
-        // Mouse merkezden ne kadar uzak? (-1 ile 1 arası)
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        mesh.add(atmMesh);
     }
 
     function updatePhysics() {
-        // Gemi Kontrolleri
-        // Mouse X -> Roll (Dönüş) & Yaw (Yön)
-        // Mouse Y -> Pitch (Burun yukarı/aşağı)
+        // --- INPUT BİRLEŞTİRME (PC + Mobil) ---
         
-        ship.yaw = -mouse.x * 0.5;
-        ship.pitch = mouse.y * 0.5;
+        // Yön (Pitch / Yaw)
+        let inputYaw = -inputState.mouseX * 0.5; 
+        let inputPitch = inputState.mouseY * 0.5; 
         
-        if (keys.a) ship.roll += 0.05;
-        if (keys.d) ship.roll -= 0.05;
-        // Otomatik roll düzeltme
-        if (!keys.a && !keys.d) ship.roll *= 0.95;
+        if (inputState.joyRightX !== 0 || inputState.joyRightY !== 0) {
+            inputYaw = inputState.joyRightX * -0.8; 
+            inputPitch = inputState.joyRightY * -0.8; 
+        }
 
-        // Quaternion dönüşleri
+        // --- YUMUŞATMA (MOMENTUM) ---
+        ship.targetYaw = inputYaw;
+        ship.targetPitch = inputPitch;
+
+        // Roll (PC: A/D, Mobil: Sol Joystick X)
+        
+        // Bu değişken, şu an aktif bir Roll komutu olup olmadığını takip eder.
+        // Eğer aktif komut yoksa, gemi otomatik olarak kendini düzeltir (auto-center).
+        let activeRollInput = false;
+
+        // PC Kontrolü
+        if (inputState.a) { ship.targetRoll += 0.05; activeRollInput = true; }
+        if (inputState.d) { ship.targetRoll -= 0.05; activeRollInput = true; }
+        
+        // Mobil Kontrolü (Sol Joystick X)
+        // Deadzone Eklendi: Sadece joystick %75'ten fazla çekilirse (0.75) roll yap.
+        // "Aşırı roll" şikayeti için çarpan 0.08'den 0.05'e düşürüldü.
+        if (Math.abs(inputState.joyLeftX) > 0.75) {
+            ship.targetRoll -= inputState.joyLeftX * 0.05; 
+            activeRollInput = true;
+        }
+
+        // Aktif bir roll girdisi yoksa gemiyi düzelt
+        if (!activeRollInput) {
+            ship.targetRoll *= 0.95; // Auto-center roll
+        }
+
+        // İnterpolasyon
+        const smoothing = 0.08; 
+        
+        ship.yaw += (ship.targetYaw - ship.yaw) * smoothing;
+        ship.pitch += (ship.targetPitch - ship.pitch) * smoothing;
+        ship.roll += (ship.targetRoll - ship.roll) * smoothing;
+
         camera.rotateZ(ship.roll * 0.02);
         camera.rotateY(ship.yaw * 0.02);
         camera.rotateX(ship.pitch * 0.02);
 
-        // İvmelenme ve Hızlanma
+        // Hız (Gaz)
         let targetSpeed = 0;
-        if (keys.w) targetSpeed = keys.shift ? CONFIG.camSpeedMax : CONFIG.camSpeedBase;
-        if (keys.s) targetSpeed = -CONFIG.camSpeedBase / 2;
+        
+        // PC
+        if (inputState.w) targetSpeed = inputState.shift ? CONFIG.camSpeedMax : CONFIG.camSpeedBase;
+        if (inputState.s) targetSpeed = -CONFIG.camSpeedBase / 2;
 
-        // "Devasallık" hissi için önemli: 
-        // Yüzeye yaklaştıkça hız azalmalı, yoksa çarparız.
+        // Mobil (Öncelikli)
+        if (inputState.joyLeftY !== 0) {
+            if (inputState.joyLeftY > 0) {
+                // İleri
+                let maxS = inputState.shift ? CONFIG.camSpeedMax : CONFIG.camSpeedBase * 2; 
+                targetSpeed = inputState.joyLeftY * maxS;
+            } else {
+                // Geri
+                targetSpeed = inputState.joyLeftY * CONFIG.camSpeedBase;
+            }
+        }
+
+        // --- FİZİK (Yakınlık Kontrolü) ---
         let closestDist = Infinity;
         let targetPlanetName = "Derin Uzay";
 
@@ -463,12 +677,9 @@
             }
         });
 
-        // Hız Sınırlayıcı (Yaklaştıkça yavaşla - Scale trick)
-        // Eğer 500 birimden yakındaysak, hızı radikal şekilde düşür.
         let proximityFactor = Math.max(0.05, Math.min(1.0, closestDist / 2000));
         let actualMaxSpeed = targetSpeed * proximityFactor;
         
-        // Hız interpolasyonu (Yumuşak kalkış/duruş)
         ship.speed += (actualMaxSpeed - ship.speed) * 0.05;
 
         camera.translateZ(-ship.speed * 0.1);
@@ -481,12 +692,7 @@
 
     function animate() {
         requestAnimationFrame(animate);
-
         updatePhysics();
-        
-        // Shaderlardaki 'time' değişkenini güncelle (suyun hareketi vs için opsiyonel)
-        // planets.forEach(p => p.material.uniforms.time.value += 0.01);
-
         renderer.render(scene, camera);
     }
 

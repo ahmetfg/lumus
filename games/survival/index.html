@@ -16,6 +16,7 @@
             --border-light: #747d8c;
             --border-shadow: #1e272e;
             --text-white: #f1f2f6;
+            --shop-green: #2ecc71;
         }
 
         body {
@@ -26,6 +27,8 @@
             color: var(--text-white);
             user-select: none;
             touch-action: none;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior: none;
         }
 
         #gameCanvas {
@@ -33,20 +36,20 @@
             image-rendering: pixelated;
         }
 
-        /* --- SPLASH SCREEN (NEW) --- */
+        /* --- SPLASH SCREEN --- */
         #splash-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #ffffff; /* Tam Beyaz Arka Plan */
+            background-color: #ffffff;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            transition: opacity 1s ease-out; /* Fade out korundu */
+            transition: opacity 1s ease-out;
         }
 
         #splash-screen.fade-out {
@@ -69,9 +72,8 @@
             padding-bottom: 8px;
             border-radius: 14px;
             border: 2px solid #000;
-            /* Jumpy efekt yerine klas bir giriş */
             animation: logoEnter 1.0s ease-out forwards;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); /* Çok hafif gölge */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
         }
 
         .brand-logo {
@@ -100,14 +102,12 @@
             letter-spacing: 6px;
             text-transform: uppercase;
             opacity: 0;
-            /* Ortalamayı düzeltmek için harf aralığı kadar padding */
             padding-left: 6px; 
             text-align: center;
             animation: fadeInSimple 1.2s ease-in forwards;
             animation-delay: 0.5s;
         }
 
-        /* Klas Giriş Animasyonu: Hafifçe yukarı kayarak belirme */
         @keyframes logoEnter {
             0% { transform: translateY(15px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
@@ -126,6 +126,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            display: none; 
         }
 
         /* XP Bar */
@@ -135,11 +136,13 @@
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
+            max-width: 600px;
             height: 24px;
             background: #000;
             border: 4px solid #fff;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             image-rendering: pixelated;
+            z-index: 5;
         }
 
         #xp-bar-fill {
@@ -155,6 +158,7 @@
             font-size: 14px;
             text-shadow: 3px 3px 0 #000;
             color: white;
+            white-space: nowrap;
         }
 
         #timer {
@@ -169,6 +173,14 @@
             top: 50px;
             right: 20px;
             color: var(--primary-red);
+            text-align: right;
+        }
+        
+        #gold-count {
+            top: 75px;
+            right: 20px;
+            color: var(--primary-gold);
+            text-align: right;
         }
 
         #level-display {
@@ -185,12 +197,15 @@
         }
 
         #hp-display {
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 16px;
             color: var(--primary-red);
             text-shadow: 2px 2px 0 #000;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
         }
 
         /* --- MODALS --- */
@@ -214,6 +229,7 @@
         .hidden {
             opacity: 0;
             pointer-events: none;
+            display: none !important;
         }
 
         .modal-content {
@@ -224,9 +240,13 @@
             box-shadow:
                 0 0 0 4px #000,
                 0 0 20px rgba(255, 165, 2, 0.5);
-            max-width: 60%;
+            width: 500px;
+            max-width: 90%; 
+            max-height: 90vh; /* Prevent overflow on small screens */
+            overflow-y: auto; /* Allow scroll if content is too tall */
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
+            box-sizing: border-box;
         }
 
         h1 {
@@ -267,16 +287,62 @@
             text-transform: uppercase;
             position: relative;
             overflow: hidden;
+            margin: 5px;
+            /* Ensure buttons don't overflow horizontally on tiny screens */
+            max-width: 100%; 
+            white-space: nowrap;
+        }
+
+        .retro-btn.green {
+            background: var(--shop-green);
+        }
+        
+        .retro-btn.yellow {
+            background: var(--primary-gold);
+            color: #000;
         }
 
         .retro-btn:hover {
             transform: translateY(-2px);
-            background: #ff6b81;
+            filter: brightness(1.1);
         }
 
         .retro-btn:active {
             transform: translateY(2px);
             box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        /* --- SHOP STYLES --- */
+        #shop-items {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .shop-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border: 2px solid #555;
+            border-radius: 4px;
+        }
+        
+        .shop-info {
+            text-align: left;
+        }
+        
+        .shop-name {
+            color: var(--primary-gold);
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .shop-desc {
+            font-size: 9px;
+            color: #aaa;
         }
 
         /* --- UPGRADE CARDS --- */
@@ -301,6 +367,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            box-sizing: border-box;
         }
 
         .upgrade-card:hover {
@@ -344,6 +411,101 @@
         .blink {
             animation: pulse 2s infinite;
         }
+
+        /* --- MOBILE / PORTRAIT OPTIMIZATIONS --- */
+        @media (max-width: 768px) {
+            /* Compact Header */
+            #xp-bar-container {
+                width: 95%;
+                height: 15px;
+                top: 5px;
+            }
+
+            .hud-stat {
+                font-size: 10px; /* Smaller font on mobile */
+            }
+
+            #fps-meter {
+                display: none; /* Hide FPS on small screens to save space */
+            }
+
+            #level-display {
+                top: 35px;
+                left: 10px;
+            }
+
+            #timer {
+                top: 35px;
+                font-size: 14px;
+            }
+
+            #kill-count {
+                top: 35px;
+                right: 10px;
+            }
+
+            #gold-count {
+                top: 50px; /* Stack under kills */
+                right: 10px;
+            }
+
+            /* Modal Adjustments */
+            .modal-content {
+                padding: 20px;
+                width: 90%;
+            }
+
+            h1 {
+                font-size: 20px; /* Smaller titles */
+                margin-bottom: 15px;
+            }
+
+            .retro-btn {
+                padding: 12px 15px;
+                font-size: 12px;
+                width: 100%; /* Full width buttons on mobile */
+                box-sizing: border-box;
+            }
+
+            /* Upgrade Cards: Vertical Stack in list view for better readability */
+            #upgrade-options {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .upgrade-card {
+                width: 100%;
+                height: auto;
+                flex-direction: row; /* Icon left, Text right */
+                justify-content: flex-start;
+                padding: 10px;
+                text-align: left;
+            }
+
+            .upgrade-card:hover {
+                transform: translateX(5px); /* Slide right instead of up */
+            }
+
+            .card-icon {
+                margin-bottom: 0;
+                margin-right: 15px;
+                font-size: 24px;
+            }
+
+            .card-title {
+                font-size: 14px;
+                margin-bottom: 2px;
+            }
+            
+            /* Shop Adjustments */
+            .shop-name {
+                font-size: 10px;
+            }
+            .shop-desc {
+                font-size: 8px;
+            }
+        }
     </style>
 </head>
 
@@ -371,6 +533,7 @@
         <div id="level-display" class="hud-stat">LVL 1</div>
         <div id="timer" class="hud-stat">00:00</div>
         <div id="kill-count" class="hud-stat">💀 0</div>
+        <div id="gold-count" class="hud-stat">💰 0</div>
 
         <div id="hp-display" class="hud-stat">HP 100</div>
     </div>
@@ -386,12 +549,53 @@
                 Auto Attack
             </p>
             <button class="retro-btn" onclick="startGame()">START HUNT</button>
+            <br>
+            <button class="retro-btn green" onclick="openShop()">UPGRADE SHOP</button>
+        </div>
+    </div>
+
+    <!-- SHOP SCREEN (NEW) -->
+    <div id="shop-screen" class="modal hidden">
+        <div class="modal-content">
+            <h1>ARMORY</h1>
+            <h2 id="total-gold-display">GOLD: 0</h2>
+            
+            <div id="shop-items">
+                <!-- Might Upgrade -->
+                <div class="shop-row">
+                    <div class="shop-info">
+                        <div class="shop-name">MIGHT (Dmg +10%)</div>
+                        <div class="shop-desc" id="might-lvl">Lvl 0</div>
+                    </div>
+                    <button class="retro-btn yellow" id="btn-might" onclick="buyUpgrade('might')">100 G</button>
+                </div>
+
+                <!-- Armor Upgrade -->
+                <div class="shop-row">
+                    <div class="shop-info">
+                        <div class="shop-name">ARMOR (HP +20)</div>
+                        <div class="shop-desc" id="armor-lvl">Lvl 0</div>
+                    </div>
+                    <button class="retro-btn yellow" id="btn-armor" onclick="buyUpgrade('armor')">100 G</button>
+                </div>
+                
+                <!-- Greed Upgrade -->
+                <div class="shop-row">
+                    <div class="shop-info">
+                        <div class="shop-name">GREED (Gold +20%)</div>
+                        <div class="shop-desc" id="greed-lvl">Lvl 0</div>
+                    </div>
+                    <button class="retro-btn yellow" id="btn-greed" onclick="buyUpgrade('greed')">100 G</button>
+                </div>
+            </div>
+
+            <button class="retro-btn" onclick="closeShop()">BACK</button>
         </div>
     </div>
 
     <!-- LEVEL UP SCREEN -->
     <div id="levelup-screen" class="modal hidden">
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-content">
             <h1>LEVEL UP!</h1>
             <h2>Choose a reward</h2>
             <div id="upgrade-options">
@@ -405,21 +609,93 @@
         <div class="modal-content">
             <h1 style="color: #57606f;">YOU DIED</h1>
             <p id="final-stats">Calculating...</p>
-            <button class="retro-btn" onclick="location.reload()">TRY AGAIN</button>
+            <p style="color: #f1c40f;" id="gold-earned-text">+0 GOLD</p>
+            <!-- Changed from location.reload() to safe function -->
+            <button class="retro-btn" onclick="returnToMainMenu()">MAIN MENU</button>
         </div>
     </div>
 
     <script>
         /**
+         * --- SAVE & META PROGRESSION SYSTEM ---
+         */
+        const SAVE_KEY = 'pixelKnightSave_v1';
+        let saveData = {
+            gold: 0,
+            upgrades: {
+                might: 0, // Damage multiplier
+                armor: 0, // Max HP bonus
+                greed: 0  // Gold gain multiplier
+            }
+        };
+
+        // Load Save
+        if (localStorage.getItem(SAVE_KEY)) {
+            try {
+                const loaded = JSON.parse(localStorage.getItem(SAVE_KEY));
+                saveData = { ...saveData, ...loaded }; // Merge incase of new fields
+            } catch(e) { console.error("Save corrupted reset"); }
+        }
+
+        function saveGame() {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+        }
+
+        // --- SHOP LOGIC ---
+        function getUpgradePrice(type) {
+            const level = saveData.upgrades[type];
+            return 100 + (level * 150); // Price Scaling
+        }
+
+        function openShop() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('shop-screen').classList.remove('hidden');
+            updateShopUI();
+        }
+
+        function closeShop() {
+            document.getElementById('shop-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function buyUpgrade(type) {
+            const price = getUpgradePrice(type);
+            if (saveData.gold >= price) {
+                saveData.gold -= price;
+                saveData.upgrades[type]++;
+                saveGame();
+                updateShopUI();
+            }
+        }
+
+        function updateShopUI() {
+            document.getElementById('total-gold-display').innerText = "GOLD: " + saveData.gold;
+
+            const types = ['might', 'armor', 'greed'];
+            types.forEach(t => {
+                const lvl = saveData.upgrades[t];
+                const price = getUpgradePrice(t);
+                document.getElementById(`${t}-lvl`).innerText = `Lvl ${lvl}`;
+                const btn = document.getElementById(`btn-${t}`);
+                btn.innerText = `${price} G`;
+                
+                if (saveData.gold < price) {
+                    btn.style.opacity = "0.5";
+                    btn.style.cursor = "not-allowed";
+                } else {
+                    btn.style.opacity = "1";
+                    btn.style.cursor = "pointer";
+                }
+            });
+        }
+
+        /**
          * --- SPLASH SCREEN LOGIC ---
          */
         window.addEventListener('load', () => {
-            // Keep splash for 2.5 seconds then fade out
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 splash.classList.add('fade-out');
-                
-                // Remove from DOM flow after fade transition (1s)
                 setTimeout(() => {
                     splash.style.display = 'none';
                 }, 1000);
@@ -462,7 +738,8 @@
             paused: false,
             frames: 0,
             time: 0,
-            enemiesKilled: 0
+            enemiesKilled: 0,
+            sessionGold: 0 // Gold collected in this run
         };
 
         let camera = { x: 0, y: 0 };
@@ -563,8 +840,14 @@
                 this.height = 30;
 
                 this.color = '#3498db';
-                this.hp = 100;
-                this.maxHp = 100;
+                
+                // APPLY META PROGRESSION
+                const armorBonus = saveData.upgrades.armor * 20;
+                const mightMultiplier = 1 + (saveData.upgrades.might * 0.1);
+
+                this.hp = 100 + armorBonus;
+                this.maxHp = 100 + armorBonus;
+                
                 this.level = 1;
                 this.xp = 0;
                 this.xpToNextLevel = 50;
@@ -572,7 +855,7 @@
                 this.modifiers = {
                     area: 1,
                     speed: 1,
-                    power: 1,
+                    power: 1 * mightMultiplier,
                     moveSpeed: 1
                 };
 
@@ -704,6 +987,12 @@
                 if (this.xp >= this.xpToNextLevel) {
                     this.levelUp();
                 }
+                updateHUD();
+            }
+            
+            gainGold(amount) {
+                const greedBonus = 1 + (saveData.upgrades.greed * 0.20);
+                gameState.sessionGold += Math.ceil(amount * greedBonus);
                 updateHUD();
             }
 
@@ -979,6 +1268,59 @@
                 CTX.stroke();
             }
         }
+        
+        // --- NEW CLASS: COIN ---
+        class Coin {
+            constructor(x, y, value) {
+                this.x = x;
+                this.y = y;
+                this.value = value;
+                this.radius = 8;
+                this.color = '#f1c40f'; // Gold
+            }
+
+            update() {
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const distSq = dx * dx + dy * dy;
+                const pickupSq = GAME_CONFIG.pickupRadius * GAME_CONFIG.pickupRadius * 4;
+
+                if (distSq < pickupSq) {
+                    const dist = Math.sqrt(distSq);
+                    this.x += (dx / dist) * 8;
+                    this.y += (dy / dist) * 8;
+
+                    if (dist < 20) {
+                        player.gainGold(this.value);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            draw() {
+                const screenX = this.x - camera.x;
+                const screenY = this.y - camera.y;
+
+                if (screenX < -20 || screenX > CANVAS.width + 20 ||
+                    screenY < -20 || screenY > CANVAS.height + 20) return;
+
+                CTX.beginPath();
+                CTX.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+                CTX.fillStyle = this.color;
+                CTX.fill();
+                CTX.strokeStyle = '#f39c12';
+                CTX.lineWidth = 2;
+                CTX.stroke();
+                
+                // Dollar sign text
+                CTX.fillStyle = "#000";
+                CTX.font = "10px monospace";
+                CTX.textAlign = "center";
+                CTX.textBaseline = "middle";
+                CTX.fillText("$", screenX, screenY);
+            }
+        }
 
         class DamageText {
             constructor(x, y, amount) {
@@ -1238,6 +1580,7 @@
         let player;
         let enemies = [];
         let gems = [];
+        let coins = []; // New Coins Array
         let projectiles = [];
         let texts = [];
         let keys = {};
@@ -1300,9 +1643,11 @@
         });
 
         function initGame() {
+            document.getElementById('ui-layer').style.display = 'block'; // Show UI
             player = new Player();
             enemies = [];
             gems = [];
+            coins = [];
             projectiles = [];
             texts = [];
             gameState = {
@@ -1310,7 +1655,8 @@
                 paused: false,
                 frames: 0,
                 time: 0,
-                enemiesKilled: 0
+                enemiesKilled: 0,
+                sessionGold: 0
             };
             updateHUD();
             gameLoop();
@@ -1328,7 +1674,20 @@
 
         function checkEnemyDeath(enemy) {
             if (enemy.hp <= 0) {
-                gems.push(new Gem(enemy.x, enemy.y, 10 + Math.random() * 5));
+                // BALANCED DROP LOGIC (Nerfed):
+                const rng = Math.random();
+                // 8% chance for Gold (was 20-30%)
+                if (rng < 0.08) {
+                    // Gold Value Nerfed: 2-8 gold (was 10-30)
+                    coins.push(new Coin(enemy.x, enemy.y, 2 + Math.floor(Math.random() * 6)));
+                    
+                    // Also drop XP (always good to have XP)
+                    gems.push(new Gem(enemy.x, enemy.y, 10 + Math.random() * 5));
+                } else {
+                    // Standard XP
+                    gems.push(new Gem(enemy.x, enemy.y, 10 + Math.random() * 5));
+                }
+                
                 gameState.enemiesKilled++;
             }
         }
@@ -1366,12 +1725,15 @@
             projectiles = projectiles.filter(p => !p.markedForDeletion);
 
             gems = gems.filter(g => !g.update());
+            coins = coins.filter(c => !c.update());
 
             texts = texts.filter(t => !t.update());
         }
 
         // --- OPTIMIZED TILING DRAW FUNCTION ---
         function draw() {
+            if (!gameState.running) return; // Stop drawing if game not running
+
             // 1. Clear background (fallback black)
             CTX.fillStyle = '#222';
             CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
@@ -1413,6 +1775,7 @@
 
             // Other drawings
             gems.forEach(g => g.draw());
+            coins.forEach(c => c.draw());
             if (player) player.drawWeapons();
             enemies.forEach(e => e.draw());
             projectiles.forEach(p => p.draw());
@@ -1453,14 +1816,43 @@
         }
 
         function gameOver() {
+            // Prevent double triggering
+            if (!gameState.running) return;
+            
             gameState.running = false;
+            
+            // SAVE LOGIC
+            saveData.gold += gameState.sessionGold;
+            saveGame();
+            
             document.getElementById('gameover-screen').classList.remove('hidden');
             document.getElementById('final-stats').innerHTML =
                 `Time: ${document.getElementById('timer').innerText}<br>Killed: ${gameState.enemiesKilled}<br>Level: ${player.level}`;
+            document.getElementById('gold-earned-text').innerText = `+${gameState.sessionGold} GOLD COLLECTED`;
+        }
+
+        // --- SOFT RESET FUNCTION (New) ---
+        function returnToMainMenu() {
+            // Hide Game Over
+            document.getElementById('gameover-screen').classList.add('hidden');
+            
+            // Hide UI Overlay
+            document.getElementById('ui-layer').style.display = 'none';
+
+            // Show Start Screen
+            document.getElementById('start-screen').classList.remove('hidden');
+
+            // Clear Canvas Visually
+            CTX.fillStyle = '#1a1a1a';
+            CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
+
+            // Important: We don't need to reload the page. 
+            // initGame() will reset all variables when Start is clicked again.
         }
 
         function updateHUD() {
             document.getElementById('kill-count').innerText = '💀 ' + gameState.enemiesKilled;
+            document.getElementById('gold-count').innerText = '💰 ' + gameState.sessionGold;
             document.getElementById('level-display').innerText = 'LVL ' + player.level;
             document.getElementById('hp-display').innerText = `HP: ${Math.floor(player.hp)}/${player.maxHp}`;
 

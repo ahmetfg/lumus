@@ -730,6 +730,42 @@
         const groundSprite = new Image();
         groundSprite.src = "emptyDungeonFloor.jpeg";
 
+        // --- AUDIO SYSTEM (Playlist + Looping + Ducking) ---
+        const musicTracks = ['mainTheme.mp3', 'mainThemeTwo.mp3'];
+        let currentTrackIdx = 0;
+        const bgMusic = new Audio();
+        bgMusic.preload = 'auto'; // Helps with Safari loading
+        bgMusic.volume = 0.3; // Base volume
+
+        // Function to handle playlist logic
+        async function playNextTrack() {
+            try {
+                // Ensure stopped before switching
+                bgMusic.pause();
+                
+                bgMusic.src = musicTracks[currentTrackIdx];
+                
+                // Safari fix: load() allows the new src to be buffered
+                bgMusic.load(); 
+                
+                // Advance index
+                currentTrackIdx = (currentTrackIdx + 1) % musicTracks.length;
+                
+                // Play and wait for success
+                await bgMusic.play();
+                
+            } catch (e) {
+                // AbortError is common when switching tracks rapidly or loading states
+                // We log it but don't let it break the game loop
+                if (e.name !== 'AbortError') {
+                    console.log("Audio playback error:", e);
+                }
+            }
+        }
+
+        // Event listener: When track ends, play the next one
+        bgMusic.addEventListener('ended', playNextTrack);
+
         /**
          * --- GAME STATE ---
          */
@@ -1812,6 +1848,11 @@
          */
         function startGame() {
             document.getElementById('start-screen').classList.add('hidden');
+            
+            // Start Playlist
+            currentTrackIdx = 0; // Reset index
+            playNextTrack(); // Start first track
+            
             initGame();
         }
 
@@ -1820,6 +1861,11 @@
             if (!gameState.running) return;
             
             gameState.running = false;
+            
+            // Stop Music & Reset Volume
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+            bgMusic.volume = 0.3; // Reset volume for main menu
             
             // SAVE LOGIC
             saveData.gold += gameState.sessionGold;
@@ -1861,6 +1907,9 @@
         }
 
         function showUpgradeMenu() {
+            // DUCK VOLUME (Lower volume for menu)
+            bgMusic.volume = 0.05;
+            
             const container = document.getElementById('upgrade-options');
             container.innerHTML = '';
 
@@ -1890,6 +1939,9 @@
         }
 
         function selectUpgrade(id) {
+            // RESTORE VOLUME
+            bgMusic.volume = 0.3;
+
             if (id === 'heal') {
                 player.hp = Math.min(player.hp + 30, player.maxHp);
             } else if (id === 'speed') {

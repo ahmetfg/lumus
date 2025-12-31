@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Monkey Mart Clone - Phase 36 (Crate Fix)</title>
+    <title>Monkey Mart Clone - Phase 40 (Final Bakery Layout)</title>
     <style>
         body {
             margin: 0;
@@ -85,7 +85,7 @@
             background: rgba(0, 0, 0, 0.5);
             border-radius: 6px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .bar-fill {
@@ -94,8 +94,13 @@
             transition: width 0.3s ease-out, background-color 0.3s;
         }
 
-        #hygiene-fill { background-color: #3498db; }
-        #satisfaction-fill { background-color: #2ecc71; }
+        #hygiene-fill {
+            background-color: #3498db;
+        }
+
+        #satisfaction-fill {
+            background-color: #2ecc71;
+        }
 
         #mobile-controls-hint {
             display: none;
@@ -161,8 +166,16 @@
             customerSpawnRate: 100,
             targetItemSize: 18,
             joystickRadius: 50,
+            // Bakery Specific Layout Configuration
+            bakeryLayout: {
+                offsetX: 122,
+                offsetY: 6,
+                rotation: 305,
+                spreadW: 123,
+                spreadH: 31
+            },
             // Economy Settings
-            startingMoney: 20,
+            startingMoney: 3000,
             crateCost: 5,      // Cost to buy a crate from cargo
             itemSellPrice: 3,  // Price per item sold
             colors: {
@@ -199,7 +212,7 @@
             offsetX: -500,
             offsetY: -487,
             scale: 1.0,
-            zIndexOffset: 0 
+            zIndexOffset: 0
         };
 
         class Vector2 {
@@ -232,7 +245,7 @@
                 this.maxProgress = 100;
                 this.isCleaned = false;
                 this.points = [];
-                for(let i=0; i<8; i++) {
+                for (let i = 0; i < 8; i++) {
                     let angle = (Math.PI * 2 * i) / 8;
                     let r = this.radius * (0.8 + Math.random() * 0.4);
                     this.points.push({
@@ -266,7 +279,7 @@
                 ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
                 ctx.beginPath();
                 ctx.moveTo(this.pos.x + this.points[0].x, this.pos.y + this.points[0].y);
-                for(let i=1; i<this.points.length; i++) {
+                for (let i = 1; i < this.points.length; i++) {
                     ctx.lineTo(this.pos.x + this.points[i].x, this.pos.y + this.points[i].y);
                 }
                 ctx.closePath();
@@ -276,16 +289,16 @@
                     let barW = 40;
                     let barH = 6;
                     let pct = this.cleanProgress / this.maxProgress;
-                    
+
                     ctx.fillStyle = "rgba(0,0,0,0.5)";
-                    ctx.fillRect(this.pos.x - barW/2, this.pos.y - 40, barW, barH);
-                    
+                    ctx.fillRect(this.pos.x - barW / 2, this.pos.y - 40, barW, barH);
+
                     ctx.fillStyle = "#2ecc71";
-                    ctx.fillRect(this.pos.x - barW/2, this.pos.y - 40, barW * pct, barH);
-                    
+                    ctx.fillRect(this.pos.x - barW / 2, this.pos.y - 40, barW * pct, barH);
+
                     ctx.strokeStyle = "white";
                     ctx.lineWidth = 1;
-                    ctx.strokeRect(this.pos.x - barW/2, this.pos.y - 40, barW, barH);
+                    ctx.strokeRect(this.pos.x - barW / 2, this.pos.y - 40, barW, barH);
                 }
             }
         }
@@ -299,7 +312,7 @@
                 this.inStack = false;
                 this.stackIndex = 0;
                 this.flySpeed = 0.2;
-                this.zLayer = 0; 
+                this.zLayer = 0;
                 this.rotation = 0;
             }
 
@@ -367,11 +380,11 @@
                     ctx.fillRect(x, y + h - 4, w, 4);
                     ctx.fillStyle = "#e74c3c";
                     ctx.beginPath();
-                    ctx.arc(0, -4, 3, 0, Math.PI*2);
+                    ctx.arc(0, -4, 3, 0, Math.PI * 2);
                     ctx.fill();
                 } else if (this.type === 'crate') {
                     ctx.fillStyle = CONFIG.colors.crate;
-                    ctx.fillRect(x, y, w + 4, h + 4); 
+                    ctx.fillRect(x, y, w + 4, h + 4);
                     ctx.strokeStyle = "#a04000";
                     ctx.lineWidth = 1;
                     ctx.strokeRect(x, y, w + 4, h + 4);
@@ -529,7 +542,7 @@
                 this.currentFrame = 0;
                 this.animTimer = 0;
                 this.facingRight = true;
-                this.state = 'idle'; 
+                this.state = 'idle';
             }
 
             update(input) {
@@ -819,8 +832,8 @@
             }
 
             getRenderDepth() {
-                if(!this.renderConfig || typeof this.renderConfig.zIndexOffset === 'undefined') {
-                    return this.pos.y; 
+                if (!this.renderConfig || typeof this.renderConfig.zIndexOffset === 'undefined') {
+                    return this.pos.y;
                 }
                 return this.pos.y + (this.h * this.renderConfig.zIndexOffset);
             }
@@ -848,7 +861,7 @@
                 this.productType = productType; // Ürün tipi ('banana' veya 'grape')
                 this.timer = 0;
                 this.items = []; // Koliler
-                this.maxGroundItems = 6; 
+                this.maxGroundItems = 6;
                 this.label = "KARGO ALANI";
                 this.renderConfig = { zIndexOffset: 0.0 }; // Yerde
 
@@ -864,22 +877,22 @@
                 this.crateSprite.onload = () => { this.crateSpriteLoaded = true; };
 
                 // Dinamik Koli Boyutu (42 * 3.3 = 138.6)
-                this.crateSize = 42 * 2; 
+                this.crateSize = 42 * 2;
             }
 
             // Belirtilen index'e göre koli pozisyonunu (offset) ve katmanını döndürür
             getStackOffset(index) {
                 const s = this.crateSize;
-                
+
                 const rSideX = 0.404; // 56 / 138.6
                 const rSideY = 0.086; // 12 / 138.6
                 const rBackX = 0.296; // 41 / 138.6
                 const rBackY = -0.505; // -70 / 138.6
-                const rTopY  = -0.296; // -41 / 138.6
+                const rTopY = -0.296; // -41 / 138.6
 
                 const vSide = { x: s * rSideX, y: s * rSideY };
                 const vBack = { x: s * rBackX, y: s * rBackY };
-                const vTop  = { x: 0,          y: s * rTopY };
+                const vTop = { x: 0, y: s * rTopY };
 
                 // 0: Merkez - Layer 0
                 if (index === 0) return { x: 0, y: 0, layer: 0 };
@@ -888,7 +901,7 @@
                 // 2: Arkasına - Layer 0
                 if (index === 2) return { x: vBack.x, y: vBack.y, layer: 0 };
                 // 3: Üstüne (Merkez Üstü) - Layer 1
-                if (index === 3) return { x: vTop.x,  y: vTop.y, layer: 1 };
+                if (index === 3) return { x: vTop.x, y: vTop.y, layer: 1 };
                 // 4: Yan Üstü (Yan + Üst) - Layer 1
                 if (index === 4) return { x: vSide.x + vTop.x, y: vSide.y + vTop.y, layer: 1 };
                 // 5: Arka Üstü (Arka + Üst) - Layer 1
@@ -899,7 +912,7 @@
 
             update(player) {
                 this.isActive = this.checkCollision(player);
-                
+
                 // Koli üretimi
                 if (this.items.length < this.maxGroundItems) {
                     this.timer++;
@@ -907,8 +920,8 @@
                         // Yeni koli oluştur
                         let index = this.items.length;
                         let offset = this.getStackOffset(index);
-                        
-                        let baseX = this.pos.x + 50; 
+
+                        let baseX = this.pos.x + 50;
                         let baseY = this.pos.y + 100;
 
                         let targetX = baseX + offset.x;
@@ -927,16 +940,16 @@
                     for (let i = this.items.length - 1; i >= 0; i--) {
                         let crate = this.items[i];
                         if (player.pos.distance(crate.pos) < 30) {
-                             if (player.stack.length < player.maxStack) {
+                            if (player.stack.length < player.maxStack) {
                                 // Para Kontrolü
                                 if (player.money >= CONFIG.crateCost) {
                                     player.money -= CONFIG.crateCost;
-                                    
+
                                     this.items.splice(i, 1);
                                     this.rearrangeCrates();
 
-                                    for(let k=0; k<4; k++) {
-                                        if(player.stack.length < player.maxStack) {
+                                    for (let k = 0; k < 4; k++) {
+                                        if (player.stack.length < player.maxStack) {
                                             // Dinamik ürün tipi kullanılıyor
                                             let product = new Item(player.pos.x, player.pos.y - 40, this.productType);
                                             player.addToStack(product);
@@ -944,18 +957,18 @@
                                             break;
                                         }
                                     }
-                                    break; 
+                                    break;
                                 }
                             }
                         }
                     }
                 }
             }
-            
+
             rearrangeCrates() {
                 let baseX = this.pos.x + 50;
                 let baseY = this.pos.y + 100;
-                for(let i=0; i<this.items.length; i++) {
+                for (let i = 0; i < this.items.length; i++) {
                     let offset = this.getStackOffset(i);
                     this.items[i].targetPos = new Vector2(baseX + offset.x, baseY + offset.y);
                     this.items[i].zLayer = offset.layer; // Katman bilgisini güncelle
@@ -973,7 +986,7 @@
 
                 // Zemin Çizimi
                 if (this.bgSpriteLoaded) {
-                     ctx.drawImage(this.bgSprite, this.pos.x-20, this.pos.y - 40, this.w*1.5, this.h*1.5);
+                    ctx.drawImage(this.bgSprite, this.pos.x - 20, this.pos.y - 40, this.w * 1.5, this.h * 1.5);
                 } else {
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
@@ -1000,11 +1013,11 @@
                 });
 
                 drawList.forEach(item => {
-                    item.update(null, null); 
+                    item.update(null, null);
 
                     if (this.crateSpriteLoaded && item.type === 'crate') {
                         let size = this.crateSize;
-                        ctx.drawImage(this.crateSprite, item.pos.x - size/2, item.pos.y - size/2, size, size);
+                        ctx.drawImage(this.crateSprite, item.pos.x - size / 2, item.pos.y - size / 2, size, size);
                     } else {
                         item.draw(ctx);
                     }
@@ -1014,7 +1027,7 @@
 
         class CowZone extends Zone {
             constructor(x, y) {
-                super(x, y, 160, 140, 'transparent'); 
+                super(x, y, 160, 140, 'transparent');
                 this.foodCapacity = 4;
                 this.foodStock = [];
                 this.outputItems = [];
@@ -1029,10 +1042,10 @@
                 this.sprite.src = 'cowIdleSheet.webp';
                 this.spriteLoaded = false;
                 this.sprite.onload = () => { this.spriteLoaded = true; };
-                this.totalFrames = 16;
+                this.totalFrames = 18;
                 this.currentFrame = 0;
                 this.animTimer = 0;
-                this.animSpeed = 4;
+                this.animSpeed = 7;
             }
 
             update(player) {
@@ -1042,8 +1055,8 @@
                     this.fillTimer++;
                     if (this.fillTimer > 5) {
                         let bananaIdx = -1;
-                        for(let i=player.stack.length-1; i>=0; i--){
-                            if(player.stack[i].type === 'banana'){
+                        for (let i = player.stack.length - 1; i >= 0; i--) {
+                            if (player.stack[i].type === 'banana') {
                                 bananaIdx = i;
                                 break;
                             }
@@ -1053,7 +1066,7 @@
                             let item = player.stack.splice(bananaIdx, 1)[0];
                             item.inStack = false;
                             item.targetPos = new Vector2(this.pos.x + 30 + (this.foodStock.length * 20), this.pos.y + this.h - 20);
-                            item.size = 12; 
+                            item.size = 12;
                             this.foodStock.push(item);
                             this.fillTimer = 0;
                         }
@@ -1063,7 +1076,7 @@
                 if (this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     this.eatTimer++;
                     if (this.eatTimer > this.eatDuration) {
-                        this.foodStock.shift(); 
+                        this.foodStock.shift();
                         this.eatTimer = 0;
                         let rx = this.pos.x + 100 + Math.random() * 40;
                         let ry = this.pos.y + 40 + Math.random() * 80;
@@ -1079,16 +1092,16 @@
             }
 
             rearrangeFood() {
-                for(let i=0; i<this.foodStock.length; i++) {
+                for (let i = 0; i < this.foodStock.length; i++) {
                     this.foodStock[i].targetPos = new Vector2(this.pos.x + 30 + (i * 20), this.pos.y + this.h - 20);
                 }
             }
 
             draw(ctx) {
-                if(this.isActive) {
+                if (this.isActive) {
                     ctx.strokeStyle = "rgba(255,255,255,0.4)";
                     ctx.lineWidth = 4;
-                    ctx.strokeRect(this.pos.x-5, this.pos.y-5, this.w+10, this.h+10);
+                    ctx.strokeRect(this.pos.x - 5, this.pos.y - 5, this.w + 10, this.h + 10);
                 }
 
                 if (this.spriteLoaded) {
@@ -1100,32 +1113,32 @@
 
                     let frameW = this.sprite.naturalWidth / this.totalFrames;
                     let frameH = this.sprite.naturalHeight;
-                    
+
                     let targetW = 120;
                     let scale = targetW / frameW;
                     let targetH = frameH * scale;
 
                     let drawX = (this.pos.x + 80) - (targetW / 2);
-                    let drawY = (this.pos.y + 60) - (targetH / 2) - 15; 
+                    let drawY = (this.pos.y + 60) - (targetH / 2) - 15;
 
-                    ctx.drawImage(this.sprite, 
-                        this.currentFrame * frameW, 0, frameW, frameH, 
+                    ctx.drawImage(this.sprite,
+                        this.currentFrame * frameW, 0, frameW, frameH,
                         drawX, drawY, targetW, targetH
                     );
 
                 } else {
                     let cx = this.pos.x + 80;
                     let cy = this.pos.y + 60;
-                    
+
                     ctx.fillStyle = CONFIG.colors.cow;
                     ctx.beginPath();
                     ctx.roundRect(cx - 40, cy - 30, 80, 60, 10);
                     ctx.fill();
-                    
+
                     ctx.fillStyle = "black";
                     ctx.beginPath();
-                    ctx.arc(cx - 20, cy - 10, 8, 0, Math.PI*2);
-                    ctx.arc(cx + 15, cy + 10, 12, 0, Math.PI*2);
+                    ctx.arc(cx - 20, cy - 10, 8, 0, Math.PI * 2);
+                    ctx.arc(cx + 15, cy + 10, 12, 0, Math.PI * 2);
                     ctx.fill();
 
                     ctx.fillStyle = CONFIG.colors.cow;
@@ -1135,8 +1148,8 @@
 
                     ctx.fillStyle = "black";
                     ctx.beginPath();
-                    ctx.arc(cx - 45, cy - 15, 3, 0, Math.PI*2);
-                    ctx.arc(cx - 35, cy - 15, 3, 0, Math.PI*2);
+                    ctx.arc(cx - 45, cy - 15, 3, 0, Math.PI * 2);
+                    ctx.arc(cx - 35, cy - 15, 3, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
@@ -1158,15 +1171,15 @@
                 // ctx.font = "bold 14px sans-serif";
                 // ctx.textAlign = "center";
                 // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
-                
-                if(this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
+
+                if (this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     let barW = 60;
                     let pct = this.eatTimer / this.eatDuration;
                     ctx.fillStyle = "rgba(0,0,0,0.5)";
-                    let cx = this.pos.x + 80; 
+                    let cx = this.pos.x + 80;
                     let cy = this.pos.y + 60;
                     ctx.fillRect(cx - 30, cy - 50, barW, 6);
-                    ctx.fillStyle = "#f1c40f"; 
+                    ctx.fillStyle = "#f1c40f";
                     ctx.fillRect(cx - 30, cy - 50, barW * pct, 6);
                 }
             }
@@ -1180,7 +1193,7 @@
                 this.outputItems = [];
                 this.maxOutput = 4;
                 this.eatTimer = 0;
-                this.eatDuration = CONFIG.cowEatSpeed; 
+                this.eatDuration = CONFIG.cowEatSpeed;
                 this.fillTimer = 0;
                 this.label = "TAVUK";
                 this.renderConfig = { zIndexOffset: 0.5 };
@@ -1203,8 +1216,8 @@
                     this.fillTimer++;
                     if (this.fillTimer > 5) {
                         let bananaIdx = -1;
-                        for(let i=player.stack.length-1; i>=0; i--){
-                            if(player.stack[i].type === 'banana'){
+                        for (let i = player.stack.length - 1; i >= 0; i--) {
+                            if (player.stack[i].type === 'banana') {
                                 bananaIdx = i;
                                 break;
                             }
@@ -1214,7 +1227,7 @@
                             let item = player.stack.splice(bananaIdx, 1)[0];
                             item.inStack = false;
                             item.targetPos = new Vector2(this.pos.x + 30 + (this.foodStock.length * 20), this.pos.y + this.h - 20);
-                            item.size = 12; 
+                            item.size = 12;
                             this.foodStock.push(item);
                             this.fillTimer = 0;
                         }
@@ -1224,7 +1237,7 @@
                 if (this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     this.eatTimer++;
                     if (this.eatTimer > this.eatDuration) {
-                        this.foodStock.shift(); 
+                        this.foodStock.shift();
                         this.eatTimer = 0;
                         let rx = this.pos.x + 100 + Math.random() * 40;
                         let ry = this.pos.y + 40 + Math.random() * 80;
@@ -1240,16 +1253,16 @@
             }
 
             rearrangeFood() {
-                for(let i=0; i<this.foodStock.length; i++) {
+                for (let i = 0; i < this.foodStock.length; i++) {
                     this.foodStock[i].targetPos = new Vector2(this.pos.x + 30 + (i * 20), this.pos.y + this.h - 20);
                 }
             }
 
             draw(ctx) {
-                if(this.isActive) {
+                if (this.isActive) {
                     ctx.strokeStyle = "rgba(255,255,255,0.4)";
                     ctx.lineWidth = 4;
-                    ctx.strokeRect(this.pos.x-5, this.pos.y-5, this.w+10, this.h+10);
+                    ctx.strokeRect(this.pos.x - 5, this.pos.y - 5, this.w + 10, this.h + 10);
                 }
 
                 // --- SPRITE ÇİZİMİ (FALLBACK OLARAK GEOMETRİK) ---
@@ -1282,7 +1295,7 @@
                     // Fallback: Geometrik Tavuk
                     let cx = this.pos.x + 80;
                     let cy = this.pos.y + 60;
-                    
+
                     ctx.fillStyle = CONFIG.colors.chicken;
                     ctx.beginPath();
                     ctx.arc(cx, cy, 30, 0, Math.PI * 2);
@@ -1324,15 +1337,15 @@
                 // ctx.font = "bold 14px sans-serif";
                 // ctx.textAlign = "center";
                 // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
-                
-                if(this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
+
+                if (this.foodStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     let barW = 40;
                     let pct = this.eatTimer / this.eatDuration;
                     ctx.fillStyle = "rgba(0,0,0,0.5)";
-                    let cx = this.pos.x + 80; 
+                    let cx = this.pos.x + 80;
                     let cy = this.pos.y + 60;
                     ctx.fillRect(cx - 20, cy - 40, barW, 5);
-                    ctx.fillStyle = "#f1c40f"; 
+                    ctx.fillStyle = "#f1c40f";
                     ctx.fillRect(cx - 20, cy - 40, barW * pct, 5);
                 }
             }
@@ -1340,31 +1353,44 @@
 
         class BakeryZone extends Zone {
             constructor(x, y) {
-                super(x, y, 180, 140, 'transparent'); // Özel çizim
+                super(x, y, 180, 140, 'transparent');
                 this.milkCapacity = 3;
                 this.eggCapacity = 3;
-                this.milkStock = []; // Girdi 1
-                this.eggStock = [];  // Girdi 2
-                this.outputItems = []; // Pastalar
+                this.milkStock = [];
+                this.eggStock = [];
+                this.outputItems = [];
                 this.maxOutput = 4;
                 this.cookTimer = 0;
                 this.cookDuration = CONFIG.bakeryCookSpeed;
                 this.fillTimer = 0;
                 this.label = "PASTANE";
-                this.renderConfig = { zIndexOffset: 0.5 };
+
+                // Görsel Yükleme
+                this.sprite = new Image();
+                this.sprite.src = 'Patisserie.webp'; // Yeni görsel
+                this.spriteLoaded = false;
+                this.sprite.onload = () => { this.spriteLoaded = true; };
+
+                // Render Ayarları (Görselin konumu ve boyutu için)
+                this.renderConfig = {
+                    zIndexOffset: 0.1,
+                    scale: 0.6,     // Görsel ölçeği
+                    offsetY: -30    // Dikey kaydırma
+                };
             }
 
             update(player) {
                 this.isActive = this.checkCollision(player);
 
+                // Girdi Kabul Etme (Süt ve Yumurta)
                 if (this.isActive && player.stack.length > 0) {
                     this.fillTimer++;
                     if (this.fillTimer > 5) {
-                        // Süt kabul et
+                        // Süt
                         if (this.milkStock.length < this.milkCapacity) {
                             let milkIdx = -1;
-                            for(let i=player.stack.length-1; i>=0; i--){
-                                if(player.stack[i].type === 'milk'){
+                            for (let i = player.stack.length - 1; i >= 0; i--) {
+                                if (player.stack[i].type === 'milk') {
                                     milkIdx = i;
                                     break;
                                 }
@@ -1373,17 +1399,17 @@
                                 let item = player.stack.splice(milkIdx, 1)[0];
                                 item.inStack = false;
                                 item.targetPos = new Vector2(this.pos.x + 20 + (this.milkStock.length * 15), this.pos.y + this.h - 20);
-                                item.size = 12; 
+                                item.size = 12;
                                 this.milkStock.push(item);
                                 this.fillTimer = 0;
                             }
                         }
-                        
-                        // Yumurta kabul et (Süt almadıysa buna da bak)
+
+                        // Yumurta
                         if (this.eggStock.length < this.eggCapacity && this.fillTimer > 5) {
                             let eggIdx = -1;
-                            for(let i=player.stack.length-1; i>=0; i--){
-                                if(player.stack[i].type === 'egg'){
+                            for (let i = player.stack.length - 1; i >= 0; i--) {
+                                if (player.stack[i].type === 'egg') {
                                     eggIdx = i;
                                     break;
                                 }
@@ -1392,7 +1418,7 @@
                                 let item = player.stack.splice(eggIdx, 1)[0];
                                 item.inStack = false;
                                 item.targetPos = new Vector2(this.pos.x + 100 + (this.eggStock.length * 15), this.pos.y + this.h - 20);
-                                item.size = 12; 
+                                item.size = 12;
                                 this.eggStock.push(item);
                                 this.fillTimer = 0;
                             }
@@ -1404,86 +1430,137 @@
                 if (this.milkStock.length > 0 && this.eggStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     this.cookTimer++;
                     if (this.cookTimer > this.cookDuration) {
-                        // Tüket
                         this.milkStock.shift();
                         this.eggStock.shift();
                         this.cookTimer = 0;
+
+                        // **CONFIG ENTEGRASYONU**: Kekler artik rastgele degil, asagidaki rearrangeOutputs ile hizalaniyor.
+                        let spawnX = this.pos.x + CONFIG.bakeryLayout.offsetX;
+                        let spawnY = this.pos.y + CONFIG.bakeryLayout.offsetY;
                         
-                        // Üret
-                        let rx = this.pos.x + 60 + Math.random() * 60;
-                        let ry = this.pos.y + 40 + Math.random() * 40;
-                        this.outputItems.push(new Item(rx, ry, 'cake'));
+                        let item = new Item(spawnX, spawnY, 'cake');
                         
+                        // Rastgele yerel ofset ata (0-1 arası normalized, sonra scale ederiz)
+                        // Böylece spreadW/H değişince dinamik olarak açılırlar
+                        item.rndX = (Math.random() - 0.5); 
+                        item.rndY = (Math.random() - 0.5);
+
+                        this.outputItems.push(item);
                         this.rearrangeFood();
                     }
                 }
 
+                // **YENİ**: Keklerin dizilişini config ayarlarına göre güncelle
+                this.rearrangeOutputs();
+
+                // Çıktı Alma
                 if (this.isActive && this.outputItems.length > 0 && player.stack.length < player.maxStack) {
                     let item = this.outputItems.shift();
                     player.addToStack(item);
+                    // Bir kek alindiginda kalanlari tekrar duzenle
+                    this.rearrangeOutputs();
                 }
             }
 
             rearrangeFood() {
-                for(let i=0; i<this.milkStock.length; i++) {
+                for (let i = 0; i < this.milkStock.length; i++) {
                     this.milkStock[i].targetPos = new Vector2(this.pos.x + 20 + (i * 15), this.pos.y + this.h - 20);
                 }
-                for(let i=0; i<this.eggStock.length; i++) {
+                for (let i = 0; i < this.eggStock.length; i++) {
                     this.eggStock[i].targetPos = new Vector2(this.pos.x + 100 + (i * 15), this.pos.y + this.h - 20);
+                }
+            }
+            
+            // **YENİ METOD**: Config değerlerine göre kekleri dizer
+            rearrangeOutputs() {
+                const ox = CONFIG.bakeryLayout.offsetX;
+                const oy = CONFIG.bakeryLayout.offsetY;
+                const rot = CONFIG.bakeryLayout.rotation;
+                const sw = CONFIG.bakeryLayout.spreadW;
+                const sh = CONFIG.bakeryLayout.spreadH;
+
+                const rad = rot * Math.PI / 180;
+                const cos = Math.cos(rad);
+                const sin = Math.sin(rad);
+
+                for (let item of this.outputItems) {
+                    // Eğer eski item ise ve rndX yoksa ata
+                    if (typeof item.rndX === 'undefined') {
+                        item.rndX = (Math.random() - 0.5);
+                        item.rndY = (Math.random() - 0.5);
+                    }
+
+                    // Spread'e göre yerel pozisyon
+                    let localX = item.rndX * sw;
+                    let localY = item.rndY * sh;
+
+                    // Rotasyon
+                    let rx = localX * cos - localY * sin;
+                    let ry = localX * sin + localY * cos;
+
+                    // Hedef
+                    item.targetPos = new Vector2(
+                        this.pos.x + ox + rx,
+                        this.pos.y + oy + ry
+                    );
+                    
+                    // Item'ın kendi açısı da alanla dönsün mü? Genelde hoş durur.
+                    item.rotation = rot;
                 }
             }
 
             draw(ctx) {
-                if(this.isActive) {
+                if (this.isActive) {
                     ctx.strokeStyle = "rgba(255,255,255,0.4)";
                     ctx.lineWidth = 4;
-                    ctx.strokeRect(this.pos.x-5, this.pos.y-5, this.w+10, this.h+10);
+                    ctx.strokeRect(this.pos.x - 5, this.pos.y - 5, this.w + 10, this.h + 10);
                 }
 
-                // Fırın Gövdesi
-                ctx.fillStyle = CONFIG.colors.bakery;
-                ctx.beginPath();
-                ctx.roundRect(this.pos.x + 40, this.pos.y + 20, 100, 80, 5);
-                ctx.fill();
-                
-                // Fırın Camı
-                ctx.fillStyle = "#34495e";
-                ctx.fillRect(this.pos.x + 55, this.pos.y + 40, 70, 40);
-                
-                // Kap 1 (Süt - Sol)
+                // --- GÖRSEL ÇİZİMİ ---
+                if (this.spriteLoaded) {
+                    ctx.save();
+                    let centerX = this.pos.x + this.w / 2;
+                    let centerY = this.pos.y + this.h / 2;
+
+                    ctx.translate(centerX, centerY + this.renderConfig.offsetY);
+                    ctx.scale(this.renderConfig.scale, this.renderConfig.scale);
+
+                    let imgW = this.sprite.naturalWidth;
+                    let imgH = this.sprite.naturalHeight;
+
+                    ctx.drawImage(this.sprite, -imgW / 2, -imgH / 2);
+                    ctx.restore();
+                } else {
+                    // Fallback (Görsel yoksa eski çizim)
+                    ctx.fillStyle = CONFIG.colors.bakery;
+                    ctx.beginPath();
+                    ctx.roundRect(this.pos.x + 40, this.pos.y + 20, 100, 80, 5);
+                    ctx.fill();
+                    ctx.fillStyle = "#34495e";
+                    ctx.fillRect(this.pos.x + 55, this.pos.y + 40, 70, 40);
+                }
+
+                // Kaplar ve İçerikler (Her zaman üstte)
                 ctx.fillStyle = CONFIG.colors.bowl;
                 ctx.beginPath();
-                ctx.roundRect(this.pos.x + 10, this.pos.y + this.h - 35, 60, 25, 5);
+                ctx.roundRect(this.pos.x + 10, this.pos.y + this.h - 35, 60, 25, 5); // Sol kap
+                ctx.roundRect(this.pos.x + 90, this.pos.y + this.h - 35, 60, 25, 5); // Sağ kap
                 ctx.fill();
                 ctx.strokeStyle = "rgba(0,0,0,0.2)";
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Kap 2 (Yumurta - Sağ)
-                ctx.fillStyle = CONFIG.colors.bowl;
-                ctx.beginPath();
-                ctx.roundRect(this.pos.x + 90, this.pos.y + this.h - 35, 60, 25, 5);
-                ctx.fill();
-                ctx.stroke();
-
-                // İçerikler
                 this.milkStock.forEach(item => { item.update(null, null); item.draw(ctx); });
                 this.eggStock.forEach(item => { item.update(null, null); item.draw(ctx); });
                 this.outputItems.forEach(item => { item.update(null, null); item.draw(ctx); });
 
-                // METİN KALDIRILDI
-                // ctx.fillStyle = "rgba(255,255,255,0.9)";
-                // ctx.font = "bold 14px sans-serif";
-                // ctx.textAlign = "center";
-                // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y - 10);
-                
                 // Pişirme Barı
-                if(this.milkStock.length > 0 && this.eggStock.length > 0 && this.outputItems.length < this.maxOutput) {
+                if (this.milkStock.length > 0 && this.eggStock.length > 0 && this.outputItems.length < this.maxOutput) {
                     let barW = 80;
                     let pct = this.cookTimer / this.cookDuration;
                     ctx.fillStyle = "rgba(0,0,0,0.5)";
                     ctx.fillRect(this.pos.x + 50, this.pos.y + 10, barW, 6);
-                    ctx.fillStyle = "#2ecc71"; 
+                    ctx.fillStyle = "#2ecc71";
                     ctx.fillRect(this.pos.x + 50, this.pos.y + 10, barW * pct, 6);
                 }
             }
@@ -1534,9 +1611,9 @@
         class Shelf extends Zone {
             constructor(x, y, acceptedType = 'banana') {
                 let color = CONFIG.colors.shelf;
-                if(acceptedType === 'milk') color = CONFIG.colors.milkShelf;
-                if(acceptedType === 'egg') color = CONFIG.colors.eggShelf;
-                if(acceptedType === 'cake') color = CONFIG.colors.cakeShelf;
+                if (acceptedType === 'milk') color = CONFIG.colors.milkShelf;
+                if (acceptedType === 'egg') color = CONFIG.colors.eggShelf;
+                if (acceptedType === 'cake') color = CONFIG.colors.cakeShelf;
 
                 super(x, y, 120, 80, color);
                 this.acceptedType = acceptedType;
@@ -1544,12 +1621,12 @@
                 this.waitingLine = [];
                 this.maxWaitingLine = 8;
                 this.capacity = 12;
-                
-                if(acceptedType === 'banana') this.label = "MUZ RAFI";
-                else if(acceptedType === 'grape') this.label = "ÜZÜM RAFI";
-                else if(acceptedType === 'milk') this.label = "SÜT RAFI";
-                else if(acceptedType === 'egg') this.label = "YUMURTA RAFI";
-                else if(acceptedType === 'cake') this.label = "PASTA RAFI";
+
+                if (acceptedType === 'banana') this.label = "MUZ RAFI";
+                else if (acceptedType === 'grape') this.label = "ÜZÜM RAFI";
+                else if (acceptedType === 'milk') this.label = "SÜT RAFI";
+                else if (acceptedType === 'egg') this.label = "YUMURTA RAFI";
+                else if (acceptedType === 'cake') this.label = "PASTA RAFI";
 
                 this.fillTimer = 0;
 
@@ -1564,7 +1641,7 @@
                     scale: 1.0,
                     rotation: 0,
                     skewX: 0,
-                    zIndexOffset: 0.5 
+                    zIndexOffset: 0.5
                 };
             }
 
@@ -1641,14 +1718,14 @@
 
                 for (let i = 0; i < this.storedItems.length; i++) {
                     let item = this.storedItems[i];
-                    
+
                     let row = Math.floor(i / itemsPerRow); // 0, 1, 2
                     let col = i % itemsPerRow;             // 0, 1, 2, 3
 
                     // Katın başlangıç noktası
                     let originX = this.pos.x + startXOffset;
                     let originY = this.pos.y + shelfStartY + (row * shelfGapY);
-                    
+
                     let cX = col * colSpacing * dirX;
                     let cY = col * colSpacing * dirY;
 
@@ -1656,7 +1733,7 @@
                         originX + cX,
                         originY + cY
                     );
-                    
+
                     item.rotation = 4;
                 }
             }
@@ -1698,7 +1775,7 @@
 
                     let imgW = this.sprite.naturalWidth;
                     let imgH = this.sprite.naturalHeight;
-                    let baseScale = 0.5; 
+                    let baseScale = 0.5;
 
                     ctx.drawImage(this.sprite, -imgW * baseScale / 2, -imgH * baseScale / 2, imgW * baseScale, imgH * baseScale);
 
@@ -1716,7 +1793,7 @@
 
             drawContent(ctx) {
                 this.storedItems.forEach(i => { i.update(null, null); i.draw(ctx); });
-                
+
                 ctx.font = "11px sans-serif";
                 if (this.waitingLine.length >= this.maxWaitingLine) {
                     ctx.fillStyle = "#e74c3c";
@@ -1801,7 +1878,7 @@
                             let customer = this.queue.shift();
                             let totalItems = customer.stack.length;
                             let totalCost = totalItems * CONFIG.itemSellPrice;
-                            
+
                             this.spawnMoneyStack(totalCost);
                             customer.state = 'leaving';
                             this.processTimer = 0;
@@ -1811,14 +1888,24 @@
             }
 
             draw(ctx) {
-                ctx.fillStyle = "rgba(155, 89, 182, 0.4)";
-                ctx.lineWidth = this.isActive ? 4 : 2;
-                ctx.strokeStyle = "rgba(0,0,0,0.2)";
+                // Background Square Logic
+                if (!this.spriteLoaded) {
+                    ctx.fillStyle = "rgba(155, 89, 182, 0.4)";
+                    ctx.lineWidth = this.isActive ? 4 : 2;
+                    ctx.strokeStyle = "rgba(0,0,0,0.2)";
 
-                ctx.beginPath();
-                ctx.roundRect(this.pos.x, this.pos.y, this.w, this.h, 10);
-                ctx.fill();
-                ctx.stroke();
+                    ctx.beginPath();
+                    ctx.roundRect(this.pos.x, this.pos.y, this.w, this.h, 10);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.isActive) {
+                    // Just a subtle outline if sprite is loaded and active
+                    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(this.pos.x, this.pos.y, this.w, this.h, 10);
+                    ctx.stroke();
+                }
 
                 if (this.spriteLoaded) {
                     ctx.save();
@@ -1856,7 +1943,7 @@
             }
 
             drawContent(ctx) {
-                
+
             }
         }
 
@@ -1870,53 +1957,162 @@
                 this.spawnParams = spawnParams;
                 this.label = "KİLİTLİ";
                 this.payTimer = 0;
+                this.shakeTimer = 0; // Shake animation
+                this.shakeCooldown = 0; // Shake Cooldown
+
+                // Preview Object Creation (Görseli almak için geçici nesne)
+                this.previewObj = null;
+                try {
+                    if (typeToSpawn === 'CargoZone') this.previewObj = new CargoZone(x, y, ...spawnParams);
+                    else if (typeToSpawn === 'Shelf') this.previewObj = new Shelf(x, y, ...spawnParams);
+                    else if (typeToSpawn === 'CowZone') this.previewObj = new CowZone(x, y);
+                    else if (typeToSpawn === 'ChickenZone') this.previewObj = new ChickenZone(x, y);
+                    else if (typeToSpawn === 'BakeryZone') this.previewObj = new BakeryZone(x, y);
+                    else if (typeToSpawn === 'Checkout') this.previewObj = new Checkout(x, y);
+                } catch (e) {
+                    console.log("Preview init error", e);
+                }
             }
 
             update(player) {
                 this.isActive = this.checkCollision(player);
+                if (this.shakeTimer > 0) this.shakeTimer--;
+                if (this.shakeCooldown > 0) this.shakeCooldown--;
 
-                if (this.isActive && player.money > 0 && this.paid < this.cost) {
-                    let amountPerFrame = Math.ceil(this.initialCost / 180); 
-                    let amount = Math.min(amountPerFrame, player.money, this.cost - this.paid);
-                    player.money -= amount;
-                    this.paid += amount;
+                if (this.isActive) {
+                    let remaining = this.cost - this.paid;
+
+                    // NEW LOGIC: Only start paying if player has enough for the WHOLE remainder
+                    if (player.money >= remaining) {
+                        if (this.paid < this.cost) {
+                            // Pay slightly faster for better game feel
+                            let amountPerFrame = Math.ceil(this.initialCost / 60);
+                            let amount = Math.min(amountPerFrame, player.money, remaining);
+                            player.money -= amount;
+                            this.paid += amount;
+                        }
+                    } else if (remaining > 0 && player.money < remaining) {
+                        // REJECT logic with cooldown
+                        if (this.shakeCooldown === 0) {
+                            this.shakeTimer = 15;
+                            this.shakeCooldown = 60; // 1 second cooldown
+                        }
+                    }
                 }
 
                 if (this.paid >= this.cost) {
                     this.shouldDestroy = true;
-                    // GÜNCELLENEN: Artık Producer yerine CargoZone doğuruyoruz
                     if (this.typeToSpawn === 'Producer' || this.typeToSpawn === 'CargoZone') {
                         zones.push(new CargoZone(this.pos.x, this.pos.y, ...this.spawnParams));
                     } else if (this.typeToSpawn === 'Shelf') {
                         zones.push(new Shelf(this.pos.x, this.pos.y, ...this.spawnParams));
-                    } else if (this.typeToSpawn === 'CowZone') { 
+                    } else if (this.typeToSpawn === 'CowZone') {
                         zones.push(new CowZone(this.pos.x, this.pos.y));
-                    } else if (this.typeToSpawn === 'ChickenZone') { 
+                    } else if (this.typeToSpawn === 'ChickenZone') {
                         zones.push(new ChickenZone(this.pos.x, this.pos.y));
-                    } else if (this.typeToSpawn === 'BakeryZone') { 
+                    } else if (this.typeToSpawn === 'BakeryZone') {
                         zones.push(new BakeryZone(this.pos.x, this.pos.y));
+                    } else if (this.typeToSpawn === 'Checkout') {
+                        zones.push(new Checkout(this.pos.x, this.pos.y));
                     }
                 }
             }
 
-            drawContent(ctx) {
+            draw(ctx) {
+                let drawnCustom = false;
+
+                // Calculate Shake Offset
+                let drawX = this.pos.x;
+                let drawY = this.pos.y;
+                if (this.shakeTimer > 0) {
+                    drawX += (Math.random() - 0.5) * 10;
+                }
+
+                // PREVIEW (FADE) ÇİZİM MANTIĞI
+                if (this.previewObj) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.4; // Fade etkisi
+
+                    // 1. CargoZone Preview
+                    if (this.typeToSpawn === 'CargoZone' && this.previewObj.bgSpriteLoaded) {
+                        ctx.drawImage(this.previewObj.bgSprite, drawX - 20, drawY - 40, this.w * 1.5, this.h * 1.5);
+                        drawnCustom = true;
+                    }
+                    // 2. Shelf ve Checkout Preview
+                    // 2. Shelf, Checkout ve BakeryZone Preview
+                    else if ((this.typeToSpawn === 'Shelf' || this.typeToSpawn === 'Checkout' || this.typeToSpawn === 'BakeryZone') && this.previewObj.spriteLoaded) {
+                        let img = this.previewObj.sprite;
+                        let centerX = drawX + this.w / 2;
+                        let centerY = drawY + this.h / 2;
+
+                        ctx.translate(centerX, centerY - 20);
+
+                        // BakeryZone için ölçeği biraz küçültelim ki kutuya sığsın
+                        let scale = (this.typeToSpawn === 'BakeryZone') ? 0.6 : 0.5;
+
+                        ctx.drawImage(img, -img.naturalWidth * scale / 2, -img.naturalHeight * scale / 2, img.naturalWidth * scale, img.naturalHeight * scale);
+                        drawnCustom = true;
+                    }
+                    // 3. Cow ve Chicken Preview (İlk Kare)
+                    else if ((this.typeToSpawn === 'CowZone' || this.typeToSpawn === 'ChickenZone') && this.previewObj.spriteLoaded) {
+                        let sprite = this.previewObj.sprite;
+                        let totalFrames = this.previewObj.totalFrames;
+                        let frameW = sprite.naturalWidth / totalFrames;
+                        let frameH = sprite.naturalHeight;
+
+                        let targetW = (this.typeToSpawn === 'CowZone') ? 120 : 70;
+                        let scale = targetW / frameW;
+                        let targetH = frameH * scale;
+
+                        let drawXPos = (drawX + 80) - (targetW / 2);
+                        let drawYPos = (drawY + 60) - (targetH / 2) - 15;
+
+                        ctx.drawImage(sprite, 0, 0, frameW, frameH, drawXPos, drawYPos, targetW, targetH);
+                        drawnCustom = true;
+                    }
+
+                    ctx.restore();
+                }
+
+                // FALLBACK: Custom görsel yoksa standart gri kutuyu çiz
+                if (!drawnCustom) {
+                    ctx.fillStyle = CONFIG.colors.locked;
+                    ctx.beginPath();
+                    ctx.roundRect(drawX, drawY, this.w, this.h, 10);
+                    ctx.fill();
+                }
+
+                // Sınır Çizgisi (Her zaman çizilir)
+                ctx.strokeStyle = "rgba(255,255,255,0.2)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(drawX, drawY, this.w, this.h, 10);
+                ctx.stroke();
+
+                // Kilit, Para, Bar (Her zaman çizilir)
+                this.drawContent(ctx, drawX, drawY);
+            }
+
+            drawContent(ctx, dx, dy) {
+                // Use passed coordinates (dx, dy) to respect shaking
+                let x = dx || this.pos.x;
+                let y = dy || this.pos.y;
+
                 let pct = this.paid / this.cost;
                 ctx.fillStyle = "rgba(0,0,0,0.5)";
-                ctx.fillRect(this.pos.x + 10, this.pos.y + this.h / 2 - 10, this.w - 20, 20);
-                ctx.fillStyle = "#2ecc71";
-                ctx.fillRect(this.pos.x + 10, this.pos.y + this.h / 2 - 10, (this.w - 20) * pct, 20);
+                ctx.fillRect(x + 10, y + this.h / 2 - 10, this.w - 20, 20);
+
+                // Color change on rejection (shake)
+                ctx.fillStyle = (this.shakeTimer > 0) ? "#e74c3c" : "#2ecc71";
+                ctx.fillRect(x + 10, y + this.h / 2 - 10, (this.w - 20) * pct, 20);
 
                 ctx.fillStyle = "white";
                 ctx.font = "bold 16px sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText(`$${this.cost - this.paid}`, this.pos.x + this.w / 2, this.pos.y + this.h / 2 + 6);
-                
-                // METİN KALDIRILDI
-                // ctx.font = "bold 12px sans-serif";
-                // ctx.fillText(this.label, this.pos.x + this.w / 2, this.pos.y + 20);
-                
+                ctx.fillText(`$${this.cost - this.paid}`, x + this.w / 2, y + this.h / 2 + 6);
+
                 ctx.font = "24px sans-serif";
-                ctx.fillText("🔒", this.pos.x + this.w / 2, this.pos.y + this.h - 20);
+                ctx.fillText("🔒", x + this.w / 2, y + this.h - 20);
             }
         }
 
@@ -1930,23 +2126,23 @@
         let zones = [];
         let customers = [];
         let moneys = [];
-        let stains = []; 
+        let stains = [];
         let customerSpawnTimer = 0;
         let draggedZone = null;
         let dragOffset = new Vector2(0, 0);
 
         function initLevel() {
             // YENİ: CargoZone (Muz için)
-            zones.push(new CargoZone(100, 200, 'banana')); 
-            
+            zones.push(new CargoZone(100, 200, 'banana'));
+
             // Kilitli Alanlar - Artık hepsi CargoZone açıyor
             zones.push(new UnlockZone(100, 400, 140, 140, 50, 'CargoZone', ['banana']));
             zones.push(new UnlockZone(100, 600, 140, 140, 150, 'CargoZone', ['grape']));
-            
+
             zones.push(new Shelf(400, 250, 'banana'));
-            zones.push(new UnlockZone(400, 400, 120, 80, 30, 'Shelf', ['banana']));
+            zones.push(new UnlockZone(400, 440, 120, 80, 30, 'Shelf', ['banana']));
             zones.push(new UnlockZone(400, 630, 120, 80, 100, 'Shelf', ['grape']));
-            
+
             // YENİ KİLİTLİ ALANLAR (Faz 32)
             zones.push(new UnlockZone(100, 800, 160, 140, 300, 'CowZone')); // İnek
             zones.push(new UnlockZone(400, 800, 120, 80, 150, 'Shelf', ['milk'])); // Süt Rafı

@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pixle Knight Quest</title>
+    <!-- CrazyGames SDK -->
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
     <!-- Retro Pixel Font -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -17,6 +19,7 @@
             --border-shadow: #1e272e;
             --text-white: #f1f2f6;
             --shop-green: #2ecc71;
+            --ad-purple: #9b59b6;
         }
 
         body {
@@ -27,13 +30,26 @@
             color: var(--text-white);
             user-select: none;
             touch-action: none;
-            /* Prevent pull-to-refresh on mobile */
             overscroll-behavior: none;
         }
 
         #gameCanvas {
             display: block;
             image-rendering: pixelated;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        /* NEW: Effect Canvas for UI particles (Confetti) on top of modals */
+        #effectCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* Click-through */
+            z-index: 50; /* Higher than modals (z-index 10) */
         }
 
         /* --- SPLASH SCREEN --- */
@@ -127,6 +143,7 @@
             height: 100%;
             pointer-events: none;
             display: none; 
+            z-index: 5;
         }
 
         /* XP Bar */
@@ -142,7 +159,6 @@
             border: 4px solid #fff;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             image-rendering: pixelated;
-            z-index: 5;
         }
 
         #xp-bar-fill {
@@ -206,6 +222,33 @@
             background: rgba(0,0,0,0.5);
             padding: 5px 10px;
             border-radius: 5px;
+        }
+
+        /* --- COUNTDOWN OVERLAY --- */
+        #countdown-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            z-index: 20;
+            pointer-events: none;
+        }
+        
+        #countdown-text {
+            font-size: 80px;
+            color: #fff;
+            text-shadow: 4px 4px 0 #000, 0 0 20px var(--primary-gold);
+            animation: pulseFast 0.5s infinite alternate;
+        }
+
+        @keyframes pulseFast {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
         }
 
         /* --- MODALS --- */
@@ -288,7 +331,6 @@
             position: relative;
             overflow: hidden;
             margin: 5px;
-            /* Ensure buttons don't overflow horizontally on tiny screens */
             max-width: 100%; 
             white-space: nowrap;
         }
@@ -301,6 +343,13 @@
             background: var(--primary-gold);
             color: #000;
         }
+        
+        /* AD BUTTON STYLE */
+        .retro-btn.purple {
+            background: var(--ad-purple);
+            border-color: #fff;
+            box-shadow: 0 0 10px var(--ad-purple);
+        }
 
         .retro-btn:hover {
             transform: translateY(-2px);
@@ -310,6 +359,15 @@
         .retro-btn:active {
             transform: translateY(2px);
             box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Disabled Button Style */
+        .retro-btn:disabled {
+            filter: grayscale(100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         /* --- SHOP STYLES --- */
@@ -414,7 +472,6 @@
 
         /* --- MOBILE / PORTRAIT OPTIMIZATIONS --- */
         @media (max-width: 768px) {
-            /* Compact Header */
             #xp-bar-container {
                 width: 95%;
                 height: 15px;
@@ -422,11 +479,11 @@
             }
 
             .hud-stat {
-                font-size: 10px; /* Smaller font on mobile */
+                font-size: 10px;
             }
 
             #fps-meter {
-                display: none; /* Hide FPS on small screens to save space */
+                display: none; 
             }
 
             #level-display {
@@ -445,29 +502,27 @@
             }
 
             #gold-count {
-                top: 50px; /* Stack under kills */
+                top: 50px; 
                 right: 10px;
             }
 
-            /* Modal Adjustments */
             .modal-content {
                 padding: 20px;
                 width: 90%;
             }
 
             h1 {
-                font-size: 20px; /* Smaller titles */
+                font-size: 20px; 
                 margin-bottom: 15px;
             }
 
             .retro-btn {
                 padding: 12px 15px;
                 font-size: 12px;
-                width: 100%; /* Full width buttons on mobile */
+                width: 100%; 
                 box-sizing: border-box;
             }
 
-            /* Upgrade Cards: Vertical Stack in list view for better readability */
             #upgrade-options {
                 flex-direction: column;
                 gap: 10px;
@@ -477,14 +532,14 @@
             .upgrade-card {
                 width: 100%;
                 height: auto;
-                flex-direction: row; /* Icon left, Text right */
+                flex-direction: row; 
                 justify-content: flex-start;
                 padding: 10px;
                 text-align: left;
             }
 
             .upgrade-card:hover {
-                transform: translateX(5px); /* Slide right instead of up */
+                transform: translateX(5px); 
             }
 
             .card-icon {
@@ -498,7 +553,6 @@
                 margin-bottom: 2px;
             }
             
-            /* Shop Adjustments */
             .shop-name {
                 font-size: 10px;
             }
@@ -512,6 +566,8 @@
 <body>
 
     <canvas id="gameCanvas"></canvas>
+    <!-- New dedicated canvas for UI Effects (Confetti) on TOP of everything -->
+    <canvas id="effectCanvas"></canvas>
 
     <!-- SPLASH SCREEN -->
     <div id="splash-screen">
@@ -537,6 +593,11 @@
 
         <div id="hp-display" class="hud-stat">HP 100</div>
     </div>
+    
+    <!-- COUNTDOWN OVERLAY -->
+    <div id="countdown-overlay" class="hidden">
+        <div id="countdown-text">3</div>
+    </div>
 
     <!-- START SCREEN -->
     <div id="start-screen" class="modal">
@@ -554,7 +615,7 @@
         </div>
     </div>
 
-    <!-- SHOP SCREEN (NEW) -->
+    <!-- SHOP SCREEN -->
     <div id="shop-screen" class="modal hidden">
         <div class="modal-content">
             <h1>ARMORY</h1>
@@ -604,18 +665,310 @@
         </div>
     </div>
 
-    <!-- GAME OVER SCREEN -->
+    <!-- GAME OVER SCREEN (UPDATED) -->
     <div id="gameover-screen" class="modal hidden">
         <div class="modal-content">
             <h1 style="color: #57606f;">YOU DIED</h1>
             <p id="final-stats">Calculating...</p>
             <p style="color: #f1c40f;" id="gold-earned-text">+0 GOLD</p>
-            <!-- Changed from location.reload() to safe function -->
+            
+            <!-- REWARDED AD BUTTON -->
+            <button class="retro-btn purple" id="revive-btn" onclick="watchAdToRevive()">REVIVE (50% HP)</button>
+            <br>
             <button class="retro-btn" onclick="returnToMainMenu()">MAIN MENU</button>
         </div>
     </div>
 
     <script>
+        /**
+         * --- CRAZYGAMES SDK SETUP ---
+         */
+        let crazysdk;
+        window.CrazyGames.SDK.init().then((sdk) => {
+            crazysdk = sdk;
+            console.log('CrazyGames SDK initialized');
+        }).catch((e) => {
+            console.log('Error initializing SDK (Not on CrazyGames)', e);
+            // Change button text for non-CrazyGames platforms
+            const btn = document.getElementById('revive-btn');
+            if(btn) {
+                btn.innerText = "TRY FREE REVIVE";
+            }
+        });
+
+        // AD LOGIC
+        function watchAdToRevive() {
+            const btn = document.getElementById('revive-btn');
+
+            if (!crazysdk) {
+                console.log("SDK not detected. Rolling dice for free revive...");
+                
+                // 1. Disable button
+                btn.disabled = true;
+                btn.innerText = "CONNECTING...";
+                
+                // 2. Tension Delay (1.2s)
+                setTimeout(() => {
+                    // 3. Roll the dice (30% Chance)
+                    const isLucky = Math.random() < 0.3; // %30
+                    
+                    if (isLucky) {
+                        // SUCCESS
+                        btn.innerText = "JACKPOT! LUCKY REVIVE!";
+                        btn.style.backgroundColor = "#2ecc71"; // Green
+                        btn.style.color = "#fff";
+                        
+                        // Spawn Confetti Particles!
+                        spawnConfetti(CANVAS.width / 2, CANVAS.height / 2);
+                        
+                        setTimeout(() => {
+                            startReviveCountdown();
+                        }, 1000); 
+                    } else {
+                        // FAIL
+                        btn.innerText = "NO SIGNAL... BAD LUCK";
+                        btn.style.backgroundColor = "#95a5a6"; // Grey
+                        btn.style.borderColor = "#7f8c8d";
+                        // Button remains disabled, force Main Menu
+                    }
+                }, 1200);
+
+                return;
+            }
+
+            crazysdk.ad.requestAd('rewarded', {
+                adStarted: () => {
+                    console.log('Ad started');
+                    bgMusic.pause();
+                },
+                adFinished: () => {
+                    console.log('Ad finished');
+                    startReviveCountdown();
+                },
+                adError: (error) => {
+                    console.log('Ad error', error);
+                    bgMusic.play(); // Resume if failed
+                }
+            });
+        }
+
+        // COUNTDOWN & REVIVE SEQUENCE
+        function startReviveCountdown() {
+            // Hide Game Over Screen Immediately
+            document.getElementById('gameover-screen').classList.add('hidden');
+            
+            // Show Countdown Overlay
+            const overlay = document.getElementById('countdown-overlay');
+            const text = document.getElementById('countdown-text');
+            overlay.classList.remove('hidden');
+            
+            let count = 3;
+            text.innerText = count;
+            
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    text.innerText = count;
+                } else {
+                    // Removed "FIGHT!" text logic as requested
+                    clearInterval(interval);
+                    overlay.classList.add('hidden');
+                    revivePlayer();
+                }
+            }, 1000);
+        }
+
+        function revivePlayer() {
+            // Restore HP to 50%
+            player.hp = Math.floor(player.maxHp * 0.5);
+            updateHUD();
+            
+            // Mark as revived so they can't do it again
+            gameState.hasRevived = true;
+
+            // SHOCKWAVE EFFECT (Visual + Physics)
+            spawnShockwave(player.x, player.y);
+
+            // Resume Game
+            gameState.running = true;
+            
+            // Resume Music
+            bgMusic.play().catch(e => console.log(e));
+            
+            // Notify SDK gameplay continued
+            if (crazysdk) crazysdk.game.gameplayStart();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * --- PARTICLE SYSTEM (VISUAL JUICE) ---
+         */
+        const EFFECT_CANVAS = document.getElementById('effectCanvas');
+        const EFFECT_CTX = EFFECT_CANVAS.getContext('2d');
+        
+        class Particle {
+            constructor(x, y, color, speed) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 5 + 4;
+                const angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 100;
+                this.gravity = 0.2;
+                this.decay = Math.random() * 2 + 1;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= this.decay;
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+        
+        // NEW SHOCKWAVE CLASS
+        class Shockwave {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 10;
+                this.maxRadius = 600;
+                this.speed = 25; // Fast expansion
+                this.alpha = 1;
+                this.active = true;
+                this.forceApplied = false;
+            }
+            
+            update() {
+                this.radius += this.speed;
+                this.alpha -= 0.03; // Fade out
+                
+                if (this.alpha <= 0) this.active = false;
+                
+                // Apply Physics to Enemies continuously as it expands (or just once effectively)
+                // Doing it frame by frame ensures newly caught enemies are pushed
+                // For performance, we can just push nearby enemies once or check distance
+                
+                // Let's push enemies that are within current radius band
+                enemies.forEach(e => {
+                    const dx = e.x - this.x;
+                    const dy = e.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // If enemy is within the expanding ring width
+                    if (dist < this.radius && dist > this.radius - 100) {
+                        const angle = Math.atan2(dy, dx);
+                        const pushForce = 15; // Strong push per frame
+                        e.x += Math.cos(angle) * pushForce;
+                        e.y += Math.sin(angle) * pushForce;
+                        // Stun or damage?
+                        e.hp -= 0.5; // Minor damage from shockwave
+                    }
+                });
+            }
+            
+            draw(ctx) {
+                const screenX = this.x - camera.x;
+                const screenY = this.y - camera.y;
+                
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                // Create a glowing ring effect
+                const gradient = ctx.createRadialGradient(screenX, screenY, this.radius * 0.6, screenX, screenY, this.radius);
+                gradient.addColorStop(0, 'rgba(255, 165, 2, 0)'); // Transparent Inner
+                gradient.addColorStop(0.8, 'rgba(255, 215, 0, 0.6)'); // Gold Middle
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Fade Outer
+                
+                ctx.fillStyle = gradient;
+                ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Extra ring stroke
+                ctx.strokeStyle = `rgba(255, 255, 0, ${this.alpha})`;
+                ctx.lineWidth = 5;
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+        }
+        
+        let particles = [];
+        let shockwaves = [];
+        
+        function spawnConfetti(x, y) {
+            // Spawn on UI Layer
+            for(let i=0; i<80; i++) {
+                const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
+                // Use screen center for confetti origin
+                const p = new Particle(window.innerWidth/2, window.innerHeight/2, colors[Math.floor(Math.random()*colors.length)], Math.random()*15 + 5);
+                particles.push(p);
+            }
+            
+            if(!gameState.running) {
+                requestAnimationFrame(animationLoopWhilePaused);
+            }
+        }
+        
+        function spawnShockwave(x, y) {
+            shockwaves.push(new Shockwave(x, y));
+        }
+        
+        function animationLoopWhilePaused() {
+            // Loop for UI effects while game is paused (modal open)
+            if(gameState.running) return;
+            
+            // Clear and Draw Effect Canvas Only
+            EFFECT_CTX.clearRect(0, 0, EFFECT_CANVAS.width, EFFECT_CANVAS.height);
+            
+            handleParticles();
+            
+            if(particles.length > 0) {
+                requestAnimationFrame(animationLoopWhilePaused);
+            }
+        }
+        
+        function handleParticles() {
+            // 1. Confetti (UI Layer - EffectCanvas)
+            if (particles.length > 0) {
+                // If game is running, we must manually clear effect canvas each frame as draw() clears main canvas
+                // If paused, the separate loop handles it
+                if (gameState.running) {
+                     EFFECT_CTX.clearRect(0, 0, EFFECT_CANVAS.width, EFFECT_CANVAS.height);
+                }
+                
+                for(let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.update();
+                    if(p.life <= 0) {
+                        particles.splice(i, 1);
+                        continue;
+                    }
+                    p.draw(EFFECT_CTX);
+                }
+            }
+            
+            // 2. Shockwaves (Game World Layer - Main CTX)
+            // We draw these on the main canvas because they need to be relative to camera/world
+            for(let i = shockwaves.length - 1; i >= 0; i--) {
+                const s = shockwaves[i];
+                s.update();
+                if(!s.active) {
+                    shockwaves.splice(i, 1);
+                    continue;
+                }
+                s.draw(CTX);
+            }
+        }
+
         /**
          * --- SAVE & META PROGRESSION SYSTEM ---
          */
@@ -693,6 +1046,12 @@
          * --- SPLASH SCREEN LOGIC ---
          */
         window.addEventListener('load', () => {
+            // Resize Canvas
+            CANVAS.width = window.innerWidth;
+            CANVAS.height = window.innerHeight;
+            EFFECT_CANVAS.width = window.innerWidth;
+            EFFECT_CANVAS.height = window.innerHeight;
+            
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 splash.classList.add('fade-out');
@@ -707,9 +1066,6 @@
          */
         const CANVAS = document.getElementById('gameCanvas');
         const CTX = CANVAS.getContext('2d');
-
-        CANVAS.width = window.innerWidth;
-        CANVAS.height = window.innerHeight;
 
         const GAME_CONFIG = {
             playerSpeed: 3,
@@ -735,7 +1091,7 @@
         let currentTrackIdx = 0;
         const bgMusic = new Audio();
         bgMusic.preload = 'auto'; // Helps with Safari loading
-        bgMusic.volume = 0.3; // Base volume
+        bgMusic.volume = 0.4; // Base volume
 
         // Function to handle playlist logic
         async function playNextTrack() {
@@ -755,8 +1111,6 @@
                 await bgMusic.play();
                 
             } catch (e) {
-                // AbortError is common when switching tracks rapidly or loading states
-                // We log it but don't let it break the game loop
                 if (e.name !== 'AbortError') {
                     console.log("Audio playback error:", e);
                 }
@@ -775,7 +1129,8 @@
             frames: 0,
             time: 0,
             enemiesKilled: 0,
-            sessionGold: 0 // Gold collected in this run
+            sessionGold: 0,
+            hasRevived: false // Track one-time revive
         };
 
         let camera = { x: 0, y: 0 };
@@ -1225,9 +1580,6 @@
             draw() {
                 const screenX = this.x - camera.x;
                 const screenY = this.y - camera.y;
-
-                if (screenX < -100 || screenX > CANVAS.width + 100 ||
-                    screenY < -100 || screenY > CANVAS.height + 100) return;
 
                 if (this.img && this.img.complete && this.img.naturalWidth !== 0) {
                     CTX.save();
@@ -1692,7 +2044,8 @@
                 frames: 0,
                 time: 0,
                 enemiesKilled: 0,
-                sessionGold: 0
+                sessionGold: 0,
+                hasRevived: false // Reset revive flag for new game
             };
             updateHUD();
             gameLoop();
@@ -1764,12 +2117,17 @@
             coins = coins.filter(c => !c.update());
 
             texts = texts.filter(t => !t.update());
+            
+            // Handle Particles in Game Loop
+            handleParticles();
         }
 
         // --- OPTIMIZED TILING DRAW FUNCTION ---
         function draw() {
-            if (!gameState.running) return; // Stop drawing if game not running
-
+            // Draw function must run even if paused for the "Confetti" effect to work on top of game over screen
+            // But main game elements should ideally not jitter if paused. 
+            // However, our particle system relies on draw() loop being active or manually called.
+            
             // 1. Clear background (fallback black)
             CTX.fillStyle = '#222';
             CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
@@ -1817,7 +2175,7 @@
             projectiles.forEach(p => p.draw());
             if (player) player.draw();
             texts.forEach(t => t.draw());
-
+            
             if (joystick.active) {
                 CTX.beginPath();
                 CTX.arc(joystick.originX, joystick.originY, joystick.maxRadius, 0, Math.PI * 2);
@@ -1853,6 +2211,9 @@
             currentTrackIdx = 0; // Reset index
             playNextTrack(); // Start first track
             
+            // SDK: Start Gameplay Event
+            if (crazysdk) crazysdk.game.gameplayStart();
+            
             initGame();
         }
 
@@ -1865,11 +2226,30 @@
             // Stop Music & Reset Volume
             bgMusic.pause();
             bgMusic.currentTime = 0;
-            bgMusic.volume = 0.3; // Reset volume for main menu
+            bgMusic.volume = 0.4; // Reset volume for main menu
+            
+            // SDK: Stop Gameplay Event
+            if (crazysdk) crazysdk.game.gameplayStop();
             
             // SAVE LOGIC
             saveData.gold += gameState.sessionGold;
             saveGame();
+            
+            // Reset Revive Button State for new game logic
+            const reviveBtn = document.getElementById('revive-btn');
+            if (reviveBtn) {
+                // If player already revived this session, hide button
+                if (gameState.hasRevived) {
+                    reviveBtn.style.display = 'none';
+                } else {
+                    reviveBtn.style.display = 'inline-block';
+                    reviveBtn.disabled = false;
+                    reviveBtn.innerText = crazysdk ? "📺 REVIVE (50% HP)" : "TRY FREE REVIVE";
+                    reviveBtn.style.backgroundColor = "";
+                    reviveBtn.style.color = "";
+                    reviveBtn.style.borderColor = "";
+                }
+            }
             
             document.getElementById('gameover-screen').classList.remove('hidden');
             document.getElementById('final-stats').innerHTML =
@@ -1908,7 +2288,7 @@
 
         function showUpgradeMenu() {
             // DUCK VOLUME (Lower volume for menu)
-            bgMusic.volume = 0.05;
+            bgMusic.volume = 0.1;
             
             const container = document.getElementById('upgrade-options');
             container.innerHTML = '';
@@ -1940,7 +2320,7 @@
 
         function selectUpgrade(id) {
             // RESTORE VOLUME
-            bgMusic.volume = 0.3;
+            bgMusic.volume = 0.4;
 
             if (id === 'heal') {
                 player.hp = Math.min(player.hp + 30, player.maxHp);
@@ -1959,6 +2339,8 @@
         window.addEventListener('resize', () => {
             CANVAS.width = window.innerWidth;
             CANVAS.height = window.innerHeight;
+            EFFECT_CANVAS.width = window.innerWidth;
+            EFFECT_CANVAS.height = window.innerHeight;
         });
 
     </script>

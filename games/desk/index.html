@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Drift Hammer: Optimized Edition</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #222;
+            font-family: 'Segoe UI', sans-serif;
+            touch-action: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #ffcc00;
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+
+        #stats {
+            text-align: right;
+            pointer-events: auto;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 15px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-left: 10px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        #score-display {
+            font-size: 20px;
+            color: #fff;
+        }
+
+        #health-display {
+            font-size: 20px;
+            color: #0f0;
+        }
+
+        #debug-panel {
+            margin-top: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px;
+            border-radius: 8px;
+            display: inline-block;
+            text-align: left;
+        }
+
+        input[type=range] {
+            vertical-align: middle;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        button {
+            background: #ffcc00;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transform: skew(-10deg);
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: skew(-10deg) scale(1.1);
+            background: #fff;
+        }
+
+        #speedometer {
+            font-size: 30px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px #00aaff;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .mobile-controls-container {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            height: 150px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 15;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .group-left {
+            flex-direction: column-reverse;
+            align-items: center;
+        }
+
+        .group-right {
+            flex-direction: row;
+            align-items: flex-end;
+        }
+
+        .touch-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background 0.1s, transform 0.1s;
+        }
+
+        .touch-btn:active,
+        .touch-btn.active {
+            background: rgba(255, 204, 0, 0.5);
+            border-color: #ffcc00;
+            transform: scale(0.95);
+        }
+
+        .btn-gas {
+            height: 100px;
+            background: rgba(0, 255, 0, 0.1);
+            border-color: rgba(0, 255, 0, 0.3);
+        }
+
+        .btn-break {
+            height: 60px;
+            width: 60px;
+            font-size: 14px;
+            background: rgba(255, 0, 0, 0.1);
+            border-color: rgba(255, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui-layer">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
+            <div>
+                <h1>DRIFT & HAMMER</h1>
+                <div style="font-size:12px; color:#ccc; margin-top:5px;">PC: WASD | Mobil: Ekran Tuşları</div>
+            </div>
+
+            <div id="stats">
+                <div class="stat-box">SKOR: <span id="score-display">0</span></div>
+                <div class="stat-box">CAN: <span id="health-display">100</span></div>
+                <div class="stat-box">FPS: <span id="fps-display">0</span></div>
+
+                <div id="debug-panel">
+                    <div style="font-size:12px; color:#ccc; margin-bottom:5px;">KAMERA (DEBUG)</div>
+                    <input type="range" id="cam-dist-slider" min="10" max="150" value="150">
+                </div>
+            </div>
+        </div>
+
+        <div id="speedometer">0 KM/H</div>
+    </div>
+
+    <div class="mobile-controls-container">
+        <div class="control-group group-left">
+            <div class="touch-btn btn-break" data-key="ArrowDown">S</div>
+            <div class="touch-btn btn-gas" data-key="ArrowUp">W</div>
+        </div>
+
+        <div class="control-group group-right">
+            <div class="touch-btn" data-key="ArrowLeft">◀</div>
+            <div class="touch-btn" data-key="ArrowRight">▶</div>
+        </div>
+    </div>
+
+    <div id="game-over">
+        <h1 style="font-size: 50px; color: #ff4444;">PARÇALANDIN</h1>
+        <p style="color: #ccc; margin-bottom: 30px;">Skorun: <span id="final-score">0</span></p>
+        <button onclick="location.reload()">TEKRAR DENE</button>
+    </div>
+
+    <!-- Import Map: GLTFLoader için gerekli -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // --- OPTİMİZASYON İÇİN GEÇİCİ VEKTÖRLER (GC'yi Rahatlatır) ---
+        const _vec3_1 = new THREE.Vector3();
+        const _vec3_2 = new THREE.Vector3();
+        const _vec3_3 = new THREE.Vector3();
+        const _vec3_cam_offset = new THREE.Vector3();
+        const _vec3_cam_target = new THREE.Vector3();
+
+        // --- OYUN DURUMU ---
+        let score = 0;
+        let health = 100;
+        let isGameOver = false;
+        let shakeIntensity = 0;
+
+        // --- UI CACHE (Performans için) ---
+        const ui = {
+            score: -1,
+            health: -1,
+            speed: -1,
+            fps: -1,
+            camDist: 40,
+            els: {
+                score: document.getElementById('score-display'),
+                health: document.getElementById('health-display'),
+                fps: document.getElementById('fps-display'),
+                speedometer: document.getElementById('speedometer'),
+                finalScore: document.getElementById('final-score'),
+                gameOver: document.getElementById('game-over')
+            }
+        };
+
+        // --- FPS TRACKING & DELTA ---
+        const clock = new THREE.Clock();
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 0;
+
+        // --- HARİTA SINIRLARI (FALLBACK DEĞERLER) ---
+        // Varsayılan masa boyutu 2000x2000 olduğu için sınırlar +/- 1000
+        const mapBounds = {
+            minX: -1000, maxX: 1000,
+            minZ: -1000, maxZ: 1000
+        };
+
+        // --- ARABA FİZİK SABİTLERİ ---
+        const dragFactor = 0.98;
+        const frictionFactor = 0.94;
+
+        const carState = {
+            xPos: 0,
+            yPos: 0, // Z ekseni (İleri/Geri)
+            altitude: 0, // Y ekseni (Yükseklik) - Düşme efekti için eklendi
+            verticalSpeed: 0, // Düşme hızı
+            isFalling: false, // Masadan düştü mü?
+            xSpeed: 0,
+            ySpeed: 0,
+            speed: 0,
+            driftAngle: 0,
+            angle: 0,
+            angularVelocity: 0,
+            isTurning: false,
+            isReversing: false,
+        };
+
+        const carConstants = {
+            maxSpeed: 3.5,
+            maxReverseSpeed: -1.5,
+            accelerationFactor: 0.04,
+            decelerationFactor: 0.02,
+            driftFactor: 1.3,
+            turnFactor: 0.2,
+        };
+
+        // --- GÜLLE (BALL) FİZİK DEĞİŞKENLERİ ---
+        const ballState = {
+            x: 0,
+            y: 5,
+            vx: 0,
+            vy: 0,
+            mass: 2.0,
+            friction: 1
+        };
+        const chainLength = 9.0;
+
+        // --- KONTROLLER ---
+        const controller = {
+            ArrowUp: { pressed: false },
+            ArrowDown: { pressed: false },
+            ArrowLeft: { pressed: false },
+            ArrowRight: { pressed: false },
+            w: { pressed: false },
+            s: { pressed: false },
+            a: { pressed: false },
+            d: { pressed: false }
+        };
+
+        const touchBtns = document.querySelectorAll('.touch-btn');
+        touchBtns.forEach(btn => {
+            const key = btn.getAttribute('data-key');
+
+            const press = (e) => {
+                e.preventDefault();
+                controller[key].pressed = true;
+                btn.classList.add('active');
+            };
+
+            const release = (e) => {
+                e.preventDefault();
+                controller[key].pressed = false;
+                btn.classList.remove('active');
+            };
+
+            btn.addEventListener('touchstart', press, { passive: false });
+            btn.addEventListener('touchend', release, { passive: false });
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
+        });
+
+        // --- THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+        scene.fog = new THREE.Fog(0x222222, 40, 400);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // --- OPTİMİZASYON: Pixel Ratio ve Antialias ---
+        const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+        // Mobil cihazlar için pixel oranını 1.5 ile sınırla (Pil ve Isı tasarrufu)
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+        scene.add(ambientLight);
+
+        // --- OPTİMİZASYON: Gölge Haritası ---
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(50, 80, 50);
+        dirLight.castShadow = true;
+
+        // Shadow Map boyutunu düşür (Mobil dostu / FPS boost)
+        dirLight.shadow.mapSize.width = 512;
+        dirLight.shadow.mapSize.height = 512;
+
+        // Gölge kamerasını daralt (Daha keskin gölge için)
+        const d = 60;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        // --- REFERANS IZGARA (GLOBAL YAPILDI, SİLİNEBİLSİN DİYE) ---
+        let gridHelper = new THREE.GridHelper(2000, 200, 0x666666, 0x333333);
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        // --- MODEL YÜKLEME SİSTEMİ (GLB + FALLBACK) ---
+        const loader = new GLTFLoader();
+        let isDeskLoaded = false;
+
+        // Fallback: Prosedürel Masa Oluşturucu
+        function createFallbackDesk() {
+            if (isDeskLoaded) return;
+            isDeskLoaded = true;
+
+            console.warn('Fallback masa oluşturuluyor...');
+            const deskGroup = new THREE.Group();
+
+            // Masa Üstü
+            const tableTopGeo = new THREE.BoxGeometry(2000, 10, 2000);
+            const tableMat = new THREE.MeshStandardMaterial({
+                color: 0x5D4037, // Koyu Ahşap
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const tableTop = new THREE.Mesh(tableTopGeo, tableMat);
+            tableTop.position.y = -5;
+            tableTop.receiveShadow = true;
+            deskGroup.add(tableTop);
+
+            // Ayaklar
+            const legGeo = new THREE.CylinderGeometry(40, 40, 500, 32);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x3E2723 });
+
+            const legPositions = [
+                [-900, -260, -900], [900, -260, -900],
+                [-900, -260, 900], [900, -260, 900]
+            ];
+
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeo, legMat);
+                leg.position.set(...pos);
+                leg.receiveShadow = true;
+                deskGroup.add(leg);
+            });
+
+            scene.add(deskGroup);
+        }
+
+        // 1. Önce desk.glb dosyasını yüklemeyi dene
+        try {
+            loader.load(
+                'desk.glb',
+                (gltf) => {
+                    if (isDeskLoaded) return;
+                    isDeskLoaded = true;
+
+                    const desk = gltf.scene;
+
+                    // --- İSTEK: Scale 100 yapıldı ---
+                    desk.scale.set(100, 100, 100);
+                    desk.position.set(0, -2, 0);
+
+                    // --- SINIR KONTROLÜ (deskFloor ARAMA) ---
+                    let floorFound = false;
+                    desk.traverse((child) => {
+                        if (child.isMesh) {
+                            child.receiveShadow = true;
+
+                            // Eğer 'deskFloor' isimli obje varsa sınırları ondan al
+                            if (child.name === 'deskFloor') {
+                                // Bounding Box hesapla
+                                child.updateWorldMatrix(true, false);
+                                const box = new THREE.Box3().setFromObject(child);
+                                mapBounds.minX = box.min.x;
+                                mapBounds.maxX = box.max.x;
+                                mapBounds.minZ = box.min.z;
+                                mapBounds.maxZ = box.max.z;
+
+                                floorFound = true;
+                                console.log("Özel zemin 'deskFloor' bulundu. Sınırlar:", mapBounds);
+                            }
+                        }
+                    });
+
+                    // Eğer özel zemin yoksa varsayılan devasa sınırları kullanmaya devam eder.
+
+                    scene.add(desk);
+
+                    // --- İSTEK: Model yüklenince Grid'i sil ---
+                    scene.remove(gridHelper);
+                    // Grid helper belleğini temizle
+                    gridHelper.geometry.dispose();
+                    gridHelper.material.dispose();
+
+                    console.log('BAŞARILI: desk.glb yüklendi.');
+                },
+                undefined,
+                (error) => {
+                    console.warn('UYARI: desk.glb yüklenemedi (Async).', error);
+                    createFallbackDesk();
+                }
+            );
+        } catch (error) {
+            console.warn('UYARI: desk.glb yüklenemedi (Sync/URL Error).', error);
+            createFallbackDesk();
+        }
+
+        // --- ARABA MODELİ ---
+        const carGroup = new THREE.Group();
+
+        const bodyMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(1.8, 0.6, 3.8),
+            new THREE.MeshStandardMaterial({ color: 0x0088ff, roughness: 0.2, metalness: 0.6 })
+        );
+        bodyMesh.position.y = 0.6;
+        bodyMesh.castShadow = true;
+        carGroup.add(bodyMesh);
+
+        const cabinMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.5, 1.8),
+            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 })
+        );
+        cabinMesh.position.set(0, 1.15, -0.3);
+        carGroup.add(cabinMesh);
+
+        const wheels = [];
+        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.4, 16);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+
+        [[-1, 0.35, 1.2], [1, 0.35, 1.2], [-1, 0.35, -1.2], [1, 0.35, -1.2]].forEach(pos => {
+            const w = new THREE.Mesh(wheelGeo, wheelMat);
+            w.rotation.z = Math.PI / 2;
+            w.position.set(...pos);
+            w.castShadow = true;
+            carGroup.add(w);
+            wheels.push(w);
+        });
+
+        scene.add(carGroup);
+
+        // --- GÜLLE ve ZİNCİR ---
+        const ballRadius = 2.2;
+        const ballGeo = new THREE.SphereGeometry(ballRadius, 32, 32);
+        const ballMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
+        const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+        ballMesh.castShadow = true;
+        ballMesh.position.y = ballRadius;
+        scene.add(ballMesh);
+
+        const chainGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
+        const chainMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+        const chainLine = new THREE.Line(chainGeo, chainMat);
+        scene.add(chainLine);
+
+        // --- DUMMY TOPLAR (ETKİLEŞİMLİ) ---
+        const dummyBalls = [];
+        const dummyBallGeo = new THREE.SphereGeometry(3.5, 32, 32); // Daha büyük yapıldı (1.5 -> 3.5)
+        const dummyBallMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3, metalness: 0.2 });
+
+        function spawnDummyBall(x, z) {
+            const mesh = new THREE.Mesh(dummyBallGeo, dummyBallMat);
+            mesh.position.set(x, 3.5, z); // Y pozisyonu radius'a göre güncellendi
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            dummyBalls.push({
+                mesh: mesh,
+                vx: 0,
+                vz: 0,
+                radius: 3.5
+            });
+        }
+
+        // Sadece bir tane spawn et
+        spawnDummyBall(20, 20);
+
+        // --- DÜŞMAN VE PARTİKÜL SİSTEMİ ---
+        const enemies = [];
+        const enemyGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+        const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+
+        const particles = [];
+        const particleGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const particleMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+
+        // --- PATLAMA EFEKTİ ---
+        function createExplosion(pos, impactVel) {
+            const baseSize = 3.5 + Math.random() * 0.5;
+            const dir = impactVel.clone().normalize();
+            const speed = Math.min(impactVel.length(), 10.0);
+
+            for (let i = 0; i < 10; i++) {
+                const p = new THREE.Mesh(particleGeo, particleMat.clone()); // Mat clone gerekli çünkü şeffaflık her particle için değişebilir
+                p.position.copy(pos);
+
+                const spreadFactor = 0.7;
+
+                const vx = dir.x + (Math.random() - 0.5) * spreadFactor;
+                const vz = dir.z + (Math.random() - 0.5) * spreadFactor;
+                const vy = Math.random() * 0.8 + 0.3;
+
+                const velocityMag = 0.5 + (speed * 0.3);
+
+                p.userData.vel = new THREE.Vector3(vx, vy, vz).normalize().multiplyScalar(velocityMag);
+                p.userData.life = 1.0;
+                p.userData.baseScale = baseSize;
+
+                scene.add(p);
+                particles.push(p);
+            }
+        }
+
+        function spawnEnemy() {
+            if (isGameOver) return;
+            if (enemies.length > 25) return; // 50 -> 25 (Performans için düşürüldü)
+
+            const enemy = new THREE.Mesh(enemyGeo, enemyMat); // Tek materyal kullanımı (Batching avantajı)
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 40 + Math.random() * 30;
+            const ex = carState.xPos + Math.sin(angle) * dist;
+            const ez = carState.yPos + Math.cos(angle) * dist;
+
+            enemy.position.set(ex, 0.75, ez);
+            enemy.castShadow = true;
+            enemy.receiveShadow = true;
+
+            scene.add(enemy);
+            enemies.push(enemy);
+        }
+
+        setInterval(spawnEnemy, 1500);
+
+        // --- SKIDMARKS ---
+        const skidMarks = [];
+        const skidGeo = new THREE.PlaneGeometry(0.3, 0.3);
+        // SkidMat için clone kullanmak zorundayız çünkü opacity değişiyor.
+        // Ancak bellek sızıntısını dispose ile yöneteceğiz.
+        const skidMatTemplate = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+
+        function addSkidMark() {
+            // OPTİMİZASYON: Çok fazla iz birikirse eskileri sil
+            if (skidMarks.length > 40) {
+                const old = skidMarks.shift();
+                scene.remove(old.mesh);
+                // BELLEK TEMİZLİĞİ
+                old.mesh.material.dispose();
+                // Geometry shared olduğu için dispose etmiyoruz (skidGeo)
+            }
+
+            const offsetL = _vec3_1.set(-0.9, 0.05, 1.2).applyMatrix4(carGroup.matrixWorld);
+            const offsetR = _vec3_2.set(0.9, 0.05, 1.2).applyMatrix4(carGroup.matrixWorld);
+
+            [offsetL, offsetR].forEach(pos => {
+                const m = new THREE.Mesh(skidGeo, skidMatTemplate.clone());
+                m.position.copy(pos);
+                m.rotation.x = -Math.PI / 2;
+                m.rotation.z = carGroup.rotation.y;
+                scene.add(m);
+                skidMarks.push({ mesh: m, life: 1.0 });
+            });
+        }
+
+        // --- INPUT ---
+        window.addEventListener("keydown", (e) => {
+            const k = e.key.toLowerCase();
+            if (controller[k] || controller[e.key]) {
+                if (controller[k]) controller[k].pressed = true;
+                if (controller[e.key]) controller[e.key].pressed = true;
+            }
+        });
+
+        window.addEventListener("keyup", (e) => {
+            const k = e.key.toLowerCase();
+            if (controller[k] || controller[e.key]) {
+                if (controller[k]) controller[k].pressed = false;
+                if (controller[e.key]) controller[e.key].pressed = false;
+            }
+        });
+
+        const camSlider = document.getElementById('cam-dist-slider');
+        camSlider.addEventListener('input', (e) => {
+            ui.camDist = parseFloat(e.target.value);
+        });
+        ui.camDist = parseFloat(camSlider.value);
+
+        // --- FİZİK UPDATE ---
+        function updatePhysics(delta) {
+            if (isGameOver) return;
+
+            const deltaFactor = delta * 60; // 60 FPS'e normalize edilmiş katsayı
+
+            // --- ARABA HAREKETİ VE KONTROL ---
+            if (carState.isFalling) {
+                carState.verticalSpeed -= 0.01 * deltaFactor;
+                carState.altitude += carState.verticalSpeed * deltaFactor;
+
+                carState.xPos -= carState.xSpeed * deltaFactor;
+                carState.yPos -= carState.ySpeed * deltaFactor;
+
+                carGroup.rotation.x += 0.02 * deltaFactor;
+                carGroup.rotation.z += 0.01 * deltaFactor;
+
+                if (carState.altitude < -30) {
+                    endGame();
+                }
+            } else {
+                const isUp = controller.ArrowUp.pressed || controller.w.pressed;
+                const isDown = controller.ArrowDown.pressed || controller.s.pressed;
+                const isLeft = controller.ArrowLeft.pressed || controller.a.pressed;
+                const isRight = controller.ArrowRight.pressed || controller.d.pressed;
+
+                if (isUp && carState.speed < carConstants.maxSpeed) carState.speed += carConstants.accelerationFactor * deltaFactor;
+                if (isDown && carState.speed > carConstants.maxReverseSpeed) carState.speed -= carConstants.decelerationFactor * deltaFactor;
+
+                carState.isTurning = false;
+                if (isLeft) {
+                    carState.isTurning = true;
+                    carState.angularVelocity += carConstants.turnFactor * (isUp ? 1 : (carState.speed / carConstants.maxSpeed) * 2) * deltaFactor;
+                }
+                if (isRight) {
+                    carState.isTurning = true;
+                    carState.angularVelocity -= carConstants.turnFactor * (isUp ? 1 : (carState.speed / carConstants.maxSpeed) * 2) * deltaFactor;
+                }
+
+                carState.isReversing = carState.speed < 0;
+                carState.angularVelocity *= Math.pow(frictionFactor, deltaFactor);
+
+                if (!carState.isReversing) carState.driftAngle += carConstants.driftFactor * carState.angularVelocity * deltaFactor;
+                carState.driftAngle *= Math.pow(frictionFactor, deltaFactor);
+                carState.angle += carState.angularVelocity * deltaFactor;
+
+                carState.speed = carState.speed * Math.pow(dragFactor, deltaFactor) - (carState.isReversing ? -1 : 1) * ((Math.abs(carState.driftAngle) * carState.speed) / 1000) * deltaFactor;
+
+                carState.xSpeed = Math.sin((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
+                carState.ySpeed = Math.cos((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
+
+                carState.xPos -= carState.xSpeed * deltaFactor;
+                carState.yPos -= carState.ySpeed * deltaFactor;
+
+                if (carState.xPos < mapBounds.minX || carState.xPos > mapBounds.maxX ||
+                    carState.yPos < mapBounds.minZ || carState.yPos > mapBounds.maxZ) {
+                    carState.isFalling = true;
+                    carState.verticalSpeed = 0;
+                }
+
+                carGroup.rotation.y = (Math.PI / 180) * (carState.angle + carState.driftAngle);
+
+                if (
+                    (Math.abs(carState.speed) > 0.1 && Math.abs(carState.driftAngle) > 10) ||
+                    (isUp && Math.abs(carState.speed) < 0.5)
+                ) {
+                    addSkidMark();
+                }
+            }
+
+            carGroup.position.set(carState.xPos, carState.altitude, carState.yPos);
+
+            if (!carState.isFalling) {
+                const isLeft = controller.ArrowLeft.pressed || controller.a.pressed;
+                const isRight = controller.ArrowRight.pressed || controller.d.pressed;
+                const wheelTurn = isLeft ? 0.5 : (isRight ? -0.5 : 0);
+                wheels[2].rotation.y = wheelTurn;
+                wheels[3].rotation.y = wheelTurn;
+            }
+
+            const hookOffset = _vec3_3.set(0, 0.6, 2.0);
+            hookOffset.applyMatrix4(carGroup.matrixWorld);
+
+            if (!carState.isFalling) {
+                ballState.x += ballState.vx * deltaFactor;
+                ballState.y += ballState.vy * deltaFactor;
+                ballState.vx *= Math.pow(ballState.friction, deltaFactor);
+                ballState.vy *= Math.pow(ballState.friction, deltaFactor);
+
+                const bdx = ballState.x - hookOffset.x;
+                const bdy = ballState.y - hookOffset.z;
+                const bdist = Math.sqrt(bdx * bdx + bdy * bdy);
+
+                if (bdist > chainLength) {
+                    const ratio = (bdist - chainLength) / bdist;
+                    const pullX = bdx * ratio;
+                    const pullY = bdy * ratio;
+
+                    ballState.x -= pullX;
+                    ballState.y -= pullY;
+
+                    ballState.vx -= pullX * 0.1 * deltaFactor;
+                    ballState.vy -= pullY * 0.1 * deltaFactor;
+                }
+
+                ballMesh.position.set(ballState.x, ballRadius, ballState.y);
+            }
+
+            const bSpeed = Math.sqrt(ballState.vx * ballState.vx + ballState.vy * ballState.vy);
+            ballMesh.rotation.x += bSpeed * 0.2 * deltaFactor;
+
+            const positions = chainLine.geometry.attributes.position.array;
+            positions[0] = hookOffset.x;
+            positions[1] = hookOffset.y;
+            positions[2] = hookOffset.z;
+            positions[3] = ballMesh.position.x;
+            positions[4] = ballMesh.position.y;
+            positions[5] = ballMesh.position.z;
+            chainLine.geometry.attributes.position.needsUpdate = true;
+
+            if (!carState.isFalling) {
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const enemy = enemies[i];
+
+                    const edx = carState.xPos - enemy.position.x;
+                    const edz = carState.yPos - enemy.position.z;
+                    const eAngle = Math.atan2(edx, edz);
+                    const eSpeed = 0.15;
+
+                    enemy.position.x += Math.sin(eAngle) * eSpeed * deltaFactor;
+                    enemy.position.z += Math.cos(eAngle) * eSpeed * deltaFactor;
+                    enemy.rotation.y = eAngle;
+
+                    const dx_be = enemy.position.x - ballState.x;
+                    const dz_be = enemy.position.z - ballState.y;
+                    const ballDistSq = dx_be * dx_be + dz_be * dz_be;
+                    const minBallDist = ballRadius + 1.0;
+
+                    if (ballDistSq < minBallDist * minBallDist) {
+                        if (bSpeed > 0.3) {
+                            const impactVel = _vec3_1.set(ballState.vx, 0, ballState.vy);
+                            createExplosion(enemy.position, impactVel);
+
+                            scene.remove(enemy);
+                            enemies.splice(i, 1);
+                            score += 10;
+
+                            shakeIntensity = 2.5;
+
+                            ballState.vx *= 0.8;
+                            ballState.vy *= 0.8;
+                            continue;
+                        } else {
+                            const dist_be = Math.sqrt(ballDistSq);
+                            enemy.position.x += (dx_be / dist_be) * 0.2 * deltaFactor;
+                            enemy.position.z += (dz_be / dist_be) * 0.2 * deltaFactor;
+                        }
+                    }
+
+                    const dx_ce = enemy.position.x - carState.xPos;
+                    const dz_ce = enemy.position.z - carState.yPos;
+                    const carDistSq = dx_ce * dx_ce + dz_ce * dz_ce;
+                    const minCarDist = 2.0;
+
+                    if (carDistSq < minCarDist * minCarDist) {
+                        health -= 0.2 * deltaFactor;
+
+                        const roundedHealth = Math.floor(health);
+                        if (ui.health !== roundedHealth) {
+                            ui.health = roundedHealth;
+                            ui.els.health.innerText = Math.max(0, roundedHealth);
+                            ui.els.health.style.color = 'red';
+                            setTimeout(() => { if (ui.els.health) ui.els.health.style.color = '#0f0' }, 50);
+                        }
+
+                        if (health <= 0) {
+                            endGame();
+                        }
+
+                        const dist_ce = Math.sqrt(carDistSq);
+                        const pushRatio = minCarDist / dist_ce;
+                        enemy.position.x = carState.xPos + (dx_ce * pushRatio);
+                        enemy.position.z = carState.yPos + (dz_ce * pushRatio);
+                    }
+                }
+
+                // --- DUMMY BALL PHYSICS & COLLISION ---
+                const carHitRadius = 2.0;
+                dummyBalls.forEach(ball => {
+                    ball.mesh.position.x += ball.vx * deltaFactor;
+                    ball.mesh.position.z += ball.vz * deltaFactor;
+
+                    ball.vx *= Math.pow(0.99, deltaFactor);
+                    ball.vz *= Math.pow(0.99, deltaFactor);
+
+                    const moveSpeed = Math.sqrt(ball.vx * ball.vx + ball.vz * ball.vz);
+                    if (moveSpeed > 0.01) {
+                        ball.mesh.rotation.x += ball.vz * 0.2 * deltaFactor;
+                        ball.mesh.rotation.z -= ball.vx * 0.2 * deltaFactor;
+                    }
+
+                    const dx_db = ball.mesh.position.x - carState.xPos;
+                    const dz_db = ball.mesh.position.z - carState.yPos;
+                    const distSq_db = dx_db * dx_db + dz_db * dz_db;
+                    const minDist_db = ball.radius + carHitRadius;
+
+                    if (distSq_db < minDist_db * minDist_db) {
+                        const dist_db = Math.sqrt(distSq_db);
+                        const angle = Math.atan2(dx_db, dz_db);
+                        const pushPower = Math.max(Math.abs(carState.speed), 0.5) * 0.6;
+
+                        ball.vx += Math.sin(angle) * pushPower * deltaFactor;
+                        ball.vz += Math.cos(angle) * pushPower * deltaFactor;
+
+                        const overlap = minDist_db - dist_db;
+                        ball.mesh.position.x += Math.sin(angle) * overlap;
+                        ball.mesh.position.z += Math.cos(angle) * overlap;
+
+                        carState.speed *= Math.pow(0.95, deltaFactor);
+                    }
+
+                    const dx_hb = ball.mesh.position.x - ballState.x;
+                    const dz_hb = ball.mesh.position.z - ballState.y;
+                    const distSq_hb = dx_hb * dx_hb + dz_hb * dz_hb;
+                    const minDist_hb = ball.radius + ballRadius;
+
+                    if (distSq_hb < minDist_hb * minDist_hb) {
+                        const dist_hb = Math.sqrt(distSq_hb);
+                        const hAngle = Math.atan2(dx_hb, dz_hb);
+                        const hammerSpeed = Math.sqrt(ballState.vx * ballState.vx + ballState.vy * ballState.vy);
+                        const hammerPush = Math.max(hammerSpeed, 0.5) * 0.8;
+
+                        ball.vx += Math.sin(hAngle) * hammerPush * deltaFactor;
+                        ball.vz += Math.cos(hAngle) * hammerPush * deltaFactor;
+
+                        const hOverlap = minDist_hb - dist_hb;
+                        ball.mesh.position.x += Math.sin(hAngle) * hOverlap;
+                        ball.mesh.position.z += Math.cos(hAngle) * hOverlap;
+
+                        ballState.vx -= Math.sin(hAngle) * hammerPush * 0.5 * deltaFactor;
+                        ballState.vy -= Math.cos(hAngle) * hammerPush * 0.5 * deltaFactor;
+                    }
+
+                    if (ball.mesh.position.x < mapBounds.minX || ball.mesh.position.x > mapBounds.maxX ||
+                        ball.mesh.position.z < mapBounds.minZ || ball.mesh.position.z > mapBounds.maxZ) {
+                        ball.mesh.position.y -= 0.5 * deltaFactor;
+                        if (ball.mesh.position.y < -50) {
+                            ball.mesh.position.set(20, 3.5, 20);
+                            ball.vx = 0; ball.vz = 0;
+                            ball.mesh.position.y = 3.5;
+                        }
+                    }
+                });
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            const deltaFactor = delta * 60;
+
+            updatePhysics(delta);
+
+            // OPTİMİZASYON: Işık takibi (Gölge kamerasının alanını küçültür)
+            dirLight.position.set(
+                carGroup.position.x + 50,
+                80,
+                carGroup.position.z + 50
+            );
+            dirLight.target = carGroup;
+
+            // Partikül Güncelleme
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.position.x += p.userData.vel.x * deltaFactor;
+                p.position.y += p.userData.vel.y * deltaFactor;
+                p.position.z += p.userData.vel.z * deltaFactor;
+
+                p.userData.vel.y -= 0.04 * deltaFactor;
+                p.userData.life -= 0.03 * deltaFactor;
+
+                p.scale.setScalar(Math.max(0, p.userData.life * p.userData.baseScale));
+
+                if (p.userData.life <= 0 || p.position.y < 0) {
+                    scene.remove(p);
+                    p.material.dispose();
+                    particles.splice(i, 1);
+                }
+            }
+
+            // --- FPS CALCULATION ---
+            frameCount++;
+            const now = performance.now();
+            if (now - lastTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+
+            // --- UI UPDATE (Sadece değiştiğinde) ---
+            if (ui.fps !== fps) {
+                ui.fps = fps;
+                ui.els.fps.innerText = fps;
+            }
+
+            if (ui.score !== score) {
+                ui.score = score;
+                ui.els.score.innerText = score;
+            }
+            const displaySpeed = Math.floor(Math.abs(carState.speed) * 80);
+            if (ui.speed !== displaySpeed) {
+                ui.speed = displaySpeed;
+                ui.els.speedometer.innerText = displaySpeed + " KM/H";
+            }
+
+            const baseDist = ui.camDist;
+            const speedZoom = Math.abs(carState.speed) * 8.0;
+
+            const currentDistZ = baseDist + speedZoom;
+            const currentDistY = (baseDist * 0.8) + (speedZoom * 0.5);
+
+            _vec3_cam_offset.set(0, currentDistY, currentDistZ);
+
+            _vec3_cam_target.set(
+                carGroup.position.x,
+                carState.isFalling ? Math.max(carState.altitude, -20) : carGroup.position.y,
+                carGroup.position.z
+            ).add(_vec3_cam_offset);
+
+            if (shakeIntensity > 0) {
+                const distFactor = currentDistZ / 30.0;
+
+                const rx = (Math.random() - 0.5) * shakeIntensity * distFactor;
+                const rz = (Math.random() - 0.5) * shakeIntensity * distFactor;
+                const ry = (Math.random() - 0.5) * (shakeIntensity * 0.5) * distFactor;
+
+                camera.position.x += rx;
+                camera.position.z += rz;
+                camera.position.y += ry;
+
+                shakeIntensity *= Math.pow(0.9, deltaFactor);
+                if (shakeIntensity < 0.1) shakeIntensity = 0;
+            }
+
+            // TİTREŞİMSİZ KAMERA TAKİBİ (Lerp delta ile normalize edildi)
+            const camLerpFactor = 1 - Math.pow(1 - 0.1, deltaFactor);
+            camera.position.lerp(_vec3_cam_target, camLerpFactor);
+            camera.lookAt(carGroup.position);
+
+            for (let i = skidMarks.length - 1; i >= 0; i--) {
+                const s = skidMarks[i];
+                s.life -= 0.02 * deltaFactor;
+                s.mesh.material.opacity = Math.max(0, s.life * 0.4);
+                if (s.life <= 0) {
+                    scene.remove(s.mesh);
+                    s.mesh.material.dispose();
+                    skidMarks.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function endGame() {
+            isGameOver = true;
+            ui.els.gameOver.style.display = 'flex';
+            ui.els.finalScore.innerText = score;
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+</body>
+
+</html>

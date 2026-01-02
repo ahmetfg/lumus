@@ -724,9 +724,21 @@
          * --- CRAZYGAMES SDK SETUP ---
          */
         let crazysdk;
+        let sdkLoadingStarted = false;
+
         window.CrazyGames.SDK.init().then((sdk) => {
-            crazysdk = sdk;
+            // SDK might return undefined on some setups, fallback to global
+            crazysdk = sdk || window.CrazyGames.SDK;
             console.log('CrazyGames SDK initialized');
+
+            // Notify SDK that game is loading
+            if (crazysdk && crazysdk.game && typeof crazysdk.game.loadingStart === 'function') {
+                crazysdk.game.loadingStart();
+                sdkLoadingStarted = true;
+                console.log('CrazyGames SDK: loadingStart() called');
+            } else {
+                console.warn('CrazyGames SDK: sdk.game.loadingStart is not available', crazysdk);
+            }
         }).catch((e) => {
             console.log('Error initializing SDK (Not on CrazyGames)', e);
             // Change button text for non-CrazyGames platforms
@@ -1099,6 +1111,12 @@
                 splash.classList.add('fade-out');
                 setTimeout(() => {
                     splash.style.display = 'none';
+
+                    // Notify SDK that loading is complete - game is ready to play
+                    if (crazysdk && crazysdk.game && crazysdk.game.loadingStop && sdkLoadingStarted) {
+                        crazysdk.game.loadingStop();
+                        console.log('CrazyGames SDK: loadingStop() called');
+                    }
                 }, 1000);
             }, 2500);
         });

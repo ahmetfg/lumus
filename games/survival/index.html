@@ -9,6 +9,7 @@
     <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
     <!-- Retro Pixel Font -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="chest-opening.css">
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -41,15 +42,17 @@
             left: 0;
             z-index: 1;
         }
-        
+
         /* NEW: Effect Canvas for UI particles (Confetti) on top of modals */
         #effectCanvas {
             display: block;
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: none; /* Click-through */
-            z-index: 50; /* Higher than modals (z-index 10) */
+            pointer-events: none;
+            /* Click-through */
+            z-index: 50;
+            /* Higher than modals (z-index 10) */
         }
 
         /* --- SPLASH SCREEN --- */
@@ -118,20 +121,32 @@
             letter-spacing: 6px;
             text-transform: uppercase;
             opacity: 0;
-            padding-left: 6px; 
+            padding-left: 6px;
             text-align: center;
             animation: fadeInSimple 1.2s ease-in forwards;
             animation-delay: 0.5s;
         }
 
         @keyframes logoEnter {
-            0% { transform: translateY(15px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
+            0% {
+                transform: translateY(15px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         @keyframes fadeInSimple {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         /* --- UI LAYER --- */
@@ -142,7 +157,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            display: none; 
+            display: none;
             z-index: 5;
         }
 
@@ -191,7 +206,7 @@
             color: var(--primary-red);
             text-align: right;
         }
-        
+
         #gold-count {
             top: 75px;
             right: 20px;
@@ -219,7 +234,7 @@
             font-size: 16px;
             color: var(--primary-red);
             text-shadow: 2px 2px 0 #000;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             padding: 5px 10px;
             border-radius: 5px;
         }
@@ -234,11 +249,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.3);
             z-index: 20;
             pointer-events: none;
         }
-        
+
         #countdown-text {
             font-size: 80px;
             color: #fff;
@@ -247,8 +262,13 @@
         }
 
         @keyframes pulseFast {
-            from { transform: scale(1); }
-            to { transform: scale(1.1); }
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.1);
+            }
         }
 
         /* --- MODALS --- */
@@ -284,9 +304,11 @@
                 0 0 0 4px #000,
                 0 0 20px rgba(255, 165, 2, 0.5);
             width: 500px;
-            max-width: 90%; 
-            max-height: 90vh; /* Prevent overflow on small screens */
-            overflow-y: auto; /* Allow scroll if content is too tall */
+            max-width: 90%;
+            max-height: 90vh;
+            /* Prevent overflow on small screens */
+            overflow-y: auto;
+            /* Allow scroll if content is too tall */
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             box-sizing: border-box;
@@ -331,19 +353,19 @@
             position: relative;
             overflow: hidden;
             margin: 5px;
-            max-width: 100%; 
+            max-width: 100%;
             white-space: nowrap;
         }
 
         .retro-btn.green {
             background: var(--shop-green);
         }
-        
+
         .retro-btn.yellow {
             background: var(--primary-gold);
             color: #000;
         }
-        
+
         /* AD BUTTON STYLE */
         .retro-btn.purple {
             background: var(--ad-purple);
@@ -360,7 +382,7 @@
             transform: translateY(2px);
             box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.4);
         }
-        
+
         /* Disabled Button Style */
         .retro-btn:disabled {
             filter: grayscale(100%);
@@ -377,27 +399,27 @@
             gap: 15px;
             margin-bottom: 20px;
         }
-        
+
         .shop-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.3);
             padding: 10px;
             border: 2px solid #555;
             border-radius: 4px;
         }
-        
+
         .shop-info {
             text-align: left;
         }
-        
+
         .shop-name {
             color: var(--primary-gold);
             font-size: 14px;
             margin-bottom: 5px;
         }
-        
+
         .shop-desc {
             font-size: 9px;
             color: #aaa;
@@ -456,14 +478,29 @@
 
         /* Animations */
         @keyframes popIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
 
         .blink {
@@ -483,7 +520,7 @@
             }
 
             #fps-meter {
-                display: none; 
+                display: none;
             }
 
             #level-display {
@@ -502,7 +539,7 @@
             }
 
             #gold-count {
-                top: 50px; 
+                top: 50px;
                 right: 10px;
             }
 
@@ -512,14 +549,14 @@
             }
 
             h1 {
-                font-size: 20px; 
+                font-size: 20px;
                 margin-bottom: 15px;
             }
 
             .retro-btn {
                 padding: 12px 15px;
                 font-size: 12px;
-                width: 100%; 
+                width: 100%;
                 box-sizing: border-box;
             }
 
@@ -532,14 +569,14 @@
             .upgrade-card {
                 width: 100%;
                 height: auto;
-                flex-direction: row; 
+                flex-direction: row;
                 justify-content: flex-start;
                 padding: 10px;
                 text-align: left;
             }
 
             .upgrade-card:hover {
-                transform: translateX(5px); 
+                transform: translateX(5px);
             }
 
             .card-icon {
@@ -552,10 +589,11 @@
                 font-size: 14px;
                 margin-bottom: 2px;
             }
-            
+
             .shop-name {
                 font-size: 10px;
             }
+
             .shop-desc {
                 font-size: 8px;
             }
@@ -593,7 +631,7 @@
 
         <div id="hp-display" class="hud-stat">HP 100</div>
     </div>
-    
+
     <!-- COUNTDOWN OVERLAY -->
     <div id="countdown-overlay" class="hidden">
         <div id="countdown-text">3</div>
@@ -620,7 +658,7 @@
         <div class="modal-content">
             <h1>ARMORY</h1>
             <h2 id="total-gold-display">GOLD: 0</h2>
-            
+
             <div id="shop-items">
                 <!-- Might Upgrade -->
                 <div class="shop-row">
@@ -639,7 +677,7 @@
                     </div>
                     <button class="retro-btn yellow" id="btn-armor" onclick="buyUpgrade('armor')">100 G</button>
                 </div>
-                
+
                 <!-- Greed Upgrade -->
                 <div class="shop-row">
                     <div class="shop-info">
@@ -671,13 +709,15 @@
             <h1 style="color: #57606f;">YOU DIED</h1>
             <p id="final-stats">Calculating...</p>
             <p style="color: #f1c40f;" id="gold-earned-text">+0 GOLD</p>
-            
+
             <!-- REWARDED AD BUTTON -->
             <button class="retro-btn purple" id="revive-btn" onclick="watchAdToRevive()">REVIVE (50% HP)</button>
             <br>
             <button class="retro-btn" onclick="returnToMainMenu()">MAIN MENU</button>
         </div>
     </div>
+
+
 
     <script>
         /**
@@ -691,7 +731,7 @@
             console.log('Error initializing SDK (Not on CrazyGames)', e);
             // Change button text for non-CrazyGames platforms
             const btn = document.getElementById('revive-btn');
-            if(btn) {
+            if (btn) {
                 btn.innerText = "TRY FREE REVIVE";
             }
         });
@@ -702,28 +742,28 @@
 
             if (!crazysdk) {
                 console.log("SDK not detected. Rolling dice for free revive...");
-                
+
                 // 1. Disable button
                 btn.disabled = true;
                 btn.innerText = "CONNECTING...";
-                
+
                 // 2. Tension Delay (1.2s)
                 setTimeout(() => {
                     // 3. Roll the dice (30% Chance)
                     const isLucky = Math.random() < 0.3; // %30
-                    
+
                     if (isLucky) {
                         // SUCCESS
                         btn.innerText = "JACKPOT! LUCKY REVIVE!";
                         btn.style.backgroundColor = "#2ecc71"; // Green
                         btn.style.color = "#fff";
-                        
+
                         // Spawn Confetti Particles!
                         spawnConfetti(CANVAS.width / 2, CANVAS.height / 2);
-                        
+
                         setTimeout(() => {
                             startReviveCountdown();
-                        }, 1000); 
+                        }, 1000);
                     } else {
                         // FAIL
                         btn.innerText = "NO SIGNAL... BAD LUCK";
@@ -756,15 +796,15 @@
         function startReviveCountdown() {
             // Hide Game Over Screen Immediately
             document.getElementById('gameover-screen').classList.add('hidden');
-            
+
             // Show Countdown Overlay
             const overlay = document.getElementById('countdown-overlay');
             const text = document.getElementById('countdown-text');
             overlay.classList.remove('hidden');
-            
+
             let count = 3;
             text.innerText = count;
-            
+
             const interval = setInterval(() => {
                 count--;
                 if (count > 0) {
@@ -782,7 +822,7 @@
             // Restore HP to 50%
             player.hp = Math.floor(player.maxHp * 0.5);
             updateHUD();
-            
+
             // Mark as revived so they can't do it again
             gameState.hasRevived = true;
 
@@ -791,13 +831,13 @@
 
             // Resume Game
             gameState.running = true;
-            
+
             // Resume Music
             bgMusic.play().catch(e => console.log(e));
-            
+
             // Notify SDK gameplay continued
             if (crazysdk) crazysdk.game.gameplayStart();
-            
+
             requestAnimationFrame(gameLoop);
         }
 
@@ -806,7 +846,7 @@
          */
         const EFFECT_CANVAS = document.getElementById('effectCanvas');
         const EFFECT_CTX = EFFECT_CANVAS.getContext('2d');
-        
+
         class Particle {
             constructor(x, y, color, speed) {
                 this.x = x;
@@ -820,20 +860,20 @@
                 this.gravity = 0.2;
                 this.decay = Math.random() * 2 + 1;
             }
-            
+
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
                 this.vy += this.gravity;
                 this.life -= this.decay;
             }
-            
+
             draw(ctx) {
                 ctx.fillStyle = this.color;
                 ctx.fillRect(this.x, this.y, this.size, this.size);
             }
         }
-        
+
         // NEW SHOCKWAVE CLASS
         class Shockwave {
             constructor(x, y) {
@@ -846,23 +886,23 @@
                 this.active = true;
                 this.forceApplied = false;
             }
-            
+
             update() {
                 this.radius += this.speed;
                 this.alpha -= 0.03; // Fade out
-                
+
                 if (this.alpha <= 0) this.active = false;
-                
+
                 // Apply Physics to Enemies continuously as it expands (or just once effectively)
                 // Doing it frame by frame ensures newly caught enemies are pushed
                 // For performance, we can just push nearby enemies once or check distance
-                
+
                 // Let's push enemies that are within current radius band
                 enemies.forEach(e => {
                     const dx = e.x - this.x;
                     const dy = e.y - this.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    
+
                     // If enemy is within the expanding ring width
                     if (dist < this.radius && dist > this.radius - 100) {
                         const angle = Math.atan2(dy, dx);
@@ -874,11 +914,11 @@
                     }
                 });
             }
-            
+
             draw(ctx) {
                 const screenX = this.x - camera.x;
                 const screenY = this.y - camera.y;
-                
+
                 ctx.save();
                 ctx.globalAlpha = this.alpha;
                 ctx.beginPath();
@@ -887,81 +927,83 @@
                 gradient.addColorStop(0, 'rgba(255, 165, 2, 0)'); // Transparent Inner
                 gradient.addColorStop(0.8, 'rgba(255, 215, 0, 0.6)'); // Gold Middle
                 gradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Fade Outer
-                
+
                 ctx.fillStyle = gradient;
                 ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 // Extra ring stroke
                 ctx.strokeStyle = `rgba(255, 255, 0, ${this.alpha})`;
                 ctx.lineWidth = 5;
                 ctx.stroke();
-                
+
                 ctx.restore();
             }
         }
-        
+
         let particles = [];
         let shockwaves = [];
-        
+
         function spawnConfetti(x, y) {
             // Spawn on UI Layer
-            for(let i=0; i<80; i++) {
+            for (let i = 0; i < 80; i++) {
                 const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
                 // Use screen center for confetti origin
-                const p = new Particle(window.innerWidth/2, window.innerHeight/2, colors[Math.floor(Math.random()*colors.length)], Math.random()*15 + 5);
+                const p = new Particle(window.innerWidth / 2, window.innerHeight / 2, colors[Math.floor(Math.random() * colors.length)], Math.random() * 15 + 5);
                 particles.push(p);
             }
-            
-            if(!gameState.running) {
+
+            // Trigger loop if not running OR if paused (e.g. chest open)
+            if (!gameState.running || gameState.paused) {
                 requestAnimationFrame(animationLoopWhilePaused);
             }
         }
-        
+
         function spawnShockwave(x, y) {
             shockwaves.push(new Shockwave(x, y));
         }
-        
+
         function animationLoopWhilePaused() {
             // Loop for UI effects while game is paused (modal open)
-            if(gameState.running) return;
-            
+            // If running AND NOT paused, let the main loop handle it.
+            if (gameState.running && !gameState.paused) return;
+
             // Clear and Draw Effect Canvas Only
             EFFECT_CTX.clearRect(0, 0, EFFECT_CANVAS.width, EFFECT_CANVAS.height);
-            
+
             handleParticles();
-            
-            if(particles.length > 0) {
+
+            if (particles.length > 0) {
                 requestAnimationFrame(animationLoopWhilePaused);
             }
         }
-        
+
         function handleParticles() {
             // 1. Confetti (UI Layer - EffectCanvas)
             if (particles.length > 0) {
                 // If game is running, we must manually clear effect canvas each frame as draw() clears main canvas
                 // If paused, the separate loop handles it
                 if (gameState.running) {
-                     EFFECT_CTX.clearRect(0, 0, EFFECT_CANVAS.width, EFFECT_CANVAS.height);
+                    EFFECT_CTX.clearRect(0, 0, EFFECT_CANVAS.width, EFFECT_CANVAS.height);
                 }
-                
-                for(let i = particles.length - 1; i >= 0; i--) {
+
+                for (let i = particles.length - 1; i >= 0; i--) {
                     const p = particles[i];
                     p.update();
-                    if(p.life <= 0) {
+                    if (p.life <= 0) {
                         particles.splice(i, 1);
                         continue;
                     }
                     p.draw(EFFECT_CTX);
                 }
             }
-            
+
             // 2. Shockwaves (Game World Layer - Main CTX)
             // We draw these on the main canvas because they need to be relative to camera/world
-            for(let i = shockwaves.length - 1; i >= 0; i--) {
+            for (let i = shockwaves.length - 1; i >= 0; i--) {
                 const s = shockwaves[i];
                 s.update();
-                if(!s.active) {
+                if (!s.active) {
                     shockwaves.splice(i, 1);
                     continue;
                 }
@@ -987,7 +1029,7 @@
             try {
                 const loaded = JSON.parse(localStorage.getItem(SAVE_KEY));
                 saveData = { ...saveData, ...loaded }; // Merge incase of new fields
-            } catch(e) { console.error("Save corrupted reset"); }
+            } catch (e) { console.error("Save corrupted reset"); }
         }
 
         function saveGame() {
@@ -1031,7 +1073,7 @@
                 document.getElementById(`${t}-lvl`).innerText = `Lvl ${lvl}`;
                 const btn = document.getElementById(`btn-${t}`);
                 btn.innerText = `${price} G`;
-                
+
                 if (saveData.gold < price) {
                     btn.style.opacity = "0.5";
                     btn.style.cursor = "not-allowed";
@@ -1051,7 +1093,7 @@
             CANVAS.height = window.innerHeight;
             EFFECT_CANVAS.width = window.innerWidth;
             EFFECT_CANVAS.height = window.innerHeight;
-            
+
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 splash.classList.add('fade-out');
@@ -1098,18 +1140,18 @@
             try {
                 // Ensure stopped before switching
                 bgMusic.pause();
-                
+
                 bgMusic.src = musicTracks[currentTrackIdx];
-                
+
                 // Safari fix: load() allows the new src to be buffered
-                bgMusic.load(); 
-                
+                bgMusic.load();
+
                 // Advance index
                 currentTrackIdx = (currentTrackIdx + 1) % musicTracks.length;
-                
+
                 // Play and wait for success
                 await bgMusic.play();
-                
+
             } catch (e) {
                 if (e.name !== 'AbortError') {
                     console.log("Audio playback error:", e);
@@ -1231,14 +1273,14 @@
                 this.height = 30;
 
                 this.color = '#3498db';
-                
+
                 // APPLY META PROGRESSION
                 const armorBonus = saveData.upgrades.armor * 20;
                 const mightMultiplier = 1 + (saveData.upgrades.might * 0.1);
 
                 this.hp = 100 + armorBonus;
                 this.maxHp = 100 + armorBonus;
-                
+
                 this.level = 1;
                 this.xp = 0;
                 this.xpToNextLevel = 50;
@@ -1380,7 +1422,7 @@
                 }
                 updateHUD();
             }
-            
+
             gainGold(amount) {
                 const greedBonus = 1 + (saveData.upgrades.greed * 0.20);
                 gameState.sessionGold += Math.ceil(amount * greedBonus);
@@ -1408,6 +1450,8 @@
                     if (type === 'magic_wand') this.weapons.push(new MagicWand());
                     if (type === 'garlic') this.weapons.push(new Garlic());
                     if (type === 'axe') this.weapons.push(new Axe());
+                    if (type === 'lightning') this.weapons.push(new Lightning());
+                    if (type === 'blades') this.weapons.push(new SpectralBlades());
                 }
             }
         }
@@ -1656,7 +1700,7 @@
                 CTX.stroke();
             }
         }
-        
+
         // --- NEW CLASS: COIN ---
         class Coin {
             constructor(x, y, value) {
@@ -1700,7 +1744,7 @@
                 CTX.strokeStyle = '#f39c12';
                 CTX.lineWidth = 2;
                 CTX.stroke();
-                
+
                 // Dollar sign text
                 CTX.fillStyle = "#000";
                 CTX.font = "10px monospace";
@@ -1709,6 +1753,7 @@
                 CTX.fillText("$", screenX, screenY);
             }
         }
+
 
         class DamageText {
             constructor(x, y, amount) {
@@ -1834,6 +1879,7 @@
             }
 
             draw(player) {
+                CTX.save();
                 const screenX = player.x - camera.x;
                 const screenY = player.y - camera.y;
 
@@ -1843,6 +1889,7 @@
                 CTX.fill();
                 CTX.strokeStyle = 'rgba(255, 100, 100, 0.3)';
                 CTX.stroke();
+                CTX.restore();
             }
         }
 
@@ -1919,8 +1966,8 @@
                 this.damage = damage;
                 this.gravity = 0.3;
                 this.markedForDeletion = false;
-                this.width = 30;
-                this.height = 30;
+                this.width = 40;
+                this.height = 40;
                 this.rotation = 0;
             }
 
@@ -1969,8 +2016,227 @@
         let enemies = [];
         let gems = [];
         let coins = []; // New Coins Array
+        let chests = []; // Treasure Chests
         let projectiles = [];
+        let effects = []; // Generic Visual Effects Array
         let texts = [];
+
+        // --- VISUAL EFFECT SYSTEM ---
+        class VisualEffect {
+            update() { return false; /* return true to remove */ }
+            draw(ctx) { }
+        }
+
+        class LightningBoltEffect extends VisualEffect {
+            constructor(startX, startY, endX, endY) {
+                super();
+                this.startX = startX;
+                this.startY = startY;
+                this.endX = endX;
+                this.endY = endY;
+                this.life = 10; // Frames to live
+                this.segments = [];
+
+                // Generate jagged path once for performance
+                let currX = startX;
+                let currY = startY;
+                const steps = 10;
+                const dx = (endX - startX) / steps;
+                const dy = (endY - startY) / steps;
+
+                for (let i = 0; i < steps; i++) {
+                    const nextX = currX + dx + (Math.random() - 0.5) * 50;
+                    const nextY = currY + dy + (Math.random() - 0.5) * 50;
+                    this.segments.push({ x1: currX, y1: currY, x2: nextX, y2: nextY });
+                    currX = nextX;
+                    currY = nextY;
+                }
+                // Connect to final point
+                this.segments.push({ x1: currX, y1: currY, x2: endX, y2: endY });
+            }
+
+            update() {
+                this.life--;
+                return this.life <= 0;
+            }
+
+            draw(ctx) {
+                // Optimization: Don't draw if off screen (simple check)
+                // But lightning is usually large, so just draw it.
+                // Draw relative to camera
+                const camX = camera.x;
+                const camY = camera.y;
+
+                ctx.save();
+                ctx.strokeStyle = `rgba(255, 255, 0, ${this.life / 10})`;
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "white";
+                ctx.lineCap = "round";
+
+                ctx.beginPath();
+                this.segments.forEach(seg => {
+                    ctx.moveTo(seg.x1 - camX, seg.y1 - camY);
+                    ctx.lineTo(seg.x2 - camX, seg.y2 - camY);
+                });
+                ctx.stroke();
+
+                // Inner white core
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.life / 10})`;
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                this.segments.forEach(seg => {
+                    ctx.moveTo(seg.x1 - camX, seg.y1 - camY);
+                    ctx.lineTo(seg.x2 - camX, seg.y2 - camY);
+                });
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Lightning extends Weapon {
+            constructor() {
+                super('Lightning', 110); // Slower cooldown
+                this.type = 'lightning';
+                this.damage = 100; // High Damage
+            }
+
+            fire(player) {
+                // Performance: O(1) random pick
+                if (enemies.length === 0) return;
+
+                // Pick random enemy (visible or not, lightning strikes from above!)
+                // Actually, let's prefer visible enemies for juice, but random is okay too.
+                // Let's filter for "on screen" roughly for better feel? 
+                // No, global lightning is cooler and simpler O(1).
+
+                // Strike up to 'level' amount of targets? Or just 1 for now?
+                // Start with 1.
+                const targetIndex = Math.floor(Math.random() * enemies.length);
+                const target = enemies[targetIndex];
+
+                if (target) {
+                    // Deal Damage
+                    target.hp -= this.damage;
+                    texts.push(new DamageText(target.x, target.y, this.damage));
+                    checkEnemyDeath(target);
+
+                    // Add Visual Effect
+                    // From top of screen (relative to camera) to enemy
+                    const startX = target.x + (Math.random() - 0.5) * 200;
+                    const startY = target.y - 600; // From sky
+                    effects.push(new LightningBoltEffect(startX, startY, target.x, target.y));
+                }
+            }
+        }
+        class SpectralBlades extends Weapon {
+            constructor() {
+                super('Spectral Blades', 0); // Continuous
+                this.type = 'blades';
+                this.damage = 15;
+                this.radius = 120;
+                this.rotationSpeed = 0.05;
+                this.angle = 0;
+                this.bladeCount = 1; // Starts with 1
+                this.hitCooldowns = new Map(); // Map<EnemyID, FrameTimestamp>
+            }
+
+            levelUp() {
+                this.level++;
+                this.bladeCount++; // Add more blades
+                this.damage += 5;
+                this.rotationSpeed += 0.01;
+            }
+
+            update(player) {
+                // Update rotation
+                this.angle += this.rotationSpeed;
+
+                // COLLISION LOGIC
+                // Optimization: Iterate enemies, but filter by distance to player FIRST.
+                // The blades are in a ring at `this.radius` from player.
+                // We only care about enemies approximately `this.radius` away.
+
+                const rSq = this.radius * this.radius;
+                const buffer = 40; // Blade hit width approx
+                const minDSq = (this.radius - buffer) * (this.radius - buffer);
+                const maxDSq = (this.radius + buffer) * (this.radius + buffer);
+
+                for (let i = 0; i < enemies.length; i++) {
+                    const e = enemies[i];
+                    const dx = e.x - player.x;
+                    const dy = e.y - player.y;
+                    const dSq = dx * dx + dy * dy;
+
+                    // Broad Phase: Is enemy in the "Ring Zone"?
+                    if (dSq > minDSq && dSq < maxDSq) {
+                        // Narrow Phase: Check individual blades
+                        for (let b = 0; b < this.bladeCount; b++) {
+                            const bladeAngle = this.angle + (Math.PI * 2 / this.bladeCount) * b;
+                            const bx = player.x + Math.cos(bladeAngle) * this.radius;
+                            const by = player.y + Math.sin(bladeAngle) * this.radius;
+
+                            // Check collision between Blade(bx,by) and Enemy(e.x,e.y)
+                            const ex = e.x - bx;
+                            const ey = e.y - by;
+
+                            // 30 = approx blade radius + enemy radius
+                            if (ex * ex + ey * ey < 900) {
+                                this.tryHit(e);
+                                break; // Don't get hit by multiple blades in same frame
+                            }
+                        }
+                    }
+                }
+            }
+
+            tryHit(enemy) {
+                const now = gameState.frames;
+                const lastHit = this.hitCooldowns.get(enemy.id);
+
+                // 20 frames cooldown (0.33s) per enemy
+                if (!lastHit || now - lastHit > 20) {
+                    enemy.hp -= this.damage;
+                    this.hitCooldowns.set(enemy.id, now);
+
+                    // Visual pop
+                    texts.push(new DamageText(enemy.x, enemy.y, this.damage));
+                    checkEnemyDeath(enemy);
+                }
+            }
+
+            draw(player) {
+                const bladeImg = "🗡️"; // Emoji fallback
+
+                for (let b = 0; b < this.bladeCount; b++) {
+                    const bladeAngle = this.angle + (Math.PI * 2 / this.bladeCount) * b;
+                    const bx = player.x + Math.cos(bladeAngle) * this.radius;
+                    const by = player.y + Math.sin(bladeAngle) * this.radius;
+
+                    const screenX = bx - camera.x;
+                    const screenY = by - camera.y;
+
+                    CTX.save();
+                    CTX.globalAlpha = 1; // Reset to full opacity (fixes occasional low opacity bug)
+                    CTX.fillStyle = '#ffffff'; // Ensure text color is opaque
+                    CTX.translate(screenX, screenY);
+                    // Rotate the sword to point outward (or tangent)
+                    // Tangent = bladeAngle + 90deg
+                    CTX.rotate(bladeAngle + Math.PI / 2);
+
+                    // Glow effect (must be set BEFORE drawing)
+
+                    CTX.font = "30px Arial";
+                    CTX.textAlign = "center";
+                    CTX.textBaseline = "middle";
+                    CTX.fillText(bladeImg, 0, 0);
+
+                    CTX.restore();
+                }
+            }
+        }
         let keys = {};
 
         window.addEventListener('keydown', e => keys[e.key] = true);
@@ -2036,7 +2302,9 @@
             enemies = [];
             gems = [];
             coins = [];
+            chests = [];
             projectiles = [];
+            effects = []; // Reset effects
             texts = [];
             gameState = {
                 running: true,
@@ -2069,14 +2337,17 @@
                 if (rng < 0.08) {
                     // Gold Value Nerfed: 2-8 gold (was 10-30)
                     coins.push(new Coin(enemy.x, enemy.y, 2 + Math.floor(Math.random() * 6)));
-                    
+
                     // Also drop XP (always good to have XP)
                     gems.push(new Gem(enemy.x, enemy.y, 10 + Math.random() * 5));
+                } else if (rng > 0.98) {
+                    // 2% Chance for Chest (rare drop)
+                    chests.push(new Chest(enemy.x, enemy.y));
                 } else {
                     // Standard XP
                     gems.push(new Gem(enemy.x, enemy.y, 10 + Math.random() * 5));
                 }
-                
+
                 gameState.enemiesKilled++;
             }
         }
@@ -2115,9 +2386,12 @@
 
             gems = gems.filter(g => !g.update());
             coins = coins.filter(c => !c.update());
+            chests = chests.filter(c => !c.update());
 
             texts = texts.filter(t => !t.update());
-            
+
+            effects = effects.filter(e => !e.update()); // Update Generic Effects
+
             // Handle Particles in Game Loop
             handleParticles();
         }
@@ -2127,8 +2401,9 @@
             // Draw function must run even if paused for the "Confetti" effect to work on top of game over screen
             // But main game elements should ideally not jitter if paused. 
             // However, our particle system relies on draw() loop being active or manually called.
-            
+
             // 1. Clear background (fallback black)
+            CTX.globalAlpha = 1; // Always reset opacity at frame start
             CTX.fillStyle = '#222';
             CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
@@ -2170,12 +2445,14 @@
             // Other drawings
             gems.forEach(g => g.draw());
             coins.forEach(c => c.draw());
+            chests.forEach(c => c.draw());
             if (player) player.drawWeapons();
             enemies.forEach(e => e.draw());
             projectiles.forEach(p => p.draw());
+            effects.forEach(e => e.draw(CTX)); // Draw Generic Effects
             if (player) player.draw();
             texts.forEach(t => t.draw());
-            
+
             if (joystick.active) {
                 CTX.beginPath();
                 CTX.arc(joystick.originX, joystick.originY, joystick.maxRadius, 0, Math.PI * 2);
@@ -2206,35 +2483,35 @@
          */
         function startGame() {
             document.getElementById('start-screen').classList.add('hidden');
-            
+
             // Start Playlist
             currentTrackIdx = 0; // Reset index
             playNextTrack(); // Start first track
-            
+
             // SDK: Start Gameplay Event
             if (crazysdk) crazysdk.game.gameplayStart();
-            
+
             initGame();
         }
 
         function gameOver() {
             // Prevent double triggering
             if (!gameState.running) return;
-            
+
             gameState.running = false;
-            
+
             // Stop Music & Reset Volume
             bgMusic.pause();
             bgMusic.currentTime = 0;
             bgMusic.volume = 0.4; // Reset volume for main menu
-            
+
             // SDK: Stop Gameplay Event
             if (crazysdk) crazysdk.game.gameplayStop();
-            
+
             // SAVE LOGIC
             saveData.gold += gameState.sessionGold;
             saveGame();
-            
+
             // Reset Revive Button State for new game logic
             const reviveBtn = document.getElementById('revive-btn');
             if (reviveBtn) {
@@ -2250,7 +2527,7 @@
                     reviveBtn.style.borderColor = "";
                 }
             }
-            
+
             document.getElementById('gameover-screen').classList.remove('hidden');
             document.getElementById('final-stats').innerHTML =
                 `Time: ${document.getElementById('timer').innerText}<br>Killed: ${gameState.enemiesKilled}<br>Level: ${player.level}`;
@@ -2261,7 +2538,7 @@
         function returnToMainMenu() {
             // Hide Game Over
             document.getElementById('gameover-screen').classList.add('hidden');
-            
+
             // Hide UI Overlay
             document.getElementById('ui-layer').style.display = 'none';
 
@@ -2289,7 +2566,7 @@
         function showUpgradeMenu() {
             // DUCK VOLUME (Lower volume for menu)
             bgMusic.volume = 0.1;
-            
+
             const container = document.getElementById('upgrade-options');
             container.innerHTML = '';
 
@@ -2297,13 +2574,15 @@
                 { id: 'magic_wand', title: 'Magic Wand', desc: 'Fires at nearest enemy.', icon: '🪄' },
                 { id: 'garlic', title: 'Garlic', desc: 'Creates a damage aura.', icon: '🧄' },
                 { id: 'axe', title: 'Axe', desc: 'Throws high damage axe.', icon: '🪓' },
+                { id: 'lightning', title: 'Lightning', desc: 'Strikes random enemies.', icon: '⚡' },
+                { id: 'blades', title: 'Spectral Blades', desc: 'Swords that orbit you.', icon: '⚔️' },
                 { id: 'heal', title: 'Chicken', desc: 'Restores 30 HP.', icon: '🍗' },
                 { id: 'speed', title: 'Speed Potion', desc: 'Increases movement speed.', icon: '🧪' }
             ];
 
             const choices = options.sort(() => 0.5 - Math.random()).slice(0, 3);
 
-            choices.forEach(opt => { 
+            choices.forEach(opt => {
                 const div = document.createElement('div');
                 div.className = 'upgrade-card';
                 div.innerHTML = `
@@ -2343,7 +2622,9 @@
             EFFECT_CANVAS.height = window.innerHeight;
         });
 
+
     </script>
+    <script src="chest-opening.js"></script>
 </body>
 
 </html>

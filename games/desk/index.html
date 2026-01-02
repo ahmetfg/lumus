@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Drift Hammer: Optimized Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -12,6 +13,244 @@
             background: #222;
             font-family: 'Segoe UI', sans-serif;
             touch-action: none;
+        }
+
+        /* --- MAIN MENU STYLES --- */
+        /* --- CAOS DRIFT: AGGRESSIVE MENU STYLES --- */
+        #main-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)),
+                repeating-linear-gradient(45deg, #111 0, #111 10px, #080808 10px, #080808 20px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Russo One', sans-serif;
+            overflow: hidden;
+        }
+
+        #main-menu.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s ease-in;
+        }
+
+        .menu-title {
+            font-size: 100px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: -2px;
+            margin-bottom: 10px;
+            margin-top: 20px;
+            text-shadow:
+                4px 4px 0px #000,
+                8px 8px 0px #ffcc00;
+            transform: skew(-10deg);
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Glitchy underline effect */
+        .menu-title::after {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 10px;
+            background: #ffcc00;
+            margin-top: 5px;
+            box-shadow: 0 0 20px #ffcc00;
+        }
+
+        .menu-subtitle {
+            font-size: 24px;
+            color: #ccc;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 2;
+        }
+
+        .map-selection {
+            display: flex;
+            gap: 30px;
+            padding: 20px;
+            z-index: 2;
+            perspective: 1500px;
+        }
+
+        .map-card {
+            width: 320px;
+            height: 500px;
+            background: #1a1a1a;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 4px solid #333;
+            /* Aggressive Clip Path */
+            clip-path: polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%);
+        }
+
+        .map-card:hover {
+            transform: translateY(-20px) scale(1.05);
+            border-color: #ffcc00;
+            box-shadow: 0 0 50px rgba(255, 204, 0, 0.3);
+            z-index: 10;
+        }
+
+        .map-card.disabled {
+            filter: grayscale(1) brightness(0.5);
+            cursor: not-allowed;
+            border-color: #444;
+        }
+
+        .map-card.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Full Background Image for Map */
+        .map-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.5s;
+            filter: brightness(0.6);
+        }
+
+        .map-card:hover .map-bg {
+            transform: scale(1.1);
+            filter: brightness(1);
+        }
+
+        /* Specific Map Images */
+        .map-card[data-map="desk"] .map-bg {
+            background-image: url('deskMap.jpg');
+        }
+
+        /* Fallbacks */
+        .map-card[data-map="kitchen"] .map-bg {
+            background: repeating-linear-gradient(45deg, #111, #222 20px);
+        }
+
+        .map-card[data-map="garden"] .map-bg {
+            background: repeating-linear-gradient(-45deg, #051a05, #0a2e0a 20px);
+        }
+
+        .card-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(to top, #000 0%, transparent 100%);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .map-name {
+            font-size: 36px;
+            color: #fff;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .map-label {
+            font-size: 12px;
+            color: #ffcc00;
+            font-weight: bold;
+            margin-bottom: 5px;
+            background: #000;
+            padding: 2px 8px;
+            transform: skew(-20deg);
+            display: inline-block;
+        }
+
+        .play-btn {
+            margin-top: 15px;
+            background: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 10px 30px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 20px;
+            text-transform: uppercase;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .map-card:hover .play-btn {
+            background: #fff;
+            transform: scale(1.1) skew(-10deg);
+        }
+
+        /* --- RESPONSIVE MOBILE --- */
+        @media (max-width: 768px) {
+            #main-menu {
+                justify-content: flex-start;
+                padding-top: 40px;
+                overflow-y: auto;
+                /* Scrollable menu */
+            }
+
+            .menu-title {
+                font-size: 55px;
+                margin-top: 0;
+                text-shadow: 2px 2px 0px #000, 4px 4px 0px #ffcc00;
+            }
+
+            .map-selection {
+                flex-direction: column;
+                align-items: center;
+                gap: 30px;
+                perspective: none;
+                padding-bottom: 50px;
+                width: 100%;
+                box-sizing: border-box;
+                max-height: none;
+                /* Let the container grow naturally */
+            }
+
+            .map-card {
+                width: 90%;
+                height: 250px;
+                /* Shorter cards for mobile */
+                clip-path: polygon(5% 0, 100% 0, 100% 90%, 95% 100%, 0 100%, 0 10%);
+                /* Milder clipping */
+            }
+
+            .map-name {
+                font-size: 28px;
+            }
+
+            .play-btn {
+                padding: 8px 20px;
+                font-size: 16px;
+            }
+        }
+
+        /* Hide Game UI initially */
+        body.in-menu #ui-layer,
+        body.in-menu .mobile-controls-container {
+            display: none !important;
         }
 
         #ui-layer {
@@ -120,6 +359,467 @@
             transform: translateX(-50%);
         }
 
+        /* --- COMBO SYSTEM UI (BOTTOM-CENTER COMPACT) --- */
+        #combo-container {
+            position: absolute;
+            bottom: 120px;
+            /* Hız göstergesinin üstü */
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 25;
+            display: flex;
+            flex-direction: column-reverse;
+            /* UI grows UPWARDS now */
+            align-items: center;
+            gap: 2px;
+        }
+
+        #combo-display {
+            font-family: 'Russo One', sans-serif;
+            font-size: 56px;
+            color: #fff;
+            filter: drop-shadow(0 0 15px rgba(255, 102, 0, 0.8)) drop-shadow(3px 3px 0 #000);
+            opacity: 0;
+            transform: scale(0) skew(-10deg);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            transition: color 0.3s, filter 0.3s, opacity 0.4s ease-out, transform 0.4s ease-out;
+            line-height: 1;
+        }
+
+        /* Combo Seviyeleri */
+        #combo-display.lvl-1 {
+            color: #ffcc00;
+            filter: drop-shadow(0 0 10px rgba(255, 204, 0, 0.6)) drop-shadow(3px 3px 0 #000);
+        }
+
+        #combo-display.lvl-2 {
+            color: #ff6600;
+            filter: drop-shadow(0 0 20px rgba(255, 102, 0, 0.8)) drop-shadow(3px 3px 0 #000);
+        }
+
+        #combo-display.lvl-3 {
+            color: #ff0000;
+            filter: drop-shadow(0 0 30px rgba(255, 0, 0, 1)) drop-shadow(3px 3px 0 #000);
+            animation: alertShake 0.1s infinite;
+        }
+
+        @keyframes alertShake {
+            0% {
+                transform: scale(1) skew(-10deg) translate(0, 0);
+            }
+
+            50% {
+                transform: scale(1.02) skew(-11deg) translate(1px, -1px);
+            }
+
+            100% {
+                transform: scale(1) skew(-10deg) translate(0, 0);
+            }
+        }
+
+        #combo-display.active {
+            opacity: 1;
+            transform: scale(1) skew(-10deg);
+        }
+
+        /* Çıkış Durumu (Instant yok olmayacak) */
+        #combo-display.exit {
+            opacity: 0;
+            transform: scale(0.6) skew(10deg) translateY(20px);
+            filter: blur(10px);
+        }
+
+        #combo-display.pulse {
+            animation: comboSlam 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes comboSlam {
+            0% {
+                transform: scale(1.4) skew(-15deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) skew(-10deg);
+                opacity: 1;
+            }
+        }
+
+        /* Combo Timer Bar */
+        #combo-timer-wrap {
+            width: 120px;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: skew(-15deg);
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+            margin-bottom: 2px;
+        }
+
+        #combo-timer-wrap.active {
+            opacity: 1;
+        }
+
+        #combo-timer-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ffcc00, #ff6600);
+            transform-origin: left;
+        }
+
+        #kill-streak {
+            font-family: 'Russo One', sans-serif;
+            font-size: 32px;
+            color: #fff;
+            filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)) drop-shadow(2px 2px 0 #000);
+            opacity: 0;
+            transform: translateY(10px) scale(0);
+        }
+
+        #kill-streak.show {
+            animation: streakEntry 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+                streakExit 0.5s 1.0s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+        }
+
+        @keyframes streakEntry {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.5) skew(15deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1) skew(-8deg);
+            }
+        }
+
+        @keyframes streakExit {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1) skew(-8deg);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) scale(1.1) skew(-15deg);
+                filter: blur(5px);
+            }
+        }
+
+        #multiplier-display {
+            position: absolute;
+            top: 85px;
+            right: 20px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 28px;
+            color: #00ff88;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.8)) drop-shadow(2px 2px 0 #000);
+            opacity: 0;
+            transform: scale(0.8) skew(-10deg);
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        #multiplier-display.active {
+            opacity: 1;
+            transform: scale(1) skew(-10deg);
+        }
+
+        /* Floating Score Text (In-Game World) */
+        .float-score {
+            position: absolute;
+            font-family: 'Russo One', sans-serif;
+            font-size: 24px;
+            color: #ffcc00;
+            text-shadow: 2px 2px 0 #000;
+            pointer-events: none;
+            z-index: 100;
+            animation: floatUp 0.8s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* --- WAVE SYSTEM UI --- */
+        #wave-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        #wave-display {
+            font-family: 'Russo One', sans-serif;
+            font-size: 28px;
+            color: #00aaff;
+            text-shadow: 0 0 10px rgba(0, 170, 255, 0.8), 2px 2px 0 #000;
+        }
+
+        #wave-banner {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Russo One', sans-serif;
+            font-size: clamp(28px, 8vw, 64px);
+            /* Responsive font */
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 102, 0, 1), 4px 4px 0 #000;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 30;
+            white-space: normal;
+            /* Allow wrapping */
+            text-align: center;
+            max-width: 90vw;
+            padding: 0 10px;
+        }
+
+        #wave-banner.show {
+            animation: bannerSlam 0.4s ease-out forwards,
+                bannerExit 0.4s 3s ease-in forwards;
+            /* 2s -> 3s */
+        }
+
+        @keyframes bannerSlam {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(2) skew(-10deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) skew(-5deg);
+            }
+        }
+
+        /* Boss Meteor Warning Marker */
+        .meteor-warning {
+            position: absolute;
+            /* Not used directly as HTML, but style reference for Mesh or if we used HTML overlays */
+        }
+
+        /* Note: Warning markers will be 3D Meshes, so no CSS needed for them actually. 
+           But if we used HTML elements projected to 3D, we would need this. 
+           I will implement them as 3D Ring/Circle Meshes. */
+
+        @keyframes bannerExit {
+            0% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8) translateY(-30px);
+            }
+        }
+
+        /* Boss Warning - Separate animation for visibility */
+        #wave-banner.boss {
+            color: #ff0000;
+            text-shadow: 0 0 50px rgba(255, 0, 0, 1), 4px 4px 0 #000;
+        }
+
+        #wave-banner.boss.show {
+            animation: bossSlam 0.5s ease-out forwards,
+                bossShake 0.15s 0.5s linear 4,
+                bannerExit 0.5s 2.5s ease-in forwards;
+        }
+
+        @keyframes bossSlam {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(3);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes bossShake {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+
+            25% {
+                transform: translate(-50%, -50%) scale(1.02) rotate(-2deg);
+            }
+
+            75% {
+                transform: translate(-50%, -50%) scale(1.02) rotate(2deg);
+            }
+        }
+
+        /* Boss Health Bar - Bottom Position */
+        #boss-health-container {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            max-width: 70%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            z-index: 100;
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 50, 50, 0.4);
+        }
+
+        #boss-health-container.active {
+            display: flex;
+        }
+
+        #boss-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            color: #ff6666;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        #boss-health-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(50, 0, 0, 0.8);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        #boss-health-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff0000);
+            border-radius: 6px;
+            transition: width 0.15s ease-out;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+        }
+
+        /* Power-up Display */
+        #powerup-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+            pointer-events: none;
+        }
+
+        /* Victory Banner (Bottom - Non-blocking) */
+        #victory-screen {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.9) 30%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px 40px;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        #victory-screen.show {
+            display: flex;
+            animation: victorySlideUp 0.6s ease-out;
+        }
+
+        @keyframes victorySlideUp {
+            0% {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #victory-title {
+            font-family: 'Russo One', sans-serif;
+            font-size: clamp(40px, 10vw, 72px);
+            color: gold;
+            text-shadow: 0 0 30px gold, 0 0 60px orange, 3px 3px 0 #000;
+            animation: victoryPulse 0.5s infinite;
+        }
+
+        @keyframes victoryPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+        }
+
+        #victory-subtitle {
+            font-family: 'Russo One', sans-serif;
+            font-size: clamp(18px, 5vw, 28px);
+            color: #00ff88;
+            margin-top: 10px;
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.8), 2px 2px 0 #000;
+        }
+
+        #victory-score {
+            font-family: 'Russo One', sans-serif;
+            font-size: clamp(24px, 6vw, 36px);
+            color: #fff;
+            margin-top: 10px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        #continue-btn {
+            margin-top: 20px;
+            padding: 12px 35px;
+            font-family: 'Russo One', sans-serif;
+            font-size: clamp(16px, 4vw, 22px);
+            background: linear-gradient(180deg, #ff6600, #cc3300);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-shadow: 1px 1px 0 #000;
+            pointer-events: auto;
+        }
+
+        #continue-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 102, 0, 0.8);
+        }
+
         .mobile-controls-container {
             position: absolute;
             bottom: 20px;
@@ -190,27 +890,102 @@
 </head>
 
 <body>
+    <!-- MAIN MENU -->
+    <!-- MAIN MENU: AGGRESSIVE REDESIGN -->
+    <div id="main-menu">
+        <div class="menu-title">CAOS DRIFT</div>
+        <div class="menu-subtitle">CHOOSE YOUR BATTLEGROUND</div>
+
+        <div class="map-selection">
+
+            <!-- MAP: THE DESK -->
+            <div class="map-card" data-map="desk" onclick="startGame('desk')">
+                <div class="map-bg"></div>
+                <div class="card-content">
+                    <div class="map-label">READY TO RACE</div>
+                    <div class="map-name">THE DESK</div>
+                    <button class="play-btn">START ENGINE</button>
+                </div>
+            </div>
+
+            <!-- MAP: KITCHEN (LOCKED) -->
+            <div class="map-card disabled" data-map="kitchen">
+                <div class="map-bg"></div>
+                <div class="card-content">
+                    <div class="map-label" style="background: #333; color: #999;">LOCKED</div>
+                    <div class="map-name" style="color: #666;">KITCHEN</div>
+                    <button class="play-btn" style="background: #444; color: #888;">SOON</button>
+                </div>
+            </div>
+
+            <!-- MAP: GARDEN (LOCKED) -->
+            <div class="map-card disabled" data-map="garden">
+                <div class="map-bg"></div>
+                <div class="card-content">
+                    <div class="map-label" style="background: #333; color: #999;">LOCKED</div>
+                    <div class="map-name" style="color: #666;">GARDEN</div>
+                    <button class="play-btn" style="background: #444; color: #888;">SOON</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
 
     <div id="ui-layer">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
             <div>
                 <h1>DRIFT & HAMMER</h1>
-                <div style="font-size:12px; color:#ccc; margin-top:5px;">PC: WASD | Mobil: Ekran Tuşları</div>
+                <div style="font-size:12px; color:#ccc; margin-top:5px;">PC: WASD | Mobile: Screen Controls</div>
             </div>
 
             <div id="stats">
-                <div class="stat-box">SKOR: <span id="score-display">0</span></div>
-                <div class="stat-box">CAN: <span id="health-display">100</span></div>
+                <div class="stat-box">SCORE: <span id="score-display">0</span></div>
+                <div class="stat-box">HEALTH: <span id="health-display">100</span></div>
                 <div class="stat-box">FPS: <span id="fps-display">0</span></div>
 
                 <div id="debug-panel">
-                    <div style="font-size:12px; color:#ccc; margin-bottom:5px;">KAMERA (DEBUG)</div>
+                    <div style="font-size:12px; color:#ccc; margin-bottom:5px;">CAMERA (DEBUG)</div>
                     <input type="range" id="cam-dist-slider" min="10" max="150" value="150">
                 </div>
             </div>
         </div>
 
         <div id="speedometer">0 KM/H</div>
+        <div id="multiplier-display">x1</div>
+    </div>
+
+    <!-- COMBO SYSTEM UI -->
+    <div id="combo-container">
+        <div id="combo-display"></div>
+        <div id="combo-timer-wrap">
+            <div id="combo-timer-bar"></div>
+        </div>
+        <div id="kill-streak"></div>
+    </div>
+
+    <!-- WAVE SYSTEM UI -->
+    <div id="wave-container">
+        <div id="wave-display">WAVE 1</div>
+    </div>
+    <div id="wave-banner"></div>
+
+    <!-- POWER-UPS DISPLAY -->
+    <div id="powerup-display"></div>
+
+    <!-- BOSS HEALTH BAR -->
+    <div id="boss-health-container">
+        <div id="boss-name">GUARDIAN</div>
+        <div id="boss-health-bar">
+            <div id="boss-health-fill"></div>
+        </div>
+    </div>
+
+    <!-- VICTORY SCREEN -->
+    <div id="victory-screen">
+        <div id="victory-title">🏆 VICTORY!</div>
+        <div id="victory-subtitle">ENDLESS MODE UNLOCKED</div>
+        <div id="victory-score">SCORE: 0</div>
+        <button id="continue-btn">CONTINUE TO ENDLESS</button>
     </div>
 
     <div class="mobile-controls-container">
@@ -226,13 +1001,20 @@
     </div>
 
     <div id="game-over">
-        <h1 style="font-size: 50px; color: #ff4444;">PARÇALANDIN</h1>
-        <p style="color: #ccc; margin-bottom: 30px;">Skorun: <span id="final-score">0</span></p>
-        <button onclick="location.reload()">TEKRAR DENE</button>
+        <h1 style="font-size: 50px; color: #ff4444;">DESTROYED</h1>
+        <p style="color: #ccc; margin-bottom: 30px;">Final Score: <span id="final-score">0</span></p>
+        <button onclick="location.reload()">TRY AGAIN</button>
     </div>
 
-    <!-- Import Map: GLTFLoader için gerekli -->
-    <script type="importmap">
+    <!-- ES Module Shims: Eski tarayıcılarda import map ve ES modules desteği -->
+    <!-- shimMode: Tüm tarayıcılarda shim kullanılır, böylece import map her yerde çalışır -->
+    <script>
+        window.esmsInitOptions = { shimMode: true };
+    </script>
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
+
+    <!-- Import Map (shim mode için) -->
+    <script type="importmap-shim">
         {
             "imports": {
                 "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -241,7 +1023,7 @@
         }
     </script>
 
-    <script type="module">
+    <script type="module-shim">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
@@ -258,20 +1040,78 @@
         let isGameOver = false;
         let shakeIntensity = 0;
 
+        // --- COMBO SİSTEMİ ---
+        const comboState = {
+            count: 0,
+            timer: 0,
+            maxTime: 2.0, // 2 saniye içinde kill yapmazsan combo biter
+            multiplier: 1,
+            lastAnnouncement: 0
+        };
+
+        const killStreakMessages = [
+            { min: 2, text: 'DOUBLE KILL!' },
+            { min: 3, text: 'TRIPLE KILL!' },
+            { min: 5, text: 'MEGA KILL!' },
+            { min: 7, text: 'ULTRA KILL!' },
+            { min: 10, text: 'MONSTER KILL!' },
+            { min: 15, text: 'UNSTOPPABLE!' },
+            { min: 20, text: 'GODLIKE!' }
+        ];
+
+        // --- WAVE SİSTEMİ ---
+        const waveState = {
+            current: 1,
+            enemiesPerWave: 5,
+            enemiesSpawned: 0,
+            enemiesKilled: 0,
+            isActive: false,
+            isCooldown: false,
+            spawnInterval: null,
+            baseEnemySpeed: 0.15,
+            currentEnemySpeed: 0.15,
+            // Recurring Boss System
+            bossNumber: 0, // Kaçıncı boss (1, 2, 3...)
+            activeBoss: null, // Sahnedeki boss referansı
+            // Meteor System
+            lastMeteorTime: 0,
+            meteorInterval: 4000 // 4 seconds
+        };
+
+
         // --- UI CACHE (Performans için) ---
         const ui = {
             score: -1,
             health: -1,
             speed: -1,
             fps: -1,
+            combo: -1,
+            multiplier: -1,
             camDist: 40,
             els: {
                 score: document.getElementById('score-display'),
+                comboDisplay: document.getElementById('combo-display'),
+                comboTimerBar: document.getElementById('combo-timer-bar'),
+                comboTimerWrap: document.getElementById('combo-timer-wrap'),
+                killStreak: document.getElementById('kill-streak'),
+                multiplierDisplay: document.getElementById('multiplier-display'),
                 health: document.getElementById('health-display'),
                 fps: document.getElementById('fps-display'),
                 speedometer: document.getElementById('speedometer'),
                 finalScore: document.getElementById('final-score'),
-                gameOver: document.getElementById('game-over')
+                gameOver: document.getElementById('game-over'),
+                // Wave UI
+                waveDisplay: document.getElementById('wave-display'),
+                waveBanner: document.getElementById('wave-banner'),
+                victoryScreen: document.getElementById('victory-screen'),
+                victoryScore: document.getElementById('victory-score'),
+                continueBtn: document.getElementById('continue-btn'),
+                // Boss Health Bar
+                bossHealthContainer: document.getElementById('boss-health-container'),
+                bossName: document.getElementById('boss-name'),
+                bossHealthFill: document.getElementById('boss-health-fill'),
+                // Power-ups
+                powerupDisplay: document.getElementById('powerup-display')
             }
         };
 
@@ -306,7 +1146,9 @@
             angularVelocity: 0,
             isTurning: false,
             isReversing: false,
+            isJumping: false, // Rampadan zıplama durumu
         };
+        const tempCarVec = new THREE.Vector3();
 
         const carConstants = {
             maxSpeed: 3.5,
@@ -326,7 +1168,8 @@
             mass: 2.0,
             friction: 1
         };
-        const chainLength = 9.0;
+        let chainLength = 9.0;
+        const baseChainLength = 9.0; // For MAGNET powerup
 
         // --- KONTROLLER ---
         const controller = {
@@ -363,47 +1206,154 @@
             btn.addEventListener('mouseleave', release);
         });
 
-        // --- THREE.JS SETUP ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x222222);
-        scene.fog = new THREE.Fog(0x222222, 40, 400);
+        // --- THREE.JS SETUP GLOBAL VARIABLES ---
+        let scene, camera, renderer, ambientLight, dirLight, gridHelper;
+        let isGameActive = false;
 
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Expose init function to window so HTML can call it
+        window.startGame = function (mapName) {
+            console.log("Starting game on map:", mapName);
 
-        // --- OPTİMİZASYON: Pixel Ratio ve Antialias ---
-        const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-        // Mobil cihazlar için pixel oranını 1.5 ile sınırla (Pil ve Isı tasarrufu)
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-        document.body.appendChild(renderer.domElement);
+            // UI Update
+            document.body.classList.remove('in-menu');
+            document.getElementById('main-menu').classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById('main-menu').style.display = 'none';
+            }, 500);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
-        scene.add(ambientLight);
+            initThreeJS();
 
-        // --- OPTİMİZASYON: Gölge Haritası ---
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(50, 80, 50);
-        dirLight.castShadow = true;
+            if (mapName === 'desk') {
+                loadDeskMap();
+            } else {
+                console.error("Unknown map:", mapName);
+                createFallbackDesk(); // Fallback
+            }
 
-        // Shadow Map boyutunu düşür (Mobil dostu / FPS boost)
-        dirLight.shadow.mapSize.width = 512;
-        dirLight.shadow.mapSize.height = 512;
+            isGameActive = true;
 
-        // Gölge kamerasını daralt (Daha keskin gölge için)
-        const d = 60;
-        dirLight.shadow.camera.left = -d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = -d;
-        scene.add(dirLight);
+            // Start Wave System
+            startWave();
 
-        // --- REFERANS IZGARA (GLOBAL YAPILDI, SİLİNEBİLSİN DİYE) ---
-        let gridHelper = new THREE.GridHelper(2000, 200, 0x666666, 0x333333);
-        gridHelper.position.y = 0.01;
-        scene.add(gridHelper);
+            // Start Loop
+            animate();
+        };
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x222222);
+            scene.fog = new THREE.Fog(0x222222, 40, 400);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            // --- OPTİMİZASYON: Pixel Ratio ve Antialias ---
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            document.body.appendChild(renderer.domElement);
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+            scene.add(ambientLight);
+
+            // --- OPTİMİZASYON: Gölge Haritası ---
+            dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+            dirLight.position.set(50, 80, 50);
+            dirLight.castShadow = true;
+
+            dirLight.shadow.mapSize.width = 512;
+            dirLight.shadow.mapSize.height = 512;
+
+            const d = 60;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            // --- REFERANS IZGARA (GLOBAL YAPILDI, SİLİNEBİLSİN DİYE) ---
+            gridHelper = new THREE.GridHelper(2000, 200, 0x666666, 0x333333);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+
+            // Initialize other static objects that depend on scene
+            initGameObjects();
+        }
+
+        function loadDeskMap() {
+            // 1. Önce desk.glb dosyasını yüklemeyi dene
+            try {
+                loader.load(
+                    'desk.glb',
+                    (gltf) => {
+                        if (isDeskLoaded) return;
+                        isDeskLoaded = true;
+
+                        const desk = gltf.scene;
+
+                        // --- İSTEK: Scale 100 yapıldı ---
+                        desk.scale.set(100, 100, 100);
+                        desk.position.set(0, -2, 0);
+
+                        // --- SINIR KONTROLÜ (deskFloor ARAMA) ---
+                        let floorFound = false;
+                        desk.traverse((child) => {
+                            if (child.isMesh) {
+                                child.receiveShadow = true;
+
+                                // Eğer 'deskFloor' isimli obje varsa sınırları ondan al
+                                if (child.name === 'deskFloor') {
+                                    // Bounding Box hesapla
+                                    child.updateWorldMatrix(true, false);
+                                    const box = new THREE.Box3().setFromObject(child);
+                                    mapBounds.minX = box.min.x;
+                                    mapBounds.maxX = box.max.x;
+                                    mapBounds.minZ = box.min.z;
+                                    mapBounds.maxZ = box.max.z;
+
+                                    floorFound = true;
+                                    console.log("Özel zemin 'deskFloor' bulundu. Sınırlar:", mapBounds);
+                                }
+                            }
+                        });
+
+                        scene.add(desk);
+
+                        // --- İSTEK: Model yüklenince Grid'i sil ---
+                        if (gridHelper) {
+                            scene.remove(gridHelper);
+                            gridHelper.geometry.dispose();
+                            gridHelper.material.dispose();
+                        }
+
+                        console.log('BAŞARILI: desk.glb yüklendi.');
+                    },
+                    undefined,
+                    (error) => {
+                        console.warn('UYARI: desk.glb yüklenemedi (Async).', error);
+                        createFallbackDesk();
+                    }
+                );
+            } catch (error) {
+                console.warn('UYARI: desk.glb yüklenemedi (Sync/URL Error).', error);
+                createFallbackDesk();
+            }
+        }
+
+        function initGameObjects() {
+            // Re-add car, ball, ramp, etc. to the new scene
+            // NOTE: Since we are deferring scene creation, we need to move the object creation logic 
+            // (carGroup, ballMesh, etc.) inside this function or re-add them if they were created globally.
+            // Currently they are created globally below. We should move them here.
+
+            scene.add(carGroup);
+            scene.add(ballMesh);
+            scene.add(chainLine);
+            spawnDummyBall(20, 20);
+            scene.add(rampGroup);
+        }
 
         // --- MODEL YÜKLEME SİSTEMİ (GLB + FALLBACK) ---
         const loader = new GLTFLoader();
@@ -448,64 +1398,8 @@
             scene.add(deskGroup);
         }
 
-        // 1. Önce desk.glb dosyasını yüklemeyi dene
-        try {
-            loader.load(
-                'desk.glb',
-                (gltf) => {
-                    if (isDeskLoaded) return;
-                    isDeskLoaded = true;
+        // Moved logic to loadDeskMap()
 
-                    const desk = gltf.scene;
-
-                    // --- İSTEK: Scale 100 yapıldı ---
-                    desk.scale.set(100, 100, 100);
-                    desk.position.set(0, -2, 0);
-
-                    // --- SINIR KONTROLÜ (deskFloor ARAMA) ---
-                    let floorFound = false;
-                    desk.traverse((child) => {
-                        if (child.isMesh) {
-                            child.receiveShadow = true;
-
-                            // Eğer 'deskFloor' isimli obje varsa sınırları ondan al
-                            if (child.name === 'deskFloor') {
-                                // Bounding Box hesapla
-                                child.updateWorldMatrix(true, false);
-                                const box = new THREE.Box3().setFromObject(child);
-                                mapBounds.minX = box.min.x;
-                                mapBounds.maxX = box.max.x;
-                                mapBounds.minZ = box.min.z;
-                                mapBounds.maxZ = box.max.z;
-
-                                floorFound = true;
-                                console.log("Özel zemin 'deskFloor' bulundu. Sınırlar:", mapBounds);
-                            }
-                        }
-                    });
-
-                    // Eğer özel zemin yoksa varsayılan devasa sınırları kullanmaya devam eder.
-
-                    scene.add(desk);
-
-                    // --- İSTEK: Model yüklenince Grid'i sil ---
-                    scene.remove(gridHelper);
-                    // Grid helper belleğini temizle
-                    gridHelper.geometry.dispose();
-                    gridHelper.material.dispose();
-
-                    console.log('BAŞARILI: desk.glb yüklendi.');
-                },
-                undefined,
-                (error) => {
-                    console.warn('UYARI: desk.glb yüklenemedi (Async).', error);
-                    createFallbackDesk();
-                }
-            );
-        } catch (error) {
-            console.warn('UYARI: desk.glb yüklenemedi (Sync/URL Error).', error);
-            createFallbackDesk();
-        }
 
         // --- ARABA MODELİ ---
         const carGroup = new THREE.Group();
@@ -538,7 +1432,8 @@
             wheels.push(w);
         });
 
-        scene.add(carGroup);
+
+
 
         // --- GÜLLE ve ZİNCİR ---
         const ballRadius = 2.2;
@@ -547,12 +1442,16 @@
         const ballMesh = new THREE.Mesh(ballGeo, ballMat);
         ballMesh.castShadow = true;
         ballMesh.position.y = ballRadius;
-        scene.add(ballMesh);
+        // ballMesh add to scene moved to init
+
+        // ballMesh add to scene moved to init
 
         const chainGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
         const chainMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
         const chainLine = new THREE.Line(chainGeo, chainMat);
-        scene.add(chainLine);
+        // chainLine add to scene moved to init
+
+
 
         // --- DUMMY TOPLAR (ETKİLEŞİMLİ) ---
         const dummyBalls = [];
@@ -575,36 +1474,161 @@
         }
 
         // Sadece bir tane spawn et
-        spawnDummyBall(20, 20);
+        // spawnDummyBall add logic moved to initGameObjects, keeping function definition
+        // call to spawnDummyBall(20, 20) moved to initGameObjects
+
+
+        // --- RAMPA (DÜZELTİLMİŞ HİYERARŞİ) ---
+        const rampWidth = 12;
+        const rampLength = 20; // Rampa uzunluğu (Hipotenüs)
+        const rampAngle = Math.PI / 8; // 22.5 derece eğim
+
+        // YÜKSEKLİK HESABI: Uzunluk ve Açıya göre otomatik hesapla
+        // Böylece rampa geometrisi ve fizik motoru %100 uyuşur.
+        const rampHeight = rampLength * Math.sin(rampAngle);
+
+        const rampGeo = new THREE.BoxGeometry(rampWidth, 0.5, rampLength);
+        const rampMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.4, metalness: 0.3 });
+
+        // GRUP SİSTEMİ: Yön ve Eğimi ayırıyoruz
+        const rampGroup = new THREE.Group();
+        rampGroup.position.set(0, rampHeight / 2, 50); // Konum (Tüm rampa buradan taşınır)
+        rampGroup.rotation.y = Math.PI / 2; // İSTEDİĞİN YÖNE ÇEVİR (90 derece, 45 derece vb. sorunsuz çalışır)
+
+        const rampMesh = new THREE.Mesh(rampGeo, rampMat);
+        rampMesh.rotation.x = -rampAngle; // Eğim (Sadece X ekseni)
+        rampMesh.castShadow = true;
+        rampMesh.receiveShadow = true;
+
+        rampGroup.add(rampMesh); // Mesh'i gruba ekle
+
+
+
+        // Rampa Verileri (Fizik motoru bunu kullanır)
+        const rampData = {
+            mesh: rampMesh, // Fizik hala asıl eğimli mesh'e bakıyor, sorunsuz çalışır.
+            width: rampWidth,
+            length: rampLength,
+            topY: rampHeight,
+            launchAngle: rampAngle,
+            halfWidth: rampWidth / 2,
+            halfLength: rampLength / 2
+        };
 
         // --- DÜŞMAN VE PARTİKÜL SİSTEMİ ---
         const enemies = [];
-        const enemyGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-        const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+        const meteors = [];
+        
+        // Enemy Types Configuration
+        const ENEMY_TYPES = {
+            NORMAL: { hp: 1, speed: 1.0, size: 1.5, color: 0xff3333, score: 10, emissive: 0x330000 },
+            TANK: { hp: 3, speed: 0.7, size: 2.7, color: 0x666666, score: 30, emissive: 0x222222 },
+            SPEEDY: { hp: 1, speed: 1.8, size: 1.2, color: 0x00ffff, score: 20, emissive: 0x0088aa },
+            BOMBER: { hp: 1, speed: 1.0, size: 1.5, color: 0xff6600, score: 15, emissive: 0x883300 }
+        };
+        
+        // PRE-CACHED GEOMETRIES (Performance Optimization)
+        const cachedGeo = {
+            boss: new THREE.BoxGeometry(4.5, 4.5, 4.5),
+            meteorWarning: new THREE.RingGeometry(0.2, 3.5, 16), // 32 -> 16 segments
+            meteor: new THREE.BoxGeometry(3, 3, 3),
+            bomberWarning: new THREE.RingGeometry(7.5, 8.5, 16)
+        };
+        
+        // PRE-CACHED MATERIALS
+        const cachedMat = {
+            boss: new THREE.MeshStandardMaterial({ 
+                color: 0x880000, emissive: 0x330000, emissiveIntensity: 0.5,
+                roughness: 0.3, metalness: 0.5
+            }),
+            meteorWarning: new THREE.MeshBasicMaterial({ 
+                color: 0xff0000, transparent: true, opacity: 0.0, side: THREE.DoubleSide
+            }),
+            meteor: new THREE.MeshBasicMaterial({ 
+                color: 0xff2200
+            })
+        };
+        
+        // --- POWER-UP SYSTEM ---
+        const powerups = [];
+        const POWERUP_TYPES = {
+            SPEED: { color: 0xffff00, emissive: 0xffaa00, duration: 8000, name: 'SPEED' },
+            SHIELD: { color: 0x00ffff, emissive: 0x0088aa, duration: 5000, name: 'SHIELD' },
+            MAGNET: { color: 0xff00ff, emissive: 0xaa00aa, duration: 10000, name: 'MAGNET' },
+            HEALTH: { color: 0x00ff00, emissive: 0x00aa00, duration: 0, name: 'HEALTH' }
+        };
+        
+        const activePowerups = {
+            SPEED: { active: false, endTime: 0 },
+            SHIELD: { active: false, endTime: 0 },
+            MAGNET: { active: false, endTime: 0 }
+        };
+        
+        // Cached powerup geometry
+        cachedGeo.powerup = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+        
+        let lastPowerupSpawn = 0;
+        const powerupSpawnInterval = 18000; // 18 seconds
+        
+        function getEnemyTypeForWave(waveNum) {
+            if (waveNum <= 2) return 'NORMAL';
+            
+            const rand = Math.random();
+            if (waveNum <= 4) {
+                if (rand < 0.70) return 'NORMAL';
+                if (rand < 0.90) return 'TANK';
+                return 'SPEEDY';
+            } else if (waveNum <= 6) {
+                if (rand < 0.60) return 'NORMAL';
+                if (rand < 0.80) return 'TANK';
+                if (rand < 0.95) return 'SPEEDY';
+                return 'BOMBER';
+            } else {
+                if (rand < 0.50) return 'NORMAL';
+                if (rand < 0.70) return 'TANK';
+                if (rand < 0.90) return 'SPEEDY';
+                return 'BOMBER';
+            }
+        }
 
         const particles = [];
         const particleGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
         const particleMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
 
         // --- PATLAMA EFEKTİ ---
-        function createExplosion(pos, impactVel) {
+        function createExplosion(pos, impactVel, isBoss = false) {
             const baseSize = 3.5 + Math.random() * 0.5;
             const dir = impactVel.clone().normalize();
-            const speed = Math.min(impactVel.length(), 10.0);
+            const speed = impactVel.length();
 
-            for (let i = 0; i < 10; i++) {
-                const p = new THREE.Mesh(particleGeo, particleMat.clone()); // Mat clone gerekli çünkü şeffaflık her particle için değişebilir
+            const particleCount = isBoss ? 12 : 10;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const p = new THREE.Mesh(particleGeo, particleMat.clone());
                 p.position.copy(pos);
 
-                const spreadFactor = 0.7;
-
-                const vx = dir.x + (Math.random() - 0.5) * spreadFactor;
-                const vz = dir.z + (Math.random() - 0.5) * spreadFactor;
-                const vy = Math.random() * 0.8 + 0.3;
-
-                const velocityMag = 0.5 + (speed * 0.3);
-
-                p.userData.vel = new THREE.Vector3(vx, vy, vz).normalize().multiplyScalar(velocityMag);
+                if (isBoss) {
+                    // BOSS: Kompakt küresel patlama
+                    const rv = new THREE.Vector3(
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2
+                    ).normalize();
+                    
+                    rv.addScaledVector(dir, 0.3).normalize();
+                    const velocityMag = 0.2 + (Math.random() * 0.25);
+                    p.userData.vel = rv.multiplyScalar(velocityMag);
+                } else {
+                    // MİNYON: Orijinal iyi çalışan sistem
+                    const spreadFactor = 0.7;
+                    const vx = dir.x + (Math.random() - 0.5) * spreadFactor;
+                    const vz = dir.z + (Math.random() - 0.5) * spreadFactor;
+                    const vy = Math.random() * 0.8 + 0.3;
+                    const velocityMag = 0.5 + (speed * 0.3);
+                    
+                    p.userData.vel = new THREE.Vector3(vx, vy, vz).normalize().multiplyScalar(velocityMag);
+                }
+                
                 p.userData.life = 1.0;
                 p.userData.baseScale = baseSize;
 
@@ -615,24 +1639,58 @@
 
         function spawnEnemy() {
             if (isGameOver) return;
-            if (enemies.length > 25) return; // 50 -> 25 (Performans için düşürüldü)
+            if (enemies.length > 25) return;
 
-            const enemy = new THREE.Mesh(enemyGeo, enemyMat); // Tek materyal kullanımı (Batching avantajı)
+            // Determine enemy type based on wave
+            const typeName = getEnemyTypeForWave(waveState.current);
+            const type = ENEMY_TYPES[typeName];
+            
+            // Create geometry and material based on type
+            const enemyGeo = new THREE.BoxGeometry(type.size, type.size, type.size);
+            const enemyMat = new THREE.MeshStandardMaterial({ 
+                color: type.color,
+                emissive: type.emissive,
+                emissiveIntensity: typeName === 'BOMBER' ? 0.3 : 0.1
+            });
+            const enemy = new THREE.Mesh(enemyGeo, enemyMat);
 
+            // Position
             const angle = Math.random() * Math.PI * 2;
             const dist = 40 + Math.random() * 30;
             const ex = carState.xPos + Math.sin(angle) * dist;
             const ez = carState.yPos + Math.cos(angle) * dist;
-
-            enemy.position.set(ex, 0.75, ez);
+            enemy.position.set(ex, type.size / 2, ez);
+            
             enemy.castShadow = true;
             enemy.receiveShadow = true;
 
+            // Enemy data
+            enemy.userData.type = typeName;
+            enemy.userData.hp = type.hp;
+            enemy.userData.maxHp = type.hp;
+            enemy.userData.speedMult = type.speed;
+            enemy.userData.scoreValue = type.score;
+            enemy.userData.stunTimer = 0;
+            enemy.userData.knockbackVx = 0;
+            enemy.userData.knockbackVz = 0;
+            
+            // Type-specific data
+            if (typeName === 'SPEEDY') {
+                enemy.userData.zigzagTimer = 0;
+                enemy.userData.zigzagAngle = 0;
+            }
+            if (typeName === 'BOMBER') {
+                enemy.userData.glowPhase = 0;
+            }
+            
             scene.add(enemy);
             enemies.push(enemy);
         }
 
-        setInterval(spawnEnemy, 1500);
+
+
+        // setInterval(spawnEnemy, 1500); // MOVED TO initGame
+
 
         // --- SKIDMARKS ---
         const skidMarks = [];
@@ -690,8 +1748,16 @@
         // --- FİZİK UPDATE ---
         function updatePhysics(delta) {
             if (isGameOver) return;
+            
+            // Meteor Update
+            updateMeteors(delta);
+            updatePowerups(delta);
+            updatePowerupEffects();
 
-            const deltaFactor = delta * 60; // 60 FPS'e normalize edilmiş katsayı
+            // DELTA CLAMPING: Frame drop olduğunda fizik patlamasını önle
+            // Max 33ms (30 FPS eşdeğeri) - gülle chain constraint için kritik
+            const clampedDelta = Math.min(delta, 0.033);
+            const deltaFactor = clampedDelta * 60; // 60 FPS'e normalize edilmiş katsayı
 
             // --- ARABA HAREKETİ VE KONTROL ---
             if (carState.isFalling) {
@@ -713,41 +1779,133 @@
                 const isLeft = controller.ArrowLeft.pressed || controller.a.pressed;
                 const isRight = controller.ArrowRight.pressed || controller.d.pressed;
 
-                if (isUp && carState.speed < carConstants.maxSpeed) carState.speed += carConstants.accelerationFactor * deltaFactor;
-                if (isDown && carState.speed > carConstants.maxReverseSpeed) carState.speed -= carConstants.decelerationFactor * deltaFactor;
+                // --- YERDE SÜRÜŞ FİZİĞİ (Havada iptal) ---
+                if (!carState.isJumping) {
+                    const speedMult = activePowerups.SPEED.active ? 1.5 : 1.0;
+                    const effectiveMaxSpeed = carConstants.maxSpeed * speedMult;
+                    if (isUp && carState.speed < effectiveMaxSpeed) carState.speed += carConstants.accelerationFactor * deltaFactor;
+                    if (isDown && carState.speed > carConstants.maxReverseSpeed) carState.speed -= carConstants.decelerationFactor * deltaFactor;
 
-                carState.isTurning = false;
-                if (isLeft) {
-                    carState.isTurning = true;
-                    carState.angularVelocity += carConstants.turnFactor * (isUp ? 1 : (carState.speed / carConstants.maxSpeed) * 2) * deltaFactor;
+                    carState.isTurning = false;
+                    if (isLeft) {
+                        carState.isTurning = true;
+                        carState.angularVelocity += carConstants.turnFactor * (isUp ? 1 : (carState.speed / carConstants.maxSpeed) * 2) * deltaFactor;
+                    }
+                    if (isRight) {
+                        carState.isTurning = true;
+                        carState.angularVelocity -= carConstants.turnFactor * (isUp ? 1 : (carState.speed / carConstants.maxSpeed) * 2) * deltaFactor;
+                    }
+
+                    carState.isReversing = carState.speed < 0;
+                    carState.angularVelocity *= Math.pow(frictionFactor, deltaFactor);
+
+                    if (!carState.isReversing) carState.driftAngle += carConstants.driftFactor * carState.angularVelocity * deltaFactor;
+                    carState.driftAngle *= Math.pow(frictionFactor, deltaFactor);
+                    carState.angle += carState.angularVelocity * deltaFactor;
+
+                    carState.speed = carState.speed * Math.pow(dragFactor, deltaFactor) - (carState.isReversing ? -1 : 1) * ((Math.abs(carState.driftAngle) * carState.speed) / 1000) * deltaFactor;
+
+                    carState.xSpeed = Math.sin((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
+                    carState.ySpeed = Math.cos((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
+
+                    carState.xPos -= carState.xSpeed * deltaFactor;
+                    carState.yPos -= carState.ySpeed * deltaFactor;
+
+                    carGroup.rotation.y = (Math.PI / 180) * (carState.angle + carState.driftAngle);
                 }
-                if (isRight) {
-                    carState.isTurning = true;
-                    carState.angularVelocity -= carConstants.turnFactor * (isUp ? 1 : (carState.speed / carConstants.maxSpeed) * 2) * deltaFactor;
-                }
 
-                carState.isReversing = carState.speed < 0;
-                carState.angularVelocity *= Math.pow(frictionFactor, deltaFactor);
-
-                if (!carState.isReversing) carState.driftAngle += carConstants.driftFactor * carState.angularVelocity * deltaFactor;
-                carState.driftAngle *= Math.pow(frictionFactor, deltaFactor);
-                carState.angle += carState.angularVelocity * deltaFactor;
-
-                carState.speed = carState.speed * Math.pow(dragFactor, deltaFactor) - (carState.isReversing ? -1 : 1) * ((Math.abs(carState.driftAngle) * carState.speed) / 1000) * deltaFactor;
-
-                carState.xSpeed = Math.sin((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
-                carState.ySpeed = Math.cos((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
-
-                carState.xPos -= carState.xSpeed * deltaFactor;
-                carState.yPos -= carState.ySpeed * deltaFactor;
-
+                // Harita sınırları
                 if (carState.xPos < mapBounds.minX || carState.xPos > mapBounds.maxX ||
                     carState.yPos < mapBounds.minZ || carState.yPos > mapBounds.maxZ) {
                     carState.isFalling = true;
                     carState.verticalSpeed = 0;
                 }
 
-                carGroup.rotation.y = (Math.PI / 180) * (carState.angle + carState.driftAngle);
+                // --- RAMPA VE YERÇEKİMİ KONTROLÜ (YEREL KOORDİNAT SİSTEMİ) ---
+                // Arabanın dünya pozisyonunu rampanın yerel sistemine çeviriyoruz
+                // Böylece rampayı istediğin yöne döndürebilirsin.
+                tempCarVec.set(carState.xPos, carState.altitude, carState.yPos);
+                rampData.mesh.worldToLocal(tempCarVec);
+
+                // Yerel sistemde BoxGeometry (0,0,0) merkezli olduğu için sınırlar:
+                const onRampXZ = Math.abs(tempCarVec.x) < rampData.halfWidth &&
+                    Math.abs(tempCarVec.z) < rampData.halfLength;
+
+                // Rampa hesaplamaları (Yerel Z ekseni üzerinden)
+                let rampHeightAtPos = 0;
+                let rampProgress = 0;
+
+                if (onRampXZ) {
+                    // Yerel Z: -halfLength -> +halfLength arası. Progress: 0 -> 1
+                    rampProgress = (tempCarVec.z + rampData.halfLength) / (rampData.halfLength * 2);
+                    rampHeightAtPos = rampProgress * rampData.topY;
+                }
+
+                // 1. Durum: Rampanın üzerindeyiz (veya rampa hizasına düştük/iniş yaptık)
+                const isCarCloseToRampSurface = carState.altitude <= rampHeightAtPos + 0.5;
+                const isVerticalFalling = carState.verticalSpeed <= 0;
+
+                // Rampaya sadece başlangıçtan (Progress < 0.2) girebiliriz veya zaten üstündeysek (altitude > 0.5) devam ederiz.
+                const canEnterRamp = (rampProgress < 0.2) || (carState.altitude > 0.5);
+                const canLandOnRamp = onRampXZ && canEnterRamp && (!carState.isJumping || (isVerticalFalling && isCarCloseToRampSurface));
+
+                if (canLandOnRamp) {
+                    carState.isJumping = false;
+                    carState.verticalSpeed = 0;
+
+                    // Yükseklik: Doğrudan yüzeye yapış
+                    carState.altitude = rampHeightAtPos;
+
+                    // Eğim: Rampanın dünya yönüne göre ayarla
+                    carGroup.rotation.order = 'YXZ'; // Önce Yaw, sonra Pitch/Roll
+
+                    const carYaw = (Math.PI / 180) * (carState.angle + carState.driftAngle);
+                    const rampYaw = rampGroup.rotation.y;
+                    const relativeYaw = rampYaw - carYaw; // Arabanın rampaya göre açısı
+
+                    carGroup.rotation.y = carYaw;
+                    carGroup.rotation.x = -rampData.launchAngle * Math.cos(relativeYaw); // X bileşeni
+                    carGroup.rotation.z = rampData.launchAngle * Math.sin(relativeYaw);  // Z bileşeni
+
+                    // Fırlatma (Sadece rampanın sonundan ileri doğru çıkarsa)
+                    if (rampProgress >= 0.98 && carState.speed > 0) {
+                        carState.isJumping = true;
+                        carState.verticalSpeed = carState.speed * Math.sin(rampData.launchAngle);
+                        carState.altitude += 0.6;
+                    }
+                }
+                // 2. Durum: Rampadan çıktık veya havadayız (GENEL YERÇEKİMİ)
+                else {
+                    // Eğer rampada değilsek ama yüksekteysek, mekanik olarak düşüyor olmalıyız
+                    if (carState.altitude > 0) {
+                        carState.isJumping = true;
+                    }
+
+                    if (carState.isJumping) {
+                        // Yerçekimi
+                        carState.verticalSpeed -= 0.015 * deltaFactor;
+                        carState.altitude += carState.verticalSpeed * deltaFactor;
+
+                        // Yatay hareket (Hız korunur)
+                        carState.xPos -= carState.xSpeed * deltaFactor;
+                        carState.yPos -= carState.ySpeed * deltaFactor;
+
+                        // Havada rotasyonu yavaşça düzelt
+                        carGroup.rotation.x *= 0.95;
+                        carGroup.rotation.z *= 0.95; // Z eksenini de sıfırla
+
+                        // İniş kontrolü (ZEMİNE)
+                        if (carState.altitude <= 0) {
+                            carState.altitude = 0;
+                            carState.isJumping = false;
+                            carState.verticalSpeed = 0;
+                            carGroup.rotation.x = 0;
+                            carGroup.rotation.z = 0; // Z eksenini tamamen sıfırla
+                        }
+                    }
+                }
+
+
 
                 if (
                     (Math.abs(carState.speed) > 0.1 && Math.abs(carState.driftAngle) > 10) ||
@@ -810,35 +1968,168 @@
             if (!carState.isFalling) {
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const enemy = enemies[i];
+                    const isBoss = enemy.userData.isBoss;
 
-                    const edx = carState.xPos - enemy.position.x;
-                    const edz = carState.yPos - enemy.position.z;
-                    const eAngle = Math.atan2(edx, edz);
-                    const eSpeed = 0.15;
+                    // Knockback / Stun kontrolü
+                    if (enemy.userData.stunTimer > 0) {
+                        enemy.userData.stunTimer -= deltaFactor;
+                        
+                        // Smooth knockback uygula
+                        enemy.position.x += enemy.userData.knockbackVx * deltaFactor;
+                        enemy.position.z += enemy.userData.knockbackVz * deltaFactor;
+                        
+                        // Sürtünme ile yavaşlat (smooth durma)
+                        enemy.userData.knockbackVx *= Math.pow(0.88, deltaFactor);
+                        enemy.userData.knockbackVz *= Math.pow(0.88, deltaFactor);
+                    } else {
+                        const edx = carState.xPos - enemy.position.x;
+                        const edz = carState.yPos - enemy.position.z;
+                        let eAngle = Math.atan2(edx, edz);
+                        
+                        // Type-specific behavior
+                        const enemyType = enemy.userData.type || 'NORMAL';
+                        
+                        if (enemyType === 'SPEEDY') {
+                            // Zigzag movement
+                            enemy.userData.zigzagTimer += deltaFactor;
+                            if (enemy.userData.zigzagTimer > 30) { // ~0.5s
+                                enemy.userData.zigzagTimer = 0;
+                                enemy.userData.zigzagAngle = (Math.random() - 0.5) * Math.PI * 0.5;
+                            }
+                            eAngle += enemy.userData.zigzagAngle;
+                        } else if (enemyType === 'BOMBER') {
+                            // Pulsing glow
+                            enemy.userData.glowPhase += deltaFactor * 0.1;
+                            enemy.material.emissiveIntensity = 0.3 + Math.sin(enemy.userData.glowPhase) * 0.2;
+                        }
+                        
+                        // Speed calculation
+                        let eSpeed;
+                        if (isBoss) {
+                            eSpeed = waveState.currentEnemySpeed * (enemy.userData.speedMult || 0.7);
+                        } else {
+                            eSpeed = waveState.currentEnemySpeed * (enemy.userData.speedMult || 1.0);
+                        }
 
-                    enemy.position.x += Math.sin(eAngle) * eSpeed * deltaFactor;
-                    enemy.position.z += Math.cos(eAngle) * eSpeed * deltaFactor;
-                    enemy.rotation.y = eAngle;
+                        enemy.position.x += Math.sin(eAngle) * eSpeed * deltaFactor;
+                        enemy.position.z += Math.cos(eAngle) * eSpeed * deltaFactor;
+                        enemy.rotation.y = eAngle;
+                    }
 
                     const dx_be = enemy.position.x - ballState.x;
                     const dz_be = enemy.position.z - ballState.y;
                     const ballDistSq = dx_be * dx_be + dz_be * dz_be;
-                    const minBallDist = ballRadius + 1.0;
+                    
+                    // Boss için daha büyük hit radius
+                    const hitRadius = isBoss ? ballRadius + 2.5 : ballRadius + 1.0;
 
-                    if (ballDistSq < minBallDist * minBallDist) {
+                    if (ballDistSq < hitRadius * hitRadius) {
                         if (bSpeed > 0.3) {
-                            const impactVel = _vec3_1.set(ballState.vx, 0, ballState.vy);
-                            createExplosion(enemy.position, impactVel);
+                            if (isBoss) {
+                                // Hit cooldown kontrolü (500ms)
+                                const now = performance.now();
+                                if (now - enemy.userData.lastHitTime < 500) {
+                                    continue; // Çok hızlı vuruş, atla
+                                }
+                                enemy.userData.lastHitTime = now;
+                                
+                                // BOSS HASAR ALDI
+                                enemy.userData.health--;
+                                shakeIntensity = 5;
+                                
+                                enemy.material.emissiveIntensity = 1.0;
+                                setTimeout(() => {
+                                    if (enemy.material) enemy.material.emissiveIntensity = 0.5;
+                                }, 200);
+                                
+                                // Update boss health bar
+                                const healthPercent = (enemy.userData.health / enemy.userData.maxHealth) * 100;
+                                ui.els.bossHealthFill.style.width = healthPercent + '%';
+                                
+                                if (enemy.userData.health <= 0) {
+                                    // BOSS ÖLDÜ - EPİK PATLAMA!
+                                    const bossPos = enemy.position.clone();
+                                    const impactVel = _vec3_1.set(ballState.vx, 0, ballState.vy);
+                                    
+                                    // 6x patlama efekti - zincirleme patlama
+                                    for (let e = 0; e < 6; e++) {
+                                        setTimeout(() => {
+                                            const offset = new THREE.Vector3(
+                                                (Math.random() - 0.5) * 4,
+                                                Math.random() * 2,
+                                                (Math.random() - 0.5) * 4
+                                            );
+                                            const explosionPos = bossPos.clone().add(offset);
+                                            createExplosion(explosionPos, impactVel, true); // Boss explosion
+                                        }, e * 80); // 80ms aralıklarla
+                                    }
+                                    
+                                    scene.remove(enemy);
+                                    enemies.splice(i, 1);
+                                    
+                                    onEnemyKilled(true); // Boss killed
+                                    shakeIntensity = 12; // Ekstra sarsıntı
+                                } else {
+                                    // KNOCKBACK & STUN - Isabetin keyfini ver (SMOOTH)
+                                    enemy.userData.stunTimer = 45; // ~0.75 saniye durma
+                                    const kbMult = 1.5; // Dengeli savrulma (smooth + visible)
+                                    enemy.userData.knockbackVx = ballState.vx * kbMult;
+                                    enemy.userData.knockbackVz = ballState.vy * kbMult;
+                                }
+                                
+                                ballState.vx *= 0.5;
+                                ballState.vy *= 0.5;
+                                continue;
+                            } else {
+                                // NORMAL/TANK/SPEEDY/BOMBER - Multi-hit HP system
+                                const enemyType = enemy.userData.type || 'NORMAL';
+                                
+                                // Decrement HP
+                                enemy.userData.hp--;
+                                
+                                // Visual feedback
+                                enemy.material.emissiveIntensity = 1.0;
+                                setTimeout(() => {
+                                    if (enemy.material) {
+                                        enemy.material.emissiveIntensity = enemyType === 'BOMBER' ? 0.3 : 0.1;
+                                    }
+                                }, 150);
+                                
+                                shakeIntensity = 2.5;
+                                
+                                // Check if dead
+                                if (enemy.userData.hp <= 0) {
+                                    // Enemy killed
+                                    const impactVel = _vec3_1.set(ballState.vx, 0, ballState.vy);
+                                    const enemyPos = enemy.position.clone();
+                                    
+                                    // Type-specific death
+                                    if (enemyType === 'TANK') {
+                                        createExplosion(enemyPos, impactVel);
+                                        shakeIntensity = 4;
+                                    } else if (enemyType === 'BOMBER') {
+                                        createExplosion(enemyPos, impactVel);
+                                        spawnBomberExplosion(enemyPos);
+                                    } else {
+                                        createExplosion(enemyPos, impactVel);
+                                    }
 
-                            scene.remove(enemy);
-                            enemies.splice(i, 1);
-                            score += 10;
-
-                            shakeIntensity = 2.5;
-
-                            ballState.vx *= 0.8;
-                            ballState.vy *= 0.8;
-                            continue;
+                                    scene.remove(enemy);
+                                    enemies.splice(i, 1);
+                                    
+                                    // Use type-specific score
+                                    const scoreGain = enemy.userData.scoreValue || 10;
+                                    score += scoreGain;
+                                    
+                                    // COMBO SISTEMI + WAVE SISTEMI
+                                    registerKill(enemyPos);
+                                    onEnemyKilled(false);
+                                }
+                                
+                                ballState.vx *= 0.8;
+                                ballState.vy *= 0.8;
+                                continue;
+                            }
                         } else {
                             const dist_be = Math.sqrt(ballDistSq);
                             enemy.position.x += (dx_be / dist_be) * 0.2 * deltaFactor;
@@ -849,10 +2140,16 @@
                     const dx_ce = enemy.position.x - carState.xPos;
                     const dz_ce = enemy.position.z - carState.yPos;
                     const carDistSq = dx_ce * dx_ce + dz_ce * dz_ce;
-                    const minCarDist = 2.0;
+                    
+                    // Boss için daha büyük çarpışma alanı
+                    const minCarDist = isBoss ? 3.5 : 2.0;
 
                     if (carDistSq < minCarDist * minCarDist) {
-                        health -= 0.2 * deltaFactor;
+                        // Boss 3x hasar verir
+                        const damageMultiplier = isBoss ? 0.6 : 0.2;
+                        if (!activePowerups.SHIELD.active) {
+                            health -= damageMultiplier * deltaFactor;
+                        }
 
                         const roundedHealth = Math.floor(health);
                         if (ui.health !== roundedHealth) {
@@ -941,6 +2238,630 @@
                     }
                 });
             }
+
+            // --- COMBO TIMER UPDATE ---
+            if (comboState.count > 0) {
+                comboState.timer -= delta;
+                
+                // Bar genişliğini güncelle
+                const progress = (comboState.timer / comboState.maxTime) * 100;
+                ui.els.comboTimerBar.style.transform = `scaleX(${Math.max(0, progress / 100)})`;
+
+                if (comboState.timer <= 0) {
+                    resetCombo();
+                }
+            }
+        }
+
+        // --- COMBO FUNCTIONS ---
+        function registerKill(enemyPos) {
+            comboState.count++;
+            comboState.timer = comboState.maxTime;
+            
+            // Multiplier hesapla (1x-5x arası)
+            if (comboState.count >= 10) comboState.multiplier = 5;
+            else if (comboState.count >= 7) comboState.multiplier = 4;
+            else if (comboState.count >= 5) comboState.multiplier = 3;
+            else if (comboState.count >= 3) comboState.multiplier = 2;
+            else comboState.multiplier = 1;
+
+            const addedScore = 10 * comboState.multiplier;
+            score += addedScore;
+
+            // UI Güncelle
+            updateComboUI();
+
+            // Floating Text (World-Space)
+            if (enemyPos) {
+                createFloatingText('+' + addedScore + (comboState.multiplier > 1 ? ' x' + comboState.multiplier : ''), enemyPos);
+            }
+        }
+
+        function createFloatingText(text, worldPos) {
+            // Dünya pozisyonunu ekran pozisyonuna çevir
+            const vector = worldPos.clone().project(camera);
+            const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+
+            const el = document.createElement('div');
+            el.className = 'float-score';
+            el.textContent = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+
+            setTimeout(() => el.remove(), 800);
+        }
+
+        function resetCombo() {
+            if (comboState.count === 0) return; // Zaten resetlenmiş
+
+            comboState.count = 0;
+            comboState.timer = 0;
+            comboState.multiplier = 1;
+            comboState.lastAnnouncement = 0;
+
+            // UI'yı yumuşak bir çıkışla gizle
+            requestAnimationFrame(() => {
+                ui.els.comboDisplay.classList.add('exit');
+                ui.els.comboTimerWrap.classList.remove('active');
+                ui.els.multiplierDisplay.classList.remove('active');
+                
+                // Animasyon bitince tam temizlik yap (400ms transition süresi)
+                setTimeout(() => {
+                    if (comboState.count === 0) { // Başka bir combo başlamamışsa
+                        ui.els.comboDisplay.classList.remove('active', 'pulse', 'lvl-1', 'lvl-2', 'lvl-3', 'exit');
+                    }
+                }, 400);
+            });
+        }
+
+        function updateComboUI() {
+            requestAnimationFrame(() => {
+                // Combo sayısını göster (2'den başla)
+                if (comboState.count >= 2) {
+                    ui.els.comboDisplay.textContent = comboState.count + 'x COMBO';
+                    
+                    ui.els.comboTimerWrap.classList.add('active');
+                    
+                    // Exit class'ını temizle ve aktif yap
+                    ui.els.comboDisplay.classList.remove('exit');
+                    if (!ui.els.comboDisplay.classList.contains('active')) {
+                        ui.els.comboDisplay.classList.add('active');
+                    }
+                    
+                    // Seviye belirle
+                    ui.els.comboDisplay.classList.remove('lvl-1', 'lvl-2', 'lvl-3');
+                    if (comboState.count >= 10) ui.els.comboDisplay.classList.add('lvl-3');
+                    else if (comboState.count >= 5) ui.els.comboDisplay.classList.add('lvl-2');
+                    else ui.els.comboDisplay.classList.add('lvl-1');
+
+                    // Slam animasyonu
+                    ui.els.comboDisplay.style.animation = 'none';
+                    requestAnimationFrame(() => {
+                        ui.els.comboDisplay.style.animation = '';
+                        ui.els.comboDisplay.classList.add('pulse');
+                    });
+                }
+
+                // Multiplier göster
+                if (comboState.multiplier > 1) {
+                    const newText = 'x' + comboState.multiplier + ' SCORE';
+                    if (ui.els.multiplierDisplay.textContent !== newText) {
+                        ui.els.multiplierDisplay.textContent = newText;
+                        
+                        // Bump sadece multiplier değiştiğinde
+                        ui.els.multiplierDisplay.classList.remove('bump');
+                        void ui.els.multiplierDisplay.offsetWidth;
+                        ui.els.multiplierDisplay.classList.add('bump');
+                    }
+                    
+                    if (!ui.els.multiplierDisplay.classList.contains('active')) {
+                        ui.els.multiplierDisplay.classList.add('active');
+                    }
+                }
+
+                // Kill streak mesajı
+                let streakMsg = null;
+                for (let i = killStreakMessages.length - 1; i >= 0; i--) {
+                    if (comboState.count >= killStreakMessages[i].min && comboState.count > comboState.lastAnnouncement) {
+                        streakMsg = killStreakMessages[i].text;
+                        comboState.lastAnnouncement = comboState.count;
+                        break;
+                    }
+                }
+
+                if (streakMsg) {
+                    ui.els.killStreak.textContent = streakMsg;
+                    ui.els.killStreak.classList.remove('show');
+                    void ui.els.killStreak.offsetWidth;
+                    ui.els.killStreak.classList.add('show');
+                }
+            });
+        }
+
+        // --- WAVE SYSTEM FUNCTIONS ---
+
+        function startWave() {
+            waveState.isActive = true;
+            waveState.isCooldown = false;
+            waveState.enemiesSpawned = 0;
+            waveState.enemiesKilled = 0;
+            
+            // Dalga başına düşman sayısı: 5 + (wave-1) * 2
+            waveState.enemiesPerWave = 5 + (waveState.current - 1) * 2;
+            
+            // Hız artışı: Her 3 dalgada %10
+            const speedMultiplier = 1 + Math.floor((waveState.current - 1) / 3) * 0.1;
+            waveState.currentEnemySpeed = waveState.baseEnemySpeed * speedMultiplier;
+            
+            updateWaveUI();
+            showWaveBanner('WAVE ' + waveState.current);
+            
+            // Spawn interval - 600ms aralıklarla
+            waveState.spawnInterval = setInterval(() => {
+                if (waveState.enemiesSpawned < waveState.enemiesPerWave) {
+                    spawnEnemy();
+                    waveState.enemiesSpawned++;
+                } else {
+                    clearInterval(waveState.spawnInterval);
+                    waveState.spawnInterval = null;
+                }
+            }, 600);
+        }
+
+        function onEnemyKilled(isBoss = false) {
+            if (isBoss) {
+                score += 500;
+                waveState.activeBoss = null;
+                waveState.isCooldown = false;
+                
+                // Hide boss health bar
+                ui.els.bossHealthContainer.classList.remove('active');
+                
+                // Boss öldüğünde hemen sıradaki wave'e geç
+                setTimeout(() => {
+                    waveState.current++;
+                    startWave();
+                }, 2000);
+                return;
+            }
+            
+            waveState.enemiesKilled++;
+            
+            // Tüm düşmanlar öldürüldü mü? (spawn bitti ve sahnede kalmadı)
+            if (waveState.enemiesKilled >= waveState.enemiesPerWave && 
+                waveState.spawnInterval === null && 
+                enemies.filter(e => !e.userData.isBoss).length === 0) {
+                completeWave();
+            }
+        }
+
+        function completeWave() {
+            if (waveState.isCooldown) return;
+            
+            waveState.isActive = false;
+            waveState.isCooldown = true;
+            
+            // Normal wave complete banner
+            showWaveBanner('WAVE ' + waveState.current + ' COMPLETE!');
+            
+            // Bonus skor
+            score += waveState.current * 50;
+            
+            setTimeout(() => {
+                waveState.current++;
+                
+                // Check if next wave is boss wave (2, 4, 6, 8...)
+                if (waveState.current % 2 === 0) {
+                    waveState.bossNumber = waveState.current / 2;
+                    showWaveBanner('⚠️ BOSS INCOMING ⚠️', true);
+                    setTimeout(() => {
+                        spawnBoss();
+                    }, 3000);
+                } else {
+                    startWave();
+                }
+            }, 2500);
+        }
+
+        // Boss Scaling Helper
+        function getBossScaling() {
+            const num = waveState.bossNumber;
+            return {
+                health: 7 + (num - 1) * 2, // 7, 9, 11, 13...
+                speedMult: 0.7 + (num - 1) * 0.05, // 0.70, 0.75, 0.80...
+                meteorInterval: Math.max(2000, 4000 - (num - 1) * 300), // 4s, 3.7s, 3.4s (min 2s)
+                meteorCount: 3 + num, // 4, 5, 6...
+                meteorSpeed: -180 - (num - 1) * 20 // -180, -200, -220...
+            };
+        }
+
+        function spawnBoss() {
+            const scaling = getBossScaling();
+            
+            // Use cached geometry and material
+            const boss = new THREE.Mesh(cachedGeo.boss, cachedMat.boss);
+            
+            const angle = Math.random() * Math.PI * 2;
+            boss.position.set(
+                carState.xPos + Math.sin(angle) * 50,
+                2.25,
+                carState.yPos + Math.cos(angle) * 50
+            );
+            
+            boss.userData.isBoss = true;
+            boss.userData.health = scaling.health;
+            boss.userData.maxHealth = scaling.health;
+            boss.userData.lastHitTime = 0; 
+            boss.userData.minionTimer = 0; 
+            boss.userData.stunTimer = 0;
+            boss.userData.knockbackVx = 0;
+            boss.userData.knockbackVz = 0;
+            boss.userData.speedMult = scaling.speedMult; // Boss speed multiplier
+            boss.castShadow = true;
+            boss.receiveShadow = true;
+            
+            scene.add(boss);
+            enemies.push(boss);
+            
+            waveState.activeBoss = boss;
+            
+            // Show boss health bar
+            const bossNames = ['GUARDIAN', 'DESTROYER', 'OVERLORD', 'TITAN', 'ANNIHILATOR'];
+            ui.els.bossName.textContent = bossNames[Math.min(waveState.bossNumber - 1, bossNames.length - 1)];
+            ui.els.bossHealthFill.style.width = '100%';
+            ui.els.bossHealthContainer.classList.add('active');
+        }
+
+        // --- METEOR SYSTEM FUNCTIONS ---
+        
+        function triggerMeteorShower() {
+            const scaling = getBossScaling();
+            const count = scaling.meteorCount; // Scaled count
+            
+            for(let i=0; i<count; i++) {
+                setTimeout(() => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * 20;
+                    const x = carState.xPos + Math.sin(angle) * dist;
+                    const z = carState.yPos + Math.cos(angle) * dist;
+                    
+                    spawnMeteorWarning(x, z);
+                }, i * 200);
+            }
+        }
+
+        function spawnMeteorWarning(x, z) {
+            // Use cached geometry, clone material for individual opacity
+            const marker = new THREE.Mesh(cachedGeo.meteorWarning, cachedMat.meteorWarning.clone());
+            marker.rotation.x = -Math.PI / 2;
+            marker.position.set(x, 0.1, z);
+            
+            marker.userData.type = 'marker';
+            marker.userData.spawnTime = performance.now();
+            marker.userData.duration = 900; // 1.5s -> 0.9s (Daha hızlı)
+            
+            scene.add(marker);
+            meteors.push(marker);
+        }
+
+        function dropMeteor(x, z) {
+            const scaling = getBossScaling();
+            
+            // Use cached geometry and material
+            const meteor = new THREE.Mesh(cachedGeo.meteor, cachedMat.meteor);
+            meteor.position.set(x, 60, z);
+            
+            meteor.userData.type = 'meteor';
+            meteor.userData.vy = scaling.meteorSpeed; // Scaled speed
+            
+            meteor.castShadow = true;
+            meteor.receiveShadow = true;
+            
+            scene.add(meteor);
+            meteors.push(meteor);
+        }
+
+        function updateMeteors(delta) {
+            const now = performance.now();
+            
+            // Boss aktifse meteor zamanlayıcısını kontrol et
+            if (waveState.activeBoss && !waveState.activeBoss.userData.isDead) {
+                const scaling = getBossScaling();
+                const interval = scaling.meteorInterval; // Scaled interval
+                
+                if (now - waveState.lastMeteorTime > interval) {
+                    triggerMeteorShower();
+                    waveState.lastMeteorTime = now;
+                }
+            }
+            
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const m = meteors[i];
+                
+                if (m.userData.type === 'marker') {
+                    // Marker animasyonu (yanıp sönme + genişleme)
+                    const life = (now - m.userData.spawnTime) / m.userData.duration;
+                    
+                    if (life >= 1.0) {
+                        // Süre doldu, meteor düşür
+                        dropMeteor(m.position.x, m.position.z);
+                        scene.remove(m);
+                        meteors.splice(i, 1);
+                        m.material.dispose();
+                        m.geometry.dispose();
+                    } else {
+                        // Opacity ve Scale animasyonu
+                        m.material.opacity = 0.3 + Math.sin(life * 20) * 0.2; // Hızlı yanıp sönme
+                        const scale = 1.0 - (life * 0.2); // Hafifçe küçülür (odaklanma hissi)
+                        m.scale.set(scale, scale, scale);
+                    }
+                }
+                else if (m.userData.type === 'meteor') {
+                    // Meteor hareketi
+                    m.position.y += m.userData.vy * delta;
+                    m.rotation.x += delta * 5;
+                    m.rotation.z += delta * 5;
+                    
+                    // Yere çarpma
+                    if (m.position.y <= 1.5) {
+                        // Patlama
+                        createExplosion(m.position, new THREE.Vector3(0, 10, 0));
+                        
+                        // Şok dalgası efekti (Görsel halka - Marker'ın 2 katı)
+                        const shockwaveGeo = new THREE.RingGeometry(6.5, 7.5, 32);
+                        const shockwaveMat = new THREE.MeshBasicMaterial({ 
+                            color: 0xff0000, 
+                            transparent: true, 
+                            opacity: 0.8,
+                            side: THREE.DoubleSide
+                        });
+                        const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
+                        shockwave.rotation.x = -Math.PI / 2;
+                        shockwave.position.copy(m.position);
+                        shockwave.position.y = 0.2;
+                        shockwave.userData.type = 'shockwave';
+                        shockwave.userData.life = 1.0;
+                        scene.add(shockwave);
+                        meteors.push(shockwave); // Animasyon için listeye ekle
+
+                        // Player'a hasar kontrolü (Genişletilmiş alan: 7.0 birim)
+                        const dx = carState.xPos - m.position.x;
+                        const dz = carState.yPos - m.position.z;
+                        const distSq = dx*dx + dz*dz;
+                        
+                        if (distSq < 7.0 * 7.0) { // 3.5 * 2 = 7.0 yarıçap
+                            // Ciddi hasar
+                            if (!activePowerups.SHIELD.active) {
+                                health -= 20;
+                            }
+                            ui.health = Math.floor(health);
+                            ui.els.health.innerText = Math.max(0, ui.health);
+                            ui.els.health.style.color = 'red';
+                            shakeIntensity = 10;
+                            
+                            if (health <= 0) endGame();
+                        } else {
+                            shakeIntensity = Math.max(shakeIntensity, 3); // Uzaktaysa da sars
+                        }
+                        
+                        // Temizlik
+                        scene.remove(m);
+                        meteors.splice(i, 1);
+                        m.material.dispose();
+                        m.geometry.dispose();
+                    }
+                }
+                else if (m.userData.type === 'shockwave') {
+                    // Şok dalgası animasyonu
+                    m.userData.life -= delta * 2.0; // Hızlı yok oluş
+                    
+                    if (m.userData.life <= 0) {
+                        scene.remove(m);
+                        meteors.splice(i, 1);
+                        m.material.dispose();
+                        m.geometry.dispose();
+                    } else {
+                        m.material.opacity = m.userData.life * 0.8;
+                        const scale = 1.0 + (1.0 - m.userData.life) * 0.5; // Genişleme
+                        m.scale.set(scale, scale, 1);
+                    }
+                }
+            }
+        }
+
+        // --- POWER-UP FUNCTIONS ---
+        function spawnPowerup() {
+            const types = Object.keys(POWERUP_TYPES);
+            const typeName = types[Math.floor(Math.random() * types.length)];
+            const type = POWERUP_TYPES[typeName];
+            
+            const mat = new THREE.MeshBasicMaterial({
+                color: type.color,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const powerup = new THREE.Mesh(cachedGeo.powerup, mat);
+            
+            // Random position around player
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 30 + Math.random() * 20;
+            powerup.position.set(
+                carState.xPos + Math.sin(angle) * dist,
+                1.5,
+                carState.yPos + Math.cos(angle) * dist
+            );
+            
+            powerup.userData.type = typeName;
+            powerup.userData.spawnTime = performance.now();
+            powerup.userData.lifetime = 15000; // 15 seconds
+            
+            scene.add(powerup);
+            powerups.push(powerup);
+        }
+        
+        function updatePowerups(delta) {
+            const now = performance.now();
+            const deltaFactor = delta * 60;
+            
+            // Spawn timer
+            if (now - lastPowerupSpawn > powerupSpawnInterval && isGameActive && !isGameOver) {
+                spawnPowerup();
+                lastPowerupSpawn = now;
+            }
+            
+            // Update each powerup
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const p = powerups[i];
+                const age = now - p.userData.spawnTime;
+                
+                // Despawn if too old
+                if (age > p.userData.lifetime) {
+                    scene.remove(p);
+                    p.material.dispose();
+                    powerups.splice(i, 1);
+                    continue;
+                }
+                
+                // Animation: rotate and bob
+                p.rotation.y += 0.03 * deltaFactor;
+                p.position.y = 1.5 + Math.sin(now * 0.003) * 0.3;
+                
+                // Fade out in last 3 seconds
+                if (age > p.userData.lifetime - 3000) {
+                    p.material.opacity = 0.9 * (1 - (age - (p.userData.lifetime - 3000)) / 3000);
+                }
+                
+                // Collection check
+                const dx = carState.xPos - p.position.x;
+                const dz = carState.yPos - p.position.z;
+                if (dx*dx + dz*dz < 25) { // 5 unit radius
+                    collectPowerup(p.userData.type);
+                    scene.remove(p);
+                    p.material.dispose();
+                    powerups.splice(i, 1);
+                }
+            }
+        }
+        
+        function collectPowerup(typeName) {
+            const type = POWERUP_TYPES[typeName];
+            const now = performance.now();
+            
+            if (typeName === 'HEALTH') {
+                // Instant heal
+                health = Math.min(100, health + 30);
+                ui.health = Math.floor(health);
+                ui.els.health.innerText = ui.health;
+                ui.els.health.style.color = '#0f0';
+                setTimeout(() => { ui.els.health.style.color = '#fff'; }, 500);
+                shakeIntensity = 1;
+            } else {
+                // Timed effect
+                activePowerups[typeName].active = true;
+                activePowerups[typeName].endTime = now + type.duration;
+                updatePowerupUI();
+            }
+        }
+        
+        function updatePowerupEffects() {
+            const now = performance.now();
+            
+            // Update chain length based on MAGNET
+            chainLength = activePowerups.MAGNET.active ? baseChainLength * 2 : baseChainLength;
+            
+            for (const key in activePowerups) {
+                if (activePowerups[key].active && now > activePowerups[key].endTime) {
+                    activePowerups[key].active = false;
+                    updatePowerupUI();
+                }
+            }
+        }
+        
+        function updatePowerupUI() {
+            // Update UI indicators (simplified - just logging for now)
+            let activeText = '';
+            const now = performance.now();
+            for (const key in activePowerups) {
+                if (activePowerups[key].active) {
+                    const remaining = Math.ceil((activePowerups[key].endTime - now) / 1000);
+                    activeText += key + ':' + remaining + 's ';
+                }
+            }
+            if (ui.els.powerupDisplay) {
+                ui.els.powerupDisplay.textContent = activeText;
+            }
+        }
+
+        // --- BOMBER EXPLOSION MECHANIC ---
+        function spawnBomberExplosion(pos) {
+            // Use cached geometry, simple material
+            const warningMat = new THREE.MeshBasicMaterial({ 
+                color: 0xff0000, transparent: true, opacity: 0.4, side: THREE.DoubleSide
+            });
+            const warning = new THREE.Mesh(cachedGeo.bomberWarning, warningMat);
+            warning.rotation.x = -Math.PI / 2;
+            warning.position.copy(pos);
+            warning.position.y = 0.2;
+            scene.add(warning);
+            
+            setTimeout(() => {
+                createExplosion(pos, new THREE.Vector3(0, 10, 0));
+                shakeIntensity = 8;
+                
+                const dx = carState.xPos - pos.x;
+                const dz = carState.yPos - pos.z;
+                if (dx*dx + dz*dz < 64) {
+                    if (!activePowerups.SHIELD.active) {
+                        health -= 15;
+                    }
+                    ui.health = Math.floor(health);
+                    ui.els.health.innerText = Math.max(0, ui.health);
+                    ui.els.health.style.color = 'red';
+                    if (health <= 0) endGame();
+                }
+                
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    if (e.userData.isBoss) continue;
+                    const edx = e.position.x - pos.x;
+                    const edz = e.position.z - pos.z;
+                    if (edx*edx + edz*edz < 64) {
+                        const eType = e.userData.type || 'NORMAL';
+                        if (eType === 'TANK') {
+                            e.userData.hp--;
+                            if (e.userData.hp <= 0) {
+                                scene.remove(e);
+                                enemies.splice(i, 1);
+                            }
+                        } else {
+                            const ePos = e.position.clone();
+                            scene.remove(e);
+                            enemies.splice(i, 1);
+                            if (eType === 'BOMBER') spawnBomberExplosion(ePos);
+                        }
+                    }
+                }
+                
+                scene.remove(warning);
+                warning.material.dispose();
+                warning.geometry.dispose();
+            }, 500);
+        }
+
+        function showWaveBanner(text, isBoss = false) {
+            const banner = ui.els.waveBanner;
+            banner.textContent = text;
+            banner.classList.remove('show', 'boss');
+            void banner.offsetWidth; // Reflow for animation restart
+            banner.classList.add('show');
+            if (isBoss) banner.classList.add('boss');
+        }
+
+        function updateWaveUI() {
+            ui.els.waveDisplay.textContent = 'WAVE ' + waveState.current;
         }
 
         function animate() {
@@ -966,8 +2887,11 @@
                 p.position.y += p.userData.vel.y * deltaFactor;
                 p.position.z += p.userData.vel.z * deltaFactor;
 
-                p.userData.vel.y -= 0.04 * deltaFactor;
-                p.userData.life -= 0.03 * deltaFactor;
+                // Hava sürtünmesi (Hareketi sönümleyerek daha 'tok' bir his verir)
+                p.userData.vel.multiplyScalar(Math.pow(0.92, deltaFactor));
+
+                p.userData.vel.y -= 0.02 * deltaFactor; // Yerçekimini azalttık
+                p.userData.life -= 0.02 * deltaFactor; // Daha uzun ömür
 
                 p.scale.setScalar(Math.max(0, p.userData.life * p.userData.baseScale));
 
@@ -1063,7 +2987,8 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        animate();
+        // animate call moved to startGame
+
 
     </script>
 </body>

@@ -726,27 +726,38 @@
         let crazysdk;
         let sdkLoadingStarted = false;
 
-        window.CrazyGames.SDK.init().then((sdk) => {
-            // SDK might return undefined on some setups, fallback to global
-            crazysdk = sdk || window.CrazyGames.SDK;
-            console.log('CrazyGames SDK initialized');
+        // SKIP SDK on non-CrazyGames domains (Localhost, Itch.io, etc.)
+        const hostname = window.location.hostname;
+        const isCrazyGamesEnv = hostname.includes('crazygames.') ||
+            hostname.includes('1001juegos.') ||
+            window.location.search.includes('sdk_debug=true');
 
-            // Notify SDK that game is loading
-            if (crazysdk && crazysdk.game && typeof crazysdk.game.loadingStart === 'function') {
-                crazysdk.game.loadingStart();
-                sdkLoadingStarted = true;
-                console.log('CrazyGames SDK: loadingStart() called');
-            } else {
-                console.warn('CrazyGames SDK: sdk.game.loadingStart is not available', crazysdk);
-            }
-        }).catch((e) => {
-            console.log('Error initializing SDK (Not on CrazyGames)', e);
-            // Change button text for non-CrazyGames platforms
-            const btn = document.getElementById('revive-btn');
-            if (btn) {
-                btn.innerText = "TRY FREE REVIVE";
-            }
-        });
+        if (isCrazyGamesEnv) {
+            window.CrazyGames.SDK.init().then((sdk) => {
+                // SDK might return undefined on some setups, fallback to global
+                crazysdk = sdk || window.CrazyGames.SDK;
+                console.log('CrazyGames SDK initialized');
+
+                // Notify SDK that game is loading
+                if (crazysdk && crazysdk.game && typeof crazysdk.game.loadingStart === 'function') {
+                    crazysdk.game.loadingStart();
+                    sdkLoadingStarted = true;
+                    console.log('CrazyGames SDK: loadingStart() called');
+                } else {
+                    console.warn('CrazyGames SDK: sdk.game.loadingStart is not available', crazysdk);
+                }
+            }).catch((e) => {
+                console.log('Error initializing SDK', e);
+                // Fallback UI handled below
+            });
+        } else {
+            console.log(`Not on CrazyGames (${hostname}). SDK init skipped.`);
+            // Ensure UI is in offline mode
+            window.addEventListener('load', () => {
+                const btn = document.getElementById('revive-btn');
+                if (btn) btn.innerText = "TRY FREE REVIVE";
+            });
+        }
 
         // REVIVE LOGIC (Basic Launch: Ads Disabled -> Lucky Revive Mode)
         function watchAdToRevive() {

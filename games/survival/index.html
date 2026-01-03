@@ -748,60 +748,41 @@
             }
         });
 
-        // AD LOGIC
+        // REVIVE LOGIC (Basic Launch: Ads Disabled -> Lucky Revive Mode)
         function watchAdToRevive() {
             const btn = document.getElementById('revive-btn');
 
-            if (!crazysdk) {
-                console.log("SDK not detected. Rolling dice for free revive...");
+            console.log("Attempting Revive (Basic Launch Mode - Ads Bypassed)");
 
-                // 1. Disable button
-                btn.disabled = true;
-                btn.innerText = "CONNECTING...";
+            // 1. Disable button visual feedback
+            btn.disabled = true;
+            btn.innerText = "CONNECTING...";
 
-                // 2. Tension Delay (1.2s)
-                setTimeout(() => {
-                    // 3. Roll the dice (30% Chance)
-                    const isLucky = Math.random() < 0.3; // %30
+            // 2. Tension Delay (1.2s) - Simulate network/decision
+            setTimeout(() => {
+                // 3. Roll the dice (30% Chance for Free Revive)
+                const isLucky = Math.random() < 0.3; // 30% Chance
 
-                    if (isLucky) {
-                        // SUCCESS
-                        btn.innerText = "JACKPOT! LUCKY REVIVE!";
-                        btn.style.backgroundColor = "#2ecc71"; // Green
-                        btn.style.color = "#fff";
+                if (isLucky) {
+                    // SUCCESS
+                    btn.innerText = "JACKPOT! LUCKY REVIVE!";
+                    btn.style.backgroundColor = "#2ecc71"; // Green
+                    btn.style.color = "#fff";
 
-                        // Spawn Confetti Particles!
-                        spawnConfetti(CANVAS.width / 2, CANVAS.height / 2);
+                    // Spawn Confetti Particles!
+                    spawnConfetti(CANVAS.width / 2, CANVAS.height / 2);
 
-                        setTimeout(() => {
-                            startReviveCountdown();
-                        }, 1000);
-                    } else {
-                        // FAIL
-                        btn.innerText = "NO SIGNAL... BAD LUCK";
-                        btn.style.backgroundColor = "#95a5a6"; // Grey
-                        btn.style.borderColor = "#7f8c8d";
-                        // Button remains disabled, force Main Menu
-                    }
-                }, 1200);
-
-                return;
-            }
-
-            crazysdk.ad.requestAd('rewarded', {
-                adStarted: () => {
-                    console.log('Ad started');
-                    bgMusic.pause();
-                },
-                adFinished: () => {
-                    console.log('Ad finished');
-                    startReviveCountdown();
-                },
-                adError: (error) => {
-                    console.log('Ad error', error);
-                    bgMusic.play(); // Resume if failed
+                    setTimeout(() => {
+                        startReviveCountdown();
+                    }, 1000);
+                } else {
+                    // FAIL
+                    btn.innerText = "NO SIGNAL... BAD LUCK";
+                    btn.style.backgroundColor = "#95a5a6"; // Grey
+                    btn.style.borderColor = "#7f8c8d";
+                    // Button remains disabled, force Main Menu
                 }
-            });
+            }, 1200);
         }
 
         // COUNTDOWN & REVIVE SEQUENCE
@@ -2539,7 +2520,8 @@
                 } else {
                     reviveBtn.style.display = 'inline-block';
                     reviveBtn.disabled = false;
-                    reviveBtn.innerText = crazysdk ? "📺 REVIVE (50% HP)" : "TRY FREE REVIVE";
+                    // Basic Launch Mode: Ads disabled, so always show Free Revive / Lucky Revive text
+                    reviveBtn.innerText = "TRY FREE REVIVE";
                     reviveBtn.style.backgroundColor = "";
                     reviveBtn.style.color = "";
                     reviveBtn.style.borderColor = "";

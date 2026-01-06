@@ -48,12 +48,11 @@
             letter-spacing: -2px;
             margin-bottom: 10px;
             margin-top: 20px;
-            text-shadow:
-                4px 4px 0px #000,
-                8px 8px 0px #ffcc00;
             transform: skew(-10deg);
             position: relative;
             z-index: 2;
+            font-family: 'Russo One', sans-serif;
+            font-weight: 900;
         }
 
         /* Glitchy underline effect */
@@ -64,19 +63,19 @@
             height: 10px;
             background: #ffcc00;
             margin-top: 5px;
-            box-shadow: 0 0 20px #ffcc00;
         }
 
         .menu-subtitle {
             font-size: 24px;
-            color: #ccc;
+            color: #fff;
             margin-bottom: 50px;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            font-family: 'Segoe UI', sans-serif;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            letter-spacing: 6px;
+            font-family: 'Russo One', sans-serif;
+            font-weight: 400;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.9);
             z-index: 2;
+            padding: 0 20px;
         }
 
         .map-selection {
@@ -217,6 +216,13 @@
                 text-shadow: 2px 2px 0px #000, 4px 4px 0px #ffcc00;
             }
 
+            .menu-subtitle {
+                font-size: 16px;
+                letter-spacing: 3px;
+                padding: 0 20px;
+                margin-bottom: 30px;
+            }
+
             .map-selection {
                 flex-direction: column;
                 align-items: center;
@@ -278,20 +284,83 @@
             text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
         }
 
+        /* --- PREMIUM HUD STYLES --- */
+
+        /* Stats Panel (Score, Health, FPS) */
         #stats {
             text-align: right;
             pointer-events: auto;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
         }
 
         .stat-box {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 15px;
-            border-radius: 8px;
-            display: inline-block;
-            margin-left: 10px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(30, 30, 30, 0.9));
+            padding: 8px 20px;
+            border-left: 4px solid #fff;
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
             color: #fff;
-            font-weight: bold;
-            font-size: 14px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 16px;
+            text-transform: uppercase;
+            transform: skew(-15deg);
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Specific Colors */
+        .stat-box:nth-child(1) {
+            border-color: #ffcc00;
+            color: #ffcc00;
+        }
+
+        /* Score */
+        .stat-box:nth-child(2) {
+            border-color: #ff0000;
+            color: #ff6666;
+        }
+
+        /* Health */
+        .stat-box:nth-child(3) {
+            border-color: #00aaff;
+            color: #00aaff;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* FPS */
+
+        /* --- RESPONSIVE MOBILE STATS --- */
+        @media (max-width: 768px) {
+            #stats {
+                flex-direction: column;
+                /* Mobile: Vertical Stack */
+                align-items: flex-end;
+                gap: 5px;
+            }
+
+            .stat-box {
+                margin-left: 0;
+                font-size: 12px;
+                /* Biraz daha küçük font */
+                padding: 4px 10px;
+            }
         }
 
         #score-display {
@@ -309,7 +378,7 @@
             background: rgba(0, 0, 0, 0.6);
             padding: 5px;
             border-radius: 8px;
-            display: inline-block;
+            display: none;
             text-align: left;
         }
 
@@ -323,13 +392,64 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: radial-gradient(circle at center, rgba(50, 0, 0, 0.8), #000);
             display: none;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             pointer-events: auto;
-            z-index: 20;
+            z-index: 100;
+            /* Ensure on top */
+            backdrop-filter: blur(5px);
+        }
+
+        #game-over h1 {
+            font-family: 'Russo One', sans-serif;
+            font-size: 80px;
+            color: #ff0000;
+            text-transform: uppercase;
+            text-shadow: 0 0 30px rgba(255, 0, 0, 0.8), 4px 4px 0 #000;
+            margin: 0 0 20px 0;
+            transform: skew(-10deg);
+            letter-spacing: 5px;
+            animation: pulseText 2s infinite;
+        }
+
+        #game-over p {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 40px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        #game-over button {
+            background: linear-gradient(90deg, #ffcc00, #ff8800);
+            box-shadow: 0 0 20px rgba(255, 102, 0, 0.6);
+            border: 2px solid #fff;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #game-over button:hover {
+            transform: skew(-10deg) scale(1.1);
+            background: #fff;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes pulseText {
+
+            0%,
+            100% {
+                transform: skew(-10deg) scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: skew(-10deg) scale(1.05);
+                opacity: 0.8;
+            }
         }
 
         button {
@@ -349,14 +469,63 @@
         }
 
         #speedometer {
-            font-size: 30px;
-            font-weight: bold;
+            font-family: 'Orbitron', monospace;
+            /* Digital look */
+            font-size: 20px;
+            font-weight: 900;
             color: #fff;
-            text-shadow: 0 0 10px #00aaff;
+            text-shadow: 0 0 10px rgba(0, 170, 255, 0.8);
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 120px;
+            right: 20px;
+            left: auto;
+            transform: skew(-10deg);
+            /* Racing skew */
+            text-align: right;
+            pointer-events: none;
+            background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.6));
+            padding: 5px 20px;
+            border-right: 4px solid #00aaff;
+            letter-spacing: 2px;
+        }
+
+        #speedometer span {
+            font-size: 14px;
+            color: #aaa;
+            margin-left: 5px;
+        }
+
+        #boss-name-ui {
+            font-family: 'Russo One', sans-serif;
+            font-size: 18px;
+            color: #ff0033;
+            /* More intense red */
+            text-transform: uppercase;
+            position: absolute;
+            bottom: 165px;
+            /* Adjusted for larger speedometer */
+            right: 20px;
+            text-align: right;
+            display: none;
+            pointer-events: none;
+            transform: skew(-10deg);
+            background: linear-gradient(90deg, transparent, rgba(50, 0, 0, 0.8));
+            padding: 5px 20px;
+            border-right: 4px solid #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
+            animation: bossNamePulse 2s infinite;
+        }
+
+        @keyframes bossNamePulse {
+
+            0%,
+            100% {
+                text-shadow: 0 0 10px #ff0000, 2px 2px 0 #000;
+            }
+
+            50% {
+                text-shadow: 0 0 20px #ff0000, 2px 2px 0 #000;
+            }
         }
 
         /* --- COMBO SYSTEM UI (BOTTOM-CENTER COMPACT) --- */
@@ -378,7 +547,7 @@
 
         #combo-display {
             font-family: 'Russo One', sans-serif;
-            font-size: 56px;
+            font-size: clamp(32px, 8vw, 56px);
             color: #fff;
             filter: drop-shadow(0 0 15px rgba(255, 102, 0, 0.8)) drop-shadow(3px 3px 0 #000);
             opacity: 0;
@@ -474,7 +643,7 @@
 
         #kill-streak {
             font-family: 'Russo One', sans-serif;
-            font-size: 32px;
+            font-size: clamp(20px, 5vw, 32px);
             color: #fff;
             filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)) drop-shadow(2px 2px 0 #000);
             opacity: 0;
@@ -511,22 +680,38 @@
             }
         }
 
+        /* Multiplier Badge */
         #multiplier-display {
             position: absolute;
             top: 85px;
             right: 20px;
-            font-family: 'Russo One', sans-serif;
-            font-size: 28px;
+            font-family: 'Orbitron', monospace;
+            font-size: 24px;
+            font-weight: bold;
             color: #00ff88;
-            filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.8)) drop-shadow(2px 2px 0 #000);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 5px 15px;
+            border-right: 4px solid #00ff88;
+            transform: skew(-10deg) scale(0.8);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
             opacity: 0;
-            transform: scale(0.8) skew(-10deg);
             transition: transform 0.2s, opacity 0.2s;
+            pointer-events: none;
+            letter-spacing: 2px;
         }
 
         #multiplier-display.active {
             opacity: 1;
-            transform: scale(1) skew(-10deg);
+            transform: skew(-10deg) scale(1);
+        }
+
+        @media (max-width: 768px) {
+            #multiplier-display {
+                top: 140px;
+                /* Avoid overlap with vertical stats on mobile */
+                right: 10px;
+                font-size: 18px;
+            }
         }
 
         /* Floating Score Text (In-Game World) */
@@ -535,39 +720,65 @@
             font-family: 'Russo One', sans-serif;
             font-size: 24px;
             color: #ffcc00;
-            text-shadow: 2px 2px 0 #000;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.8), 2px 2px 0 #000;
             pointer-events: none;
             z-index: 100;
+            transform: skew(-10deg);
             animation: floatUp 0.8s ease-out forwards;
         }
 
         @keyframes floatUp {
             0% {
-                transform: translateY(0) scale(1);
+                transform: translateY(0) scale(1) skew(-10deg);
                 opacity: 1;
             }
 
             100% {
-                transform: translateY(-100px) scale(1.5);
+                transform: translateY(-80px) scale(1.5) skew(-10deg);
                 opacity: 0;
             }
         }
 
         /* --- WAVE SYSTEM UI --- */
+        /* --- WAVE SYSTEM UI --- */
         #wave-container {
             position: absolute;
             top: 20px;
-            right: 20px;
-            text-align: right;
+            left: 20px;
+            right: auto;
+            text-align: left;
             z-index: 20;
             pointer-events: none;
         }
 
         #wave-display {
             font-family: 'Russo One', sans-serif;
-            font-size: 28px;
-            color: #00aaff;
-            text-shadow: 0 0 10px rgba(0, 170, 255, 0.8), 2px 2px 0 #000;
+            font-size: 24px;
+            color: #fff;
+            background: linear-gradient(90deg, #00aaff, #0055aa);
+            padding: 10px 25px;
+            transform: skew(-15deg);
+            box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 170, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        #wave-display::after {
+            content: 'TARGET ACQUIRED';
+            display: block;
+            font-size: 10px;
+            opacity: 0.7;
+            font-family: 'Segoe UI', sans-serif;
+            letter-spacing: 2px;
+            margin-top: 2px;
+        }
+
+        /* Mobile adjustment for wave */
+        @media (max-width: 768px) {
+            #wave-display {
+                font-size: 18px;
+                padding: 8px 15px;
+            }
         }
 
         #wave-banner {
@@ -669,83 +880,70 @@
             }
         }
 
-        /* Boss Health Bar - Bottom Position */
-        #boss-health-container {
-            position: absolute;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 280px;
-            max-width: 70%;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            z-index: 100;
-            padding: 8px 15px;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 12px;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 50, 50, 0.4);
-        }
 
-        #boss-health-container.active {
-            display: flex;
-        }
 
-        #boss-name {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 12px;
-            color: #ff6666;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-        }
-
-        #boss-health-bar {
-            width: 100%;
-            height: 12px;
-            background: rgba(50, 0, 0, 0.8);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        #boss-health-fill {
-            height: 100%;
-            width: 100%;
-            background: linear-gradient(90deg, #ff4444, #ff0000);
-            border-radius: 6px;
-            transition: width 0.15s ease-out;
-            box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
-        }
-
-        /* Power-up Display */
+        /* Power-up Display (Bottom Left) */
+        /* Power-up Display (Tech Chips) */
         #powerup-display {
             position: absolute;
-            bottom: 20px;
+            bottom: 180px;
             left: 20px;
             display: flex;
-            flex-direction: column;
-            gap: 5px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 14px;
-            color: #fff;
-            text-shadow: 1px 1px 2px #000;
+            flex-direction: column-reverse;
+            gap: 8px;
             pointer-events: none;
         }
 
-        /* Victory Banner (Bottom - Non-blocking) */
+        .powerup-chip {
+            background: rgba(0, 0, 0, 0.8);
+            border-left: 4px solid #fff;
+            padding: 8px 15px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 12px;
+            color: #fff;
+            transform: skew(-10deg);
+            text-transform: uppercase;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            animation: slideInLeft 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 120px;
+        }
+
+        .powerup-chip span {
+            color: #ffcc00;
+            margin-left: 10px;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-50px) skew(-10deg);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0) skew(-10deg);
+                opacity: 1;
+            }
+        }
+
+        /* Victory Banner (Full Screen Aggressive) */
         #victory-screen {
             position: absolute;
-            bottom: 0;
+            top: 0;
             left: 0;
-            right: 0;
-            background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.9) 30%);
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(0, 50, 0, 0.8), #000);
             display: none;
+            /* Flex when active */
             flex-direction: column;
             align-items: center;
-            padding: 30px 20px 40px;
-            z-index: 50;
-            pointer-events: none;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
         }
 
         #victory-screen.show {
@@ -767,58 +965,77 @@
 
         #victory-title {
             font-family: 'Russo One', sans-serif;
-            font-size: clamp(40px, 10vw, 72px);
-            color: gold;
-            text-shadow: 0 0 30px gold, 0 0 60px orange, 3px 3px 0 #000;
-            animation: victoryPulse 0.5s infinite;
+            font-size: 80px;
+            color: #ffcc00;
+            text-transform: uppercase;
+            text-shadow: 0 0 30px rgba(255, 204, 0, 0.8), 4px 4px 0 #000;
+            margin-bottom: 20px;
+            transform: skew(-10deg);
+            letter-spacing: 5px;
+            animation: victoryPulse 2s infinite;
+        }
+
+        #victory-subtitle {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+            text-shadow: none;
+            margin-top: 0;
+        }
+
+        #victory-score {
+            font-family: 'Russo One', sans-serif;
+            font-size: 32px;
+            color: #fff;
+            margin-bottom: 40px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 30px;
+            border-left: 5px solid #ffcc00;
+            transform: skew(-10deg);
+        }
+
+        #continue-btn {
+            background: linear-gradient(90deg, #00ff88, #00aa55);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+            border: 2px solid #fff;
+            color: #004422;
+            padding: 15px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transform: skew(-10deg);
+            transition: all 0.2s;
+            margin-top: 0;
+            border-radius: 0;
+        }
+
+        #continue-btn:hover {
+            transform: skew(-10deg) scale(1.1);
+            background: #fff;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
         }
 
         @keyframes victoryPulse {
 
             0%,
             100% {
-                transform: scale(1);
+                transform: skew(-10deg) scale(1);
+                text-shadow: 0 0 30px rgba(255, 204, 0, 0.8), 4px 4px 0 #000;
             }
 
             50% {
-                transform: scale(1.08);
+                transform: skew(-10deg) scale(1.05);
+                text-shadow: 0 0 50px rgba(255, 204, 0, 1), 4px 4px 0 #000;
             }
         }
 
-        #victory-subtitle {
-            font-family: 'Russo One', sans-serif;
-            font-size: clamp(18px, 5vw, 28px);
-            color: #00ff88;
-            margin-top: 10px;
-            text-shadow: 0 0 15px rgba(0, 255, 136, 0.8), 2px 2px 0 #000;
-        }
 
-        #victory-score {
-            font-family: 'Russo One', sans-serif;
-            font-size: clamp(24px, 6vw, 36px);
-            color: #fff;
-            margin-top: 10px;
-            text-shadow: 2px 2px 0 #000;
-        }
-
-        #continue-btn {
-            margin-top: 20px;
-            padding: 12px 35px;
-            font-family: 'Russo One', sans-serif;
-            font-size: clamp(16px, 4vw, 22px);
-            background: linear-gradient(180deg, #ff6600, #cc3300);
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-shadow: 1px 1px 0 #000;
-            pointer-events: auto;
-        }
-
-        #continue-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(255, 102, 0, 0.8);
-        }
 
         .mobile-controls-container {
             position: absolute;
@@ -849,42 +1066,59 @@
             align-items: flex-end;
         }
 
+        /* Tech Pedal / Button Styles */
         .touch-btn {
             width: 80px;
             height: 80px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 15px;
-            color: white;
-            font-weight: bold;
+            background: linear-gradient(135deg, rgba(50, 50, 50, 0.4), rgba(0, 0, 0, 0.5));
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.7);
             font-size: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
+            pointer-events: auto;
             user-select: none;
-            -webkit-user-select: none;
-            transition: background 0.1s, transform 0.1s;
+            cursor: pointer;
+            transition: all 0.1s;
+            transform: skew(-5deg);
         }
 
         .touch-btn:active,
         .touch-btn.active {
-            background: rgba(255, 204, 0, 0.5);
-            border-color: #ffcc00;
-            transform: scale(0.95);
+            background: linear-gradient(135deg, #00aaff, #0055aa);
+            color: #fff;
+            transform: skew(-5deg) scale(0.95);
+            box-shadow: 0 2px 10px rgba(0, 170, 255, 0.6);
+            border-color: #fff;
         }
 
         .btn-gas {
-            height: 100px;
-            background: rgba(0, 255, 0, 0.1);
+            background: linear-gradient(135deg, rgba(0, 100, 0, 0.4), rgba(0, 50, 0, 0.5));
             border-color: rgba(0, 255, 0, 0.3);
+            border-bottom: 4px solid rgba(0, 255, 0, 0.5);
+        }
+
+        .btn-gas:active,
+        .btn-gas.active {
+            background: linear-gradient(135deg, #00ff00, #008800);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
         }
 
         .btn-break {
             height: 60px;
             width: 60px;
-            font-size: 14px;
-            background: rgba(255, 0, 0, 0.1);
+            background: linear-gradient(135deg, rgba(100, 0, 0, 0.4), rgba(50, 0, 0, 0.5));
             border-color: rgba(255, 0, 0, 0.3);
+            border-bottom: 4px solid rgba(255, 0, 0, 0.5);
+            font-size: 18px;
+        }
+
+        .btn-break:active,
+        .btn-break.active {
+            background: linear-gradient(135deg, #ff0000, #aa0000);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
         }
     </style>
 </head>
@@ -932,12 +1166,12 @@
     </div>
 
     <div id="ui-layer">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-            <div>
-                <h1>DRIFT & HAMMER</h1>
-                <div style="font-size:12px; color:#ccc; margin-top:5px;">PC: WASD | Mobile: Screen Controls</div>
-            </div>
+        <!-- WAVE SYSTEM UI (Moved to Top Left) -->
+        <div id="wave-container">
+            <div id="wave-display">WAVE 1</div>
+        </div>
 
+        <div style="display:flex; justify-content:flex-end; align-items:flex-start; width:100%;">
             <div id="stats">
                 <div class="stat-box">SCORE: <span id="score-display">0</span></div>
                 <div class="stat-box">HEALTH: <span id="health-display">100</span></div>
@@ -951,7 +1185,11 @@
         </div>
 
         <div id="speedometer">0 KM/H</div>
+        <div id="boss-name-ui"></div>
         <div id="multiplier-display">x1</div>
+
+        <!-- POWER-UPS DISPLAY (Moved to Bottom Left above controls) -->
+        <div id="powerup-display"></div>
     </div>
 
     <!-- COMBO SYSTEM UI -->
@@ -964,28 +1202,19 @@
     </div>
 
     <!-- WAVE SYSTEM UI -->
-    <div id="wave-container">
-        <div id="wave-display">WAVE 1</div>
-    </div>
+
     <div id="wave-banner"></div>
 
-    <!-- POWER-UPS DISPLAY -->
-    <div id="powerup-display"></div>
 
-    <!-- BOSS HEALTH BAR -->
-    <div id="boss-health-container">
-        <div id="boss-name">GUARDIAN</div>
-        <div id="boss-health-bar">
-            <div id="boss-health-fill"></div>
-        </div>
-    </div>
+
+
 
     <!-- VICTORY SCREEN -->
     <div id="victory-screen">
-        <div id="victory-title">🏆 VICTORY!</div>
-        <div id="victory-subtitle">ENDLESS MODE UNLOCKED</div>
+        <div id="victory-title">VICTORY SEIZED</div>
+        <div id="victory-subtitle">PROTOCOL: ENDLESS UNLOCKED</div>
         <div id="victory-score">SCORE: 0</div>
-        <button id="continue-btn">CONTINUE TO ENDLESS</button>
+        <button id="continue-btn">ENGAGE ENDLESS</button>
     </div>
 
     <div class="mobile-controls-container">
@@ -1001,8 +1230,8 @@
     </div>
 
     <div id="game-over">
-        <h1 style="font-size: 50px; color: #ff4444;">DESTROYED</h1>
-        <p style="color: #ccc; margin-bottom: 30px;">Final Score: <span id="final-score">0</span></p>
+        <h1>DESTROYED</h1>
+        <p>Final Score: <span id="final-score">0</span></p>
         <button onclick="location.reload()">TRY AGAIN</button>
     </div>
 
@@ -1061,7 +1290,7 @@
 
         // --- WAVE SİSTEMİ ---
         const waveState = {
-            current: 1,
+            current: 1, // Start at wave 1 (normal)
             enemiesPerWave: 5,
             enemiesSpawned: 0,
             enemiesKilled: 0,
@@ -1071,7 +1300,7 @@
             baseEnemySpeed: 0.15,
             currentEnemySpeed: 0.15,
             // Recurring Boss System
-            bossNumber: 0, // Kaçıncı boss (1, 2, 3...)
+            bossNumber: 0, // Start with normal waves
             activeBoss: null, // Sahnedeki boss referansı
             // Meteor System
             lastMeteorTime: 0,
@@ -1106,10 +1335,8 @@
                 victoryScreen: document.getElementById('victory-screen'),
                 victoryScore: document.getElementById('victory-score'),
                 continueBtn: document.getElementById('continue-btn'),
-                // Boss Health Bar
-                bossHealthContainer: document.getElementById('boss-health-container'),
-                bossName: document.getElementById('boss-name'),
-                bossHealthFill: document.getElementById('boss-health-fill'),
+                // Boss UI
+                bossNameUi: document.getElementById('boss-name-ui'),
                 // Power-ups
                 powerupDisplay: document.getElementById('powerup-display')
             }
@@ -1232,8 +1459,15 @@
 
             isGameActive = true;
 
-            // Start Wave System
-            startWave();
+            // Start Wave System (DEBUG: Check if starting on boss wave)
+            if (waveState.current % 2 === 0) {
+                 showWaveBanner('⚠️ BOSS INCOMING ⚠️', true);
+                 setTimeout(() => {
+                    spawnBoss();
+                 }, 1000);
+            } else {
+                startWave();
+            }
 
             // Start Loop
             animate();
@@ -1532,7 +1766,9 @@
             boss: new THREE.BoxGeometry(4.5, 4.5, 4.5),
             meteorWarning: new THREE.RingGeometry(0.2, 3.5, 16), // 32 -> 16 segments
             meteor: new THREE.BoxGeometry(3, 3, 3),
-            bomberWarning: new THREE.RingGeometry(7.5, 8.5, 16)
+            bomberWarning: new THREE.RingGeometry(7.5, 8.5, 16),
+            powerup: new THREE.SphereGeometry(1.5, 16, 16), // Spherical powerups as requested
+            powerupRipple: new THREE.RingGeometry(0.5, 2.5, 16)
         };
         
         // PRE-CACHED MATERIALS
@@ -1561,11 +1797,11 @@
         const activePowerups = {
             SPEED: { active: false, endTime: 0 },
             SHIELD: { active: false, endTime: 0 },
-            MAGNET: { active: false, endTime: 0 }
+            MAGNET: { active: false, endTime: 0 },
+            HEALTH: { active: false, endTime: 0 }
         };
         
-        // Cached powerup geometry
-        cachedGeo.powerup = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+
         
         let lastPowerupSpawn = 0;
         const powerupSpawnInterval = 18000; // 18 seconds
@@ -2042,9 +2278,11 @@
                                     if (enemy.material) enemy.material.emissiveIntensity = 0.5;
                                 }, 200);
                                 
-                                // Update boss health bar
-                                const healthPercent = (enemy.userData.health / enemy.userData.maxHealth) * 100;
-                                ui.els.bossHealthFill.style.width = healthPercent + '%';
+                                // Update boss health bar (3D)
+                                const healthPercent = enemy.userData.health / enemy.userData.maxHealth;
+                                if (enemy.userData.hpFill) {
+                                  enemy.userData.hpFill.scale.x = Math.max(0, healthPercent);
+                                }
                                 
                                 if (enemy.userData.health <= 0) {
                                     // BOSS ÖLDÜ - EPİK PATLAMA!
@@ -2416,14 +2654,24 @@
                 waveState.activeBoss = null;
                 waveState.isCooldown = false;
                 
-                // Hide boss health bar
-                ui.els.bossHealthContainer.classList.remove('active');
+                // Hide boss name UI
+                if (ui.els.bossNameUi) ui.els.bossNameUi.style.display = 'none';
                 
                 // Boss öldüğünde hemen sıradaki wave'e geç
                 setTimeout(() => {
                     waveState.current++;
                     startWave();
                 }, 2000);
+
+                // LUMUS INTEGRATION: Boss Kill Bonus (10 Tokens)
+                window.parent.postMessage({ 
+                    type: 'LUMUS_EARN_TOKENS', 
+                    data: { 
+                        amount: 10,
+                        reason: 'boss_kill'
+                    } 
+                }, '*');
+
                 return;
             }
             
@@ -2477,6 +2725,44 @@
             };
         }
 
+        // --- BOSS UI (3D) ---
+        function createBossUI(boss, name, maxHealth) {
+            const uiGroup = new THREE.Group();
+            uiGroup.position.set(0, 7.5, 0); // Boss'un üzerinde
+            
+            // NOTE: Name moved to 2D UI as per request
+            
+            // 1. Health Bar Background (Black)
+            const bgGeo = new THREE.PlaneGeometry(10, 1.2);
+            const bgMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const bgMesh = new THREE.Mesh(bgGeo, bgMat);
+            uiGroup.add(bgMesh);
+            
+            // 2. Health Bar Border (Dark Red)
+            const borderGeo = new THREE.PlaneGeometry(10.2, 1.4);
+            const borderMat = new THREE.MeshBasicMaterial({ color: 0x330000 });
+            const borderMesh = new THREE.Mesh(borderGeo, borderMat);
+            borderMesh.position.z = -0.01;
+            uiGroup.add(borderMesh);
+
+            // 3. Health Bar Fill (Red Gradient - Simulated with Mesh)
+            const fillGeo = new THREE.PlaneGeometry(9.8, 1);
+            // Translate geometry to anchor left for easy scaling
+            fillGeo.translate(4.9, 0, 0); 
+            
+            const fillMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const fillMesh = new THREE.Mesh(fillGeo, fillMat);
+            fillMesh.position.x = -4.9; // Start at left edge of bg
+            fillMesh.position.z = 0.05; // Slightly in front
+            uiGroup.add(fillMesh);
+            
+            boss.add(uiGroup);
+            
+            // Store refs
+            boss.userData.uiGroup = uiGroup;
+            boss.userData.hpFill = fillMesh;
+        }
+
         function spawnBoss() {
             const scaling = getBossScaling();
             
@@ -2507,11 +2793,14 @@
             
             waveState.activeBoss = boss;
             
-            // Show boss health bar
+            // Create 3D UI (Bar only)
             const bossNames = ['GUARDIAN', 'DESTROYER', 'OVERLORD', 'TITAN', 'ANNIHILATOR'];
-            ui.els.bossName.textContent = bossNames[Math.min(waveState.bossNumber - 1, bossNames.length - 1)];
-            ui.els.bossHealthFill.style.width = '100%';
-            ui.els.bossHealthContainer.classList.add('active');
+            const bossName = bossNames[Math.min(waveState.bossNumber - 1, bossNames.length - 1)];
+            createBossUI(boss, bossName, scaling.health);
+            
+            // Show 2D Name UI
+            ui.els.bossNameUi.textContent = "BOSS " + bossName;
+            ui.els.bossNameUi.style.display = 'block';
         }
 
         // --- METEOR SYSTEM FUNCTIONS ---
@@ -2566,10 +2855,10 @@
         function updateMeteors(delta) {
             const now = performance.now();
             
-            // Boss aktifse meteor zamanlayıcısını kontrol et
             if (waveState.activeBoss && !waveState.activeBoss.userData.isDead) {
                 const scaling = getBossScaling();
                 const interval = scaling.meteorInterval; // Scaled interval
+
                 
                 if (now - waveState.lastMeteorTime > interval) {
                     triggerMeteorShower();
@@ -2690,7 +2979,7 @@
             const dist = 30 + Math.random() * 20;
             powerup.position.set(
                 carState.xPos + Math.sin(angle) * dist,
-                1.5,
+                1.0,
                 carState.yPos + Math.cos(angle) * dist
             );
             
@@ -2698,6 +2987,18 @@
             powerup.userData.spawnTime = performance.now();
             powerup.userData.lifetime = 15000; // 15 seconds
             
+            // Add visual ripple (SEPARATE from sphere, stays on ground)
+            const rippleMat = new THREE.MeshBasicMaterial({ color: type.color, transparent: true, opacity: 0.5 });
+            const ripple = new THREE.Mesh(cachedGeo.powerupRipple, rippleMat);
+            ripple.rotation.x = -Math.PI / 2;
+            ripple.position.set(
+                powerup.position.x,
+                0.05, // Fixed on ground
+                powerup.position.z
+            );
+            scene.add(ripple);
+            powerup.userData.ripple = ripple;
+
             scene.add(powerup);
             powerups.push(powerup);
         }
@@ -2721,13 +3022,28 @@
                 if (age > p.userData.lifetime) {
                     scene.remove(p);
                     p.material.dispose();
+                    if (p.userData.ripple) {
+                        scene.remove(p.userData.ripple);
+                        p.userData.ripple.material.dispose();
+                    }
                     powerups.splice(i, 1);
                     continue;
                 }
                 
-                // Animation: rotate and bob
-                p.rotation.y += 0.03 * deltaFactor;
-                p.position.y = 1.5 + Math.sin(now * 0.003) * 0.3;
+                // Animation: bob (sphere moves up and down)
+                const bobPhase = Math.sin(now * 0.003);
+                p.position.y = 1.0 + bobPhase ;
+                
+                // Animate ripple (stays on ground, opacity based on sphere height)
+                if (p.userData.ripple) {
+                    const r = p.userData.ripple;
+                    // Ripple scale pulses independently
+                    const rScale = 1.0 + (Math.sin(now * 0.005) * 0.5 + 0.5);
+                    r.scale.set(rScale, rScale, 1);
+                    // Ripple opacity: high when sphere is LOW (bobPhase near -1), low when sphere is HIGH (bobPhase near +1)
+                    const opacityBase = 0.5 * (1 - bobPhase); // Inverted: -1 -> 1.0, +1 -> 0
+                    r.material.opacity = opacityBase * (1 - (rScale - 1) / 1);
+                }
                 
                 // Fade out in last 3 seconds
                 if (age > p.userData.lifetime - 3000) {
@@ -2741,6 +3057,10 @@
                     collectPowerup(p.userData.type);
                     scene.remove(p);
                     p.material.dispose();
+                    if (p.userData.ripple) {
+                        scene.remove(p.userData.ripple);
+                        p.userData.ripple.material.dispose();
+                    }
                     powerups.splice(i, 1);
                 }
             }
@@ -2758,6 +3078,11 @@
                 ui.els.health.style.color = '#0f0';
                 setTimeout(() => { ui.els.health.style.color = '#fff'; }, 500);
                 shakeIntensity = 1;
+
+                // Briefly show HEALTH in UI
+                activePowerups.HEALTH.active = true;
+                activePowerups.HEALTH.endTime = now + 2000;
+                updatePowerupUI();
             } else {
                 // Timed effect
                 activePowerups[typeName].active = true;
@@ -2780,20 +3105,7 @@
             }
         }
         
-        function updatePowerupUI() {
-            // Update UI indicators (simplified - just logging for now)
-            let activeText = '';
-            const now = performance.now();
-            for (const key in activePowerups) {
-                if (activePowerups[key].active) {
-                    const remaining = Math.ceil((activePowerups[key].endTime - now) / 1000);
-                    activeText += key + ':' + remaining + 's ';
-                }
-            }
-            if (ui.els.powerupDisplay) {
-                ui.els.powerupDisplay.textContent = activeText;
-            }
-        }
+
 
         // --- BOMBER EXPLOSION MECHANIC ---
         function spawnBomberExplosion(pos) {
@@ -2863,6 +3175,45 @@
         function updateWaveUI() {
             ui.els.waveDisplay.textContent = 'WAVE ' + waveState.current;
         }
+        
+        // --- POWERUP UI UPDATE ---
+        function updatePowerupUI() {
+            const container = document.getElementById('powerup-display');
+            if (!container) return;
+            
+            for (const [key, p] of Object.entries(activePowerups)) {
+                let chip = document.getElementById('chip-' + key);
+                
+                if (p.active) {
+                    const timeLeft = Math.max(0, Math.ceil((p.endTime - performance.now()) / 1000));
+                    
+                    if (!chip) {
+                        chip = document.createElement('div');
+                        chip.id = 'chip-' + key;
+                        chip.className = 'powerup-chip';
+                        
+                        let icon = '⚡';
+                        if (key === 'SHIELD') icon = '🛡️';
+                        if (key === 'MAGNET') icon = '🧲';
+                        if (key === 'TRIPLE_SHOT') icon = '🔫';
+                        if (key === 'RAPID_FIRE') icon = '🚀';
+                        if (key === 'HEALTH') icon = '❤️';
+                        
+                        chip.innerHTML = `${icon} ${key} <span id="timer-${key}">${timeLeft}s</span>`;
+                        container.appendChild(chip);
+                    } else {
+                        // Update existing
+                        const timerSpan = document.getElementById('timer-' + key);
+                        if (timerSpan) timerSpan.innerText = timeLeft + 's';
+                    }
+                } else {
+                    // Remove if inactive
+                    if (chip) {
+                        chip.remove();
+                    }
+                }
+            }
+        }
 
         function animate() {
             requestAnimationFrame(animate);
@@ -2871,6 +3222,14 @@
             const deltaFactor = delta * 60;
 
             updatePhysics(delta);
+
+            // Update Boss UI Billboard (Y-Axis Lock)
+            if (waveState.activeBoss && waveState.activeBoss.userData.uiGroup) {
+                // Sadece Y ekseninde dönmesini sağla (Yatay kilitli)
+                const target = _vec3_1.copy(camera.position);
+                target.y = waveState.activeBoss.userData.uiGroup.getWorldPosition(_vec3_2).y;
+                waveState.activeBoss.userData.uiGroup.lookAt(target);
+            }
 
             // OPTİMİZASYON: Işık takibi (Gölge kamerasının alanını küçültür)
             dirLight.position.set(
@@ -2924,8 +3283,11 @@
             const displaySpeed = Math.floor(Math.abs(carState.speed) * 80);
             if (ui.speed !== displaySpeed) {
                 ui.speed = displaySpeed;
-                ui.els.speedometer.innerText = displaySpeed + " KM/H";
+                ui.els.speedometer.innerHTML = displaySpeed + " <span>KM/H</span>";
             }
+            
+            // Update Powerups UI
+            updatePowerupUI();
 
             const baseDist = ui.camDist;
             const speedZoom = Math.abs(carState.speed) * 8.0;
@@ -2978,18 +3340,97 @@
         function endGame() {
             isGameOver = true;
             ui.els.gameOver.style.display = 'flex';
-            ui.els.finalScore.innerText = score;
+            ui.els.finalScore.innerText = Math.floor(score); // Use floored score
+            
+            // LUMUS INTEGRATION: Notify game end and send score
+            window.parent.postMessage({ 
+                type: 'LUMUS_GAME_END', 
+                data: { 
+                    gameId: 'caosDrift',
+                    score: Math.floor(score)
+                } 
+            }, '*');
         }
 
         window.addEventListener('resize', () => {
+            if (!camera || !renderer) return;
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+
         // animate call moved to startGame
+        
+        function startGame() {
+            // LUMUS INTEGRATION: Notify game start
+            window.parent.postMessage({ type: 'LUMUS_GAME_START', data: { gameId: 'caosDrift' } }, '*');
 
-
+            document.getElementById('main-menu').classList.add('hidden');
+            document.body.classList.remove('in-menu');
+            
+            // Show UI
+            ui.els.uiLayer.style.display = 'flex';
+            
+            // Mobile controls check
+            if (isMobile) {
+                document.querySelector('.mobile-controls-container').style.display = 'flex';
+            }
+            
+            // Reset Game State
+            score = 0;
+            health = 100;
+            waveState.current = 1;
+            ui.score = 0;
+            ui.health = 100;
+            ui.els.score.innerText = '0';
+            ui.els.health.innerText = '100';
+            
+            // Spawn Player
+            carState = {
+                speed: 0,
+                angle: 0,
+                xPos: 0,
+                yPos: 0,
+                drift: 0,
+                xVel: 0,
+                yVel: 0
+            };
+            
+            ballState = {
+                x: 0,
+                y: -5, // Start behind car
+                vx: 0,
+                vy: 0,
+                angle: 0
+            };
+            
+            // Clear enemies
+            enemies.forEach(e => scene.remove(e));
+            enemies = [];
+            
+            // Clear powerups
+            activePowerupsInScene.forEach(p => scene.remove(p.mesh));
+            activePowerupsInScene = [];
+            
+            // Reset Powerups
+            activePowerups.SHIELD.active = false;
+            activePowerups.MAGNET.active = false;
+            updatePowerupUI();
+            
+            // Reset Combo
+            resetCombo();
+            
+            isGameOver = false;
+            paused = false;
+            
+            // Start First Wave
+            startWave();
+            
+            // Start Loop
+            lastTime = performance.now();
+            requestAnimationFrame(animate);
+        }
     </script>
 </body>
 

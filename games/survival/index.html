@@ -2501,6 +2501,9 @@
             // SDK: Start Gameplay Event
             if (crazysdk) crazysdk.game.gameplayStart();
 
+            // Notify parent to start tracking (useful for play time)
+            window.parent.postMessage({ type: 'LUMUS_GAME_START', data: { gameId: 'Survivors' } }, '*');
+
             initGame();
         }
 
@@ -2521,6 +2524,14 @@
             // SAVE LOGIC
             saveData.gold += gameState.sessionGold;
             saveGame();
+
+            // SEND SCORE TO MAIN APP (For Tokens)
+            // Score Formula Boosted: (Kills * 50) + (Seconds * 10)
+            // Example: 200 Kills + 5 mins (300s) = 10,000 + 3,000 = 13,000 Score
+            // 13,000 Score / 1000 = 13 Base Tokens * 3x Multiplier = 39 Tokens!
+            const score = (gameState.enemiesKilled * 50) + (gameState.time * 10);
+            console.log("Game Over! Sending Score:", score);
+            window.parent.postMessage({ type: 'LUMUS_GAME_END', data: { score: score } }, '*');
 
             // Reset Revive Button State for new game logic
             const reviveBtn = document.getElementById('revive-btn');

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
@@ -10,19 +11,31 @@
       --ui-bg: rgba(15, 23, 42, 0.6);
       --ui-border: rgba(255, 255, 255, 0.15);
     }
-    
-    html, body { 
-      height: 100%; margin: 0; overflow: hidden; 
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
       background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
       font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
-    #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+    #hud {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
 
     /* Level Badge - Top Left */
     #levelBadge {
-      position: absolute; top: 20px; left: 20px;
+      position: absolute;
+      top: 20px;
+      left: 20px;
       background: var(--ui-bg);
       border: 1px solid var(--ui-border);
       backdrop-filter: blur(10px);
@@ -32,50 +45,72 @@
       font-weight: 800;
       font-size: 16px;
       letter-spacing: 1px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       text-transform: uppercase;
     }
 
     /* Reset Button - Bottom Left */
     #resetBtn {
-      position: absolute; bottom: 20px; left: 20px;
-      width: 56px; height: 56px;
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
       background: var(--primary-color);
-      border: 2px solid rgba(255,255,255,0.2);
+      border: 2px solid rgba(255, 255, 255, 0.2);
       color: white;
       font-size: 24px;
       cursor: pointer;
       pointer-events: auto;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
       transition: transform 0.1s, background 0.2s;
       z-index: 20;
     }
-    #resetBtn:active { transform: scale(0.92); background: #d32f2f; }
-    #resetBtn svg { width: 24px; height: 24px; fill: currentColor; }
+
+    #resetBtn:active {
+      transform: scale(0.92);
+      background: #d32f2f;
+    }
+
+    #resetBtn svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
 
     /* Tip Text */
     #tip {
-      position: absolute; bottom: 20px; left: 90px; right: 20px;
-      color: rgba(255,255,255,0.7);
+      position: absolute;
+      bottom: 20px;
+      left: 90px;
+      right: 20px;
+      color: rgba(255, 255, 255, 0.7);
       font-size: 13px;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       pointer-events: none;
       line-height: 1.4;
-      display: flex; align-items: center;
+      display: flex;
+      align-items: center;
     }
 
     /* GOAL EFFECT */
     #goalOverlay {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.15s ease-out;
       z-index: 30;
-      background: radial-gradient(circle, rgba(230,57,70,0.2) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(230, 57, 70, 0.2) 0%, transparent 70%);
     }
+
     #goalText {
       font-size: 12vw;
       font-weight: 900;
@@ -86,19 +121,35 @@
       transform: scale(0.5);
       transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    #goalOverlay.active { opacity: 1; }
-    #goalOverlay.active #goalText { transform: scale(1.0) rotate(-5deg); }
+
+    #goalOverlay.active {
+      opacity: 1;
+    }
+
+    #goalOverlay.active #goalText {
+      transform: scale(1.0) rotate(-5deg);
+    }
 
     /* Canvas & Drag SVG */
-    canvas { display: block; outline: none; }
-    #dragLayer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+    canvas {
+      display: block;
+      outline: none;
+    }
+
+    #dragLayer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
   </style>
 </head>
+
 <body>
 
   <div id="hud">
     <div id="levelBadge">LVL 1</div>
-    
+
     <div id="goalOverlay">
       <div id="goalText">GOAL!</div>
     </div>
@@ -107,10 +158,10 @@
       <strong>Aim:</strong>&nbsp;Clear the wall to score. Swipe fast for power, curve for spin.
     </div>
   </div>
-  
+
   <button id="resetBtn" title="Reset Ball">
     <!-- Refresh Icon -->
-     ↻
+    ↻
   </button>
 
   <svg id="dragLayer"></svg>
@@ -119,780 +170,780 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/build/three.min.js"></script>
 
   <script>
-  (function(){
-    'use strict';
+    (function () {
+      'use strict';
 
-    // ======================
-    // 0) Config & Constants (LOCKED MECHANICS)
-    // ======================
-    const CONSTANTS = {
-      power: 22.0,       // Fixed
-      speedBoost: 1.35,  // Fixed
-      spin: 16.0,        // Fixed
-      topspin: 10.0,     // Fixed
-      magnus: 0.0025,    // Fixed 0.0022-28
-      drag: 0.0000,      // Fixed
-      restitution: 0.78, // Fixed
-      gravity: 9.81,
-      ballRadius: 0.22,
-      wallMaxCount: 4    // New limit
-    };
+      // ======================
+      // 0) Config & Constants (LOCKED MECHANICS)
+      // ======================
+      const CONSTANTS = {
+        power: 22.0,       // Fixed
+        speedBoost: 1.35,  // Fixed
+        spin: 16.0,        // Fixed
+        topspin: 10.0,     // Fixed
+        magnus: 0.0025,    // Fixed 0.0022-28
+        drag: 0.0000,      // Fixed
+        restitution: 0.78, // Fixed
+        gravity: 9.81,
+        ballRadius: 0.22,
+        wallMaxCount: 4    // New limit
+      };
 
-    const isMobile = (/(Android|iPhone|iPad|iPod|Mobi)/i).test(navigator.userAgent || '');
-    // Optimization: Cap pixel ratio to save battery/heat
-    const DPR_CAP = isMobile ? 1.25 : 1.5; 
-    const SHADOW_SIZE = isMobile ? 1024 : 2048; 
-    const USE_SHADOWS = true; // Enabled for better visuals, optimized map size
+      const isMobile = (/(Android|iPhone|iPad|iPod|Mobi)/i).test(navigator.userAgent || '');
+      // Optimization: Cap pixel ratio to save battery/heat
+      const DPR_CAP = isMobile ? 1.25 : 1.5;
+      const SHADOW_SIZE = isMobile ? 1024 : 2048;
+      const USE_SHADOWS = true; // Enabled for better visuals, optimized map size
 
-    // ======================
-    // 1) Graphics Setup
-    // ======================
-    const scene = new THREE.Scene();
-    // Darker, moodier fog
-    scene.fog = new THREE.Fog(0x0f172a, 20, 65);
+      // ======================
+      // 1) Graphics Setup
+      // ======================
+      const scene = new THREE.Scene();
+      // Darker, moodier fog
+      scene.fog = new THREE.Fog(0x0f172a, 20, 65);
 
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: !isMobile, // AA only on desktop for perf
-      powerPreference: 'high-performance',
-      stencil: false,
-      depth: true
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = USE_SHADOWS;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
-    
-    // Tone mapping for better light range
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    document.body.appendChild(renderer.domElement);
+      const renderer = new THREE.WebGLRenderer({
+        antialias: !isMobile, // AA only on desktop for perf
+        powerPreference: 'high-performance',
+        stencil: false,
+        depth: true
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = USE_SHADOWS;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 150);
+      // Tone mapping for better light range
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      document.body.appendChild(renderer.domElement);
 
-    // -- Lights --
-    // Hemisphere: Cool blue from sky, warm ground reflection
-    const hemi = new THREE.HemisphereLight(0x3b82f6, 0x1e293b, 0.8);
-    scene.add(hemi);
+      const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 150);
 
-    // Directional (Stadium floodlight feel)
-    const dir = new THREE.DirectionalLight(0xffffff, 1.5);
-    dir.position.set(10, 20, 10);
-    dir.castShadow = USE_SHADOWS;
-    if(USE_SHADOWS){
-      dir.shadow.mapSize.set(SHADOW_SIZE, SHADOW_SIZE);
-      dir.shadow.camera.near = 0.5;
-      dir.shadow.camera.far = 80;
-      dir.shadow.camera.left = -20;
-      dir.shadow.camera.right = 20;
-      dir.shadow.camera.top = 20;
-      dir.shadow.camera.bottom = -20;
-      dir.shadow.bias = -0.0005;
-    }
-    scene.add(dir);
+      // -- Lights --
+      // Hemisphere: Cool blue from sky, warm ground reflection
+      const hemi = new THREE.HemisphereLight(0x3b82f6, 0x1e293b, 0.8);
+      scene.add(hemi);
 
-    // Rim light for the ball
-    const rimLight = new THREE.SpotLight(0x60a5fa, 2.0);
-    rimLight.position.set(-10, 5, -5);
-    rimLight.lookAt(0,0,-10);
-    scene.add(rimLight);
-
-    // -- Materials & Textures --
-    
-    // Procedural Grass Texture (Striped)
-    function createGrassTexture() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 1024;
-      const ctx = canvas.getContext('2d');
-      
-      // Base dark green
-      ctx.fillStyle = '#1a472a';
-      ctx.fillRect(0, 0, 1024, 1024);
-      
-      // Lighter stripes
-      ctx.fillStyle = '#2d5a3f';
-      const stripeWidth = 128;
-      for (let y = 0; y < 1024; y += stripeWidth * 2) {
-        ctx.fillRect(0, y, 1024, stripeWidth);
+      // Directional (Stadium floodlight feel)
+      const dir = new THREE.DirectionalLight(0xffffff, 1.5);
+      dir.position.set(10, 20, 10);
+      dir.castShadow = USE_SHADOWS;
+      if (USE_SHADOWS) {
+        dir.shadow.mapSize.set(SHADOW_SIZE, SHADOW_SIZE);
+        dir.shadow.camera.near = 0.5;
+        dir.shadow.camera.far = 80;
+        dir.shadow.camera.left = -20;
+        dir.shadow.camera.right = 20;
+        dir.shadow.camera.top = 20;
+        dir.shadow.camera.bottom = -20;
+        dir.shadow.bias = -0.0005;
       }
-      
-      // Noise/Texture overlay (simplified)
-      ctx.fillStyle = 'rgba(0,0,0,0.05)';
-      for(let i=0; i<4000; i++){
-        const x = Math.random()*1024;
-        const y = Math.random()*1024;
-        const w = Math.random()*3;
-        const h = Math.random()*3;
-        ctx.fillRect(x,y,w,h);
+      scene.add(dir);
+
+      // Rim light for the ball
+      const rimLight = new THREE.SpotLight(0x60a5fa, 2.0);
+      rimLight.position.set(-10, 5, -5);
+      rimLight.lookAt(0, 0, -10);
+      scene.add(rimLight);
+
+      // -- Materials & Textures --
+
+      // Procedural Grass Texture (Striped)
+      function createGrassTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+
+        // Base dark green
+        ctx.fillStyle = '#1a472a';
+        ctx.fillRect(0, 0, 1024, 1024);
+
+        // Lighter stripes
+        ctx.fillStyle = '#2d5a3f';
+        const stripeWidth = 128;
+        for (let y = 0; y < 1024; y += stripeWidth * 2) {
+          ctx.fillRect(0, y, 1024, stripeWidth);
+        }
+
+        // Noise/Texture overlay (simplified)
+        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+        for (let i = 0; i < 4000; i++) {
+          const x = Math.random() * 1024;
+          const y = Math.random() * 1024;
+          const w = Math.random() * 3;
+          const h = Math.random() * 3;
+          ctx.fillRect(x, y, w, h);
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(4, 6);
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        return tex;
       }
 
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(4, 6);
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      return tex;
-    }
+      const groundGeo = new THREE.PlaneGeometry(80, 100);
+      const groundMat = new THREE.MeshStandardMaterial({
+        map: createGrassTexture(),
+        roughness: 0.8,
+        metalness: 0.1
+      });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = USE_SHADOWS;
+      scene.add(ground);
 
-    const groundGeo = new THREE.PlaneGeometry(80, 100);
-    const groundMat = new THREE.MeshStandardMaterial({ 
-      map: createGrassTexture(),
-      roughness: 0.8, 
-      metalness: 0.1 
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = USE_SHADOWS;
-    scene.add(ground);
-
-    // Field Lines
-    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, linewidth: 2 });
-    function addLine(points){
-      const geo = new THREE.BufferGeometry().setFromPoints(points);
-      const l = new THREE.Line(geo, lineMat);
-      l.position.y = 0.03; // Slightly above grass
-      scene.add(l);
-    }
-    // Box
-    addLine([new THREE.Vector3(-14,0,-6), new THREE.Vector3(14,0,-6)]);
-    addLine([new THREE.Vector3(-14,0,-6), new THREE.Vector3(-14,0,-36)]);
-    addLine([new THREE.Vector3(14,0,-6), new THREE.Vector3(14,0,-36)]);
-    addLine([new THREE.Vector3(-14,0,-36), new THREE.Vector3(14,0,-36)]);
-    // Penalty Spot
-    const penGeo = new THREE.CircleGeometry(0.15, 12);
-    const penMat = new THREE.MeshBasicMaterial({color: 0xffffff, opacity: 0.8, transparent: true});
-    const penSpot = new THREE.Mesh(penGeo, penMat);
-    penSpot.rotation.x = -Math.PI/2;
-    penSpot.position.set(0, 0.04, -23); // Approx 11m from goal line (-34)
-    scene.add(penSpot);
-
-
-    // -- Goal Structure --
-    const goalGroup = new THREE.Group();
-    scene.add(goalGroup);
-    goalGroup.position.set(0, 0, -34);
-
-    function makePost(w, h, d){
-      const g = new THREE.BoxGeometry(w, h, d);
-      const m = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.1 });
-      const mesh = new THREE.Mesh(g, m);
-      mesh.castShadow = USE_SHADOWS;
-      mesh.receiveShadow = USE_SHADOWS;
-      return mesh;
-    }
-
-    const postL = makePost(0.16, 2.5, 0.16);
-    const postR = makePost(0.16, 2.5, 0.16);
-    postL.position.set(-3.66, 1.25, 0);
-    postR.position.set(3.66, 1.25, 0);
-    const bar = makePost(7.48, 0.16, 0.16);
-    bar.position.set(0, 2.5, 0);
-
-    goalGroup.add(postL, postR, bar);
-
-    // Net
-    const netGeo = new THREE.PlaneGeometry(7.3, 2.4, 14, 8);
-    // Wireframe for net effect
-    const netMat = new THREE.MeshBasicMaterial({ color: 0xcccccc, wireframe: true, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
-    const net = new THREE.Mesh(netGeo, netMat);
-    net.position.set(0, 1.2, -1.0);
-    net.rotation.y = Math.PI;
-    goalGroup.add(net);
-    // Side nets (Simple)
-    const sideNetGeo = new THREE.PlaneGeometry(1.2, 2.4, 4, 8);
-    const sideNetL = new THREE.Mesh(sideNetGeo, netMat);
-    sideNetL.position.set(-3.66, 1.2, -0.6);
-    sideNetL.rotation.y = Math.PI/2;
-    const sideNetR = new THREE.Mesh(sideNetGeo, netMat);
-    sideNetR.position.set(3.66, 1.2, -0.6);
-    sideNetR.rotation.y = Math.PI/2;
-    goalGroup.add(sideNetL, sideNetR);
-
-
-    // -- Wall (Defenders) --
-    const wallGroup = new THREE.Group();
-    scene.add(wallGroup);
-    
-    // Fallback to CylinderGeometry if CapsuleGeometry is not available
-    const dummyGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.85, 16); 
-    const dummyMat = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.5, metalness: 0.2 });
-    
-    function updateWall(level) {
-      while(wallGroup.children.length > 0){ 
-        wallGroup.remove(wallGroup.children[0]); 
+      // Field Lines
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, linewidth: 2 });
+      function addLine(points) {
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const l = new THREE.Line(geo, lineMat);
+        l.position.y = 0.03; // Slightly above grass
+        scene.add(l);
       }
-      
-      // LIMIT MAX 4 PLAYERS
-      let count = Math.min(Math.floor((level - 1) / 3) + 1, CONSTANTS.wallMaxCount);
-      
-      const spacing = 0.75; 
-      const totalWidth = (count - 1) * spacing;
-      const startX = -totalWidth / 2;
-      
-      for(let i=0; i<count; i++){
-        const d = new THREE.Mesh(dummyGeo, dummyMat);
-        d.position.set(startX + i*spacing, 0.925, 0); 
-        d.castShadow = USE_SHADOWS;
-        d.receiveShadow = USE_SHADOWS;
-        wallGroup.add(d);
-      }
-    }
+      // Box
+      addLine([new THREE.Vector3(-14, 0, -6), new THREE.Vector3(14, 0, -6)]);
+      addLine([new THREE.Vector3(-14, 0, -6), new THREE.Vector3(-14, 0, -36)]);
+      addLine([new THREE.Vector3(14, 0, -6), new THREE.Vector3(14, 0, -36)]);
+      addLine([new THREE.Vector3(-14, 0, -36), new THREE.Vector3(14, 0, -36)]);
+      // Penalty Spot
+      const penGeo = new THREE.CircleGeometry(0.15, 12);
+      const penMat = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.8, transparent: true });
+      const penSpot = new THREE.Mesh(penGeo, penMat);
+      penSpot.rotation.x = -Math.PI / 2;
+      penSpot.position.set(0, 0.04, -23); // Approx 11m from goal line (-34)
+      scene.add(penSpot);
 
 
-    // -- Confetti System --
-    const confettiCount = 150;
-    const confettiGeo = new THREE.BufferGeometry();
-    const confettiPos = new Float32Array(confettiCount * 3);
-    const confettiVel = new Float32Array(confettiCount * 3);
-    const confettiColor = new Float32Array(confettiCount * 3);
-    
-    confettiGeo.setAttribute('position', new THREE.BufferAttribute(confettiPos, 3));
-    confettiGeo.setAttribute('color', new THREE.BufferAttribute(confettiColor, 3));
-    
-    const confettiMat = new THREE.PointsMaterial({ size: 0.35, vertexColors: true, transparent: true, opacity: 0.9 });
-    const confettiSys = new THREE.Points(confettiGeo, confettiMat);
-    confettiSys.visible = false;
-    scene.add(confettiSys);
-    
-    function triggerConfetti(){
-      confettiSys.visible = true;
-      for(let i=0; i<confettiCount; i++){
-        confettiPos[i*3] = (Math.random() - 0.5) * 8;
-        confettiPos[i*3+1] = 2.5 + Math.random() * 4;
-        confettiPos[i*3+2] = -34 + (Math.random()-0.5)*2;
-        
-        confettiVel[i*3] = (Math.random() - 0.5) * 8;
-        confettiVel[i*3+1] = 2 + Math.random() * 8;
-        confettiVel[i*3+2] = (Math.random() - 0.5) * 8;
-        
-        // Gold, Red, White
-        const r = Math.random();
-        if(r < 0.33) { confettiColor[i*3]=1; confettiColor[i*3+1]=0.84; confettiColor[i*3+2]=0; } // Gold
-        else if(r < 0.66) { confettiColor[i*3]=0.9; confettiColor[i*3+1]=0.2; confettiColor[i*3+2]=0.2; } // Red
-        else { confettiColor[i*3]=1; confettiColor[i*3+1]=1; confettiColor[i*3+2]=1; } // White
+      // -- Goal Structure --
+      const goalGroup = new THREE.Group();
+      scene.add(goalGroup);
+      goalGroup.position.set(0, 0, -34);
+
+      function makePost(w, h, d) {
+        const g = new THREE.BoxGeometry(w, h, d);
+        const m = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.1 });
+        const mesh = new THREE.Mesh(g, m);
+        mesh.castShadow = USE_SHADOWS;
+        mesh.receiveShadow = USE_SHADOWS;
+        return mesh;
       }
-      confettiGeo.attributes.position.needsUpdate = true;
-      confettiGeo.attributes.color.needsUpdate = true;
-    }
-    
-    function updateConfetti(dt){
-      if(!confettiSys.visible) return;
-      let active = false;
-      for(let i=0; i<confettiCount; i++){
-        if(confettiPos[i*3+1] > -1){ 
-          confettiVel[i*3+1] -= 9.81 * dt * 0.5; 
-          confettiPos[i*3] += confettiVel[i*3] * dt;
-          confettiPos[i*3+1] += confettiVel[i*3+1] * dt;
-          confettiPos[i*3+2] += confettiVel[i*3+2] * dt;
-          active = true;
+
+      const postL = makePost(0.16, 2.5, 0.16);
+      const postR = makePost(0.16, 2.5, 0.16);
+      postL.position.set(-3.66, 1.25, 0);
+      postR.position.set(3.66, 1.25, 0);
+      const bar = makePost(7.48, 0.16, 0.16);
+      bar.position.set(0, 2.5, 0);
+
+      goalGroup.add(postL, postR, bar);
+
+      // Net
+      const netGeo = new THREE.PlaneGeometry(7.3, 2.4, 14, 8);
+      // Wireframe for net effect
+      const netMat = new THREE.MeshBasicMaterial({ color: 0xcccccc, wireframe: true, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+      const net = new THREE.Mesh(netGeo, netMat);
+      net.position.set(0, 1.2, -1.0);
+      net.rotation.y = Math.PI;
+      goalGroup.add(net);
+      // Side nets (Simple)
+      const sideNetGeo = new THREE.PlaneGeometry(1.2, 2.4, 4, 8);
+      const sideNetL = new THREE.Mesh(sideNetGeo, netMat);
+      sideNetL.position.set(-3.66, 1.2, -0.6);
+      sideNetL.rotation.y = Math.PI / 2;
+      const sideNetR = new THREE.Mesh(sideNetGeo, netMat);
+      sideNetR.position.set(3.66, 1.2, -0.6);
+      sideNetR.rotation.y = Math.PI / 2;
+      goalGroup.add(sideNetL, sideNetR);
+
+
+      // -- Wall (Defenders) --
+      const wallGroup = new THREE.Group();
+      scene.add(wallGroup);
+
+      // Fallback to CylinderGeometry if CapsuleGeometry is not available
+      const dummyGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.85, 16);
+      const dummyMat = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.5, metalness: 0.2 });
+
+      function updateWall(level) {
+        while (wallGroup.children.length > 0) {
+          wallGroup.remove(wallGroup.children[0]);
+        }
+
+        // LIMIT MAX 4 PLAYERS
+        let count = Math.min(Math.floor((level - 1) / 3) + 1, CONSTANTS.wallMaxCount);
+
+        const spacing = 0.75;
+        const totalWidth = (count - 1) * spacing;
+        const startX = -totalWidth / 2;
+
+        for (let i = 0; i < count; i++) {
+          const d = new THREE.Mesh(dummyGeo, dummyMat);
+          d.position.set(startX + i * spacing, 0.925, 0);
+          d.castShadow = USE_SHADOWS;
+          d.receiveShadow = USE_SHADOWS;
+          wallGroup.add(d);
         }
       }
-      confettiGeo.attributes.position.needsUpdate = true;
-      if(!active) confettiSys.visible = false;
-    }
 
 
-    // -- Ball --
-    const ballRadius = CONSTANTS.ballRadius;
-    const ballGeo = new THREE.SphereGeometry(ballRadius, 32, 24);
-    const ballMat = new THREE.MeshStandardMaterial({ 
-      color: 0xffffff, 
-      roughness: 0.35, 
-      metalness: 0.05,
-      map: null // Procedural pattern below would be better but simple white is classic
-    });
-    // Simple geometric ball pattern (optional visual upgrade)
-    // For now, clean white ball looks 'pro' enough with good lighting.
-    
-    const ball = new THREE.Mesh(ballGeo, ballMat);
-    ball.castShadow = USE_SHADOWS;
-    ball.receiveShadow = USE_SHADOWS;
-    scene.add(ball);
+      // -- Confetti System --
+      const confettiCount = 150;
+      const confettiGeo = new THREE.BufferGeometry();
+      const confettiPos = new Float32Array(confettiCount * 3);
+      const confettiVel = new Float32Array(confettiCount * 3);
+      const confettiColor = new Float32Array(confettiCount * 3);
 
-    // Ball Shadow (Blob) - Cheaper than real shadow for close ground contact
-    const shadowGeo = new THREE.CircleGeometry(ballRadius * 1.05, 16);
-    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
-    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-    shadow.rotation.x = -Math.PI/2;
-    shadow.position.y = 0.02; // Just above lines
-    scene.add(shadow);
+      confettiGeo.setAttribute('position', new THREE.BufferAttribute(confettiPos, 3));
+      confettiGeo.setAttribute('color', new THREE.BufferAttribute(confettiColor, 3));
 
-
-    // ======================
-    // 2) Physics & Logic (UNTOUCHED CORE)
-    // ======================
-    let clock = new THREE.Clock();
-    let raf = 0;
-    let needsRender = true;
-    
-    // Re-using Vector3 to avoid GC
-    const tmpAcc = new THREE.Vector3();
-    const tmpCross = new THREE.Vector3();
-    const tmpAxis = new THREE.Vector3();
-
-    const state = {
-      pos: new THREE.Vector3(0, ballRadius, -6),
-      prevPos: new THREE.Vector3(0, ballRadius, -6),
-      vel: new THREE.Vector3(),
-      omega: new THREE.Vector3(),
-      inFlight: false,
-      stopped: false,
-      isGoal: false,
-      level: 1 
-    };
-
-    const lastStartPos = new THREE.Vector3(); 
-    const spots = [
-      { x: 0, z: -14 },   
-      { x: 0, z: -8 },    
-      { x: -10, z: -10 }, 
-      { x: 10, z: -10 },  
-      { x: -15, z: -5 },  
-      { x: 15, z: -5 },   
-      { x: -5, z: -18 },  
-      { x: 5, z: -18 }    
-    ];
-
-    function getRandomSpot(){
-      return spots[Math.floor(Math.random() * spots.length)];
-    }
-
-    const cameraBasePos = new THREE.Vector3();
-
-    function updateCameraPosition(){
-      const goalCenter = new THREE.Vector3(0, 1.2, -34);
-      const toGoal = new THREE.Vector3().subVectors(goalCenter, state.pos);
-      toGoal.y = 0; 
-      toGoal.normalize();
-
-      const camDist = 6.0;
-      const camHeight = 2.2;
-
-      const camPos = state.pos.clone().sub(toGoal.multiplyScalar(camDist));
-      camPos.y += camHeight;
-
-      camera.position.copy(camPos);
-      camera.lookAt(goalCenter.x, goalCenter.y * 0.5, goalCenter.z); 
-      cameraBasePos.copy(camera.position);
-    }
-    
-    function placeWall(){
-      const goalCenter = new THREE.Vector3(0, 0, -34);
-      const toGoal = new THREE.Vector3().subVectors(goalCenter, state.pos);
-      const dist = toGoal.length();
-      
-      if(dist < 11.0) {
-        wallGroup.visible = false;
-        return;
-      }
-      
-      wallGroup.visible = true;
-      updateWall(state.level); 
-      
-      toGoal.normalize();
-      const wallPos = state.pos.clone().add(toGoal.multiplyScalar(9.0));
-      wallGroup.position.set(wallPos.x, 0, wallPos.z);
-      wallGroup.lookAt(state.pos.x, 0, state.pos.z);
-    }
-
-    let resetTimer = null; 
-
-    function resetBall(randomize){
-      if(resetTimer) {
-        clearTimeout(resetTimer);
-        resetTimer = null;
-      }
-
-      state.inFlight = false;
-      state.stopped = false;
-      state.isGoal = false;
-      state.vel.set(0,0,0);
-      state.omega.set(0,0,0);
-      
-      document.getElementById('goalOverlay').classList.remove('active');
+      const confettiMat = new THREE.PointsMaterial({ size: 0.35, vertexColors: true, transparent: true, opacity: 0.9 });
+      const confettiSys = new THREE.Points(confettiGeo, confettiMat);
       confettiSys.visible = false;
+      scene.add(confettiSys);
 
-      document.getElementById('levelBadge').textContent = "LVL " + state.level;
+      function triggerConfetti() {
+        confettiSys.visible = true;
+        for (let i = 0; i < confettiCount; i++) {
+          confettiPos[i * 3] = (Math.random() - 0.5) * 8;
+          confettiPos[i * 3 + 1] = 2.5 + Math.random() * 4;
+          confettiPos[i * 3 + 2] = -34 + (Math.random() - 0.5) * 2;
 
-      if(randomize || !lastStartPos.lengthSq()){
-        const spot = getRandomSpot();
-        state.pos.set(spot.x, ballRadius, spot.z);
-        lastStartPos.copy(state.pos); 
-      } else {
-        state.pos.copy(lastStartPos);
-      }
-      
-      state.prevPos.copy(state.pos);
-      ball.position.copy(state.pos);
-      ball.rotation.set(0,0,0);
-      
-      updateCameraPosition();
-      placeWall(); 
-      requestRender();
-    }
+          confettiVel[i * 3] = (Math.random() - 0.5) * 8;
+          confettiVel[i * 3 + 1] = 2 + Math.random() * 8;
+          confettiVel[i * 3 + 2] = (Math.random() - 0.5) * 8;
 
-    // ======================
-    // 3) HUD / Input / Preview
-    // ======================
-    const svg = document.getElementById('dragLayer');
-    
-    function resizeSVG() {
-       svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
-    }
-    
-    const arrow = document.createElementNS('http://www.w3.org/2000/svg','path');
-    arrow.setAttribute('fill','none');
-    arrow.setAttribute('stroke','rgba(255,255,255,0.7)');
-    arrow.setAttribute('stroke-width','4');
-    arrow.setAttribute('stroke-linecap','round');
-    arrow.setAttribute('stroke-linejoin','round');
-    arrow.style.display = 'none';
-    arrow.style.filter = 'drop-shadow(0px 0px 3px rgba(0,0,0,0.5))'; // Better visibility
-    svg.appendChild(arrow);
-
-    function setArrow(x1,y1,x2,y2){
-      const dx = x2-x1, dy = y2-y1;
-      const len = Math.sqrt(dx*dx + dy*dy);
-      if(len < 6){
-        arrow.style.display = 'none';
-        return;
-      }
-      arrow.style.display = 'block';
-      arrow.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
-    }
-
-    // Input Logic (Flick)
-    const pointer = {
-      down: false, startX: 0, startY: 0, lastT: 0, samples: [],
-      peakVX: 0, peakVY: 0, peakSpeed: 0, flick01: 0,
-      lastDx: 0, lastDy: 0
-    };
-
-    const WINDOW_MS = 120;
-    const ARROW_GAIN = 0.24;
-    const DEAD_SPEED_PS = 110;
-
-    function pushSample(x,y,t){
-      pointer.samples.push({ x: x, y: y, t: t });
-      while(pointer.samples.length > 0 && (t - pointer.samples[0].t) > WINDOW_MS){
-        pointer.samples.shift();
-      }
-    }
-
-    function estimateVelocityFromWindow(){
-      if(pointer.samples.length < 2) return { vx: 0, vy: 0, speed: 0 };
-      const a = pointer.samples[0];
-      const b = pointer.samples[pointer.samples.length - 1];
-      const dt = Math.max(1, b.t - a.t);
-      const vx = (b.x - a.x) / dt * 1000;
-      const vy = (b.y - a.y) / dt * 1000;
-      const speed = Math.sqrt(vx*vx + vy*vy);
-      return { vx: vx, vy: vy, speed: speed };
-    }
-
-    function updatePeak(vx, vy, speed){
-      // Decay old peaks
-      pointer.peakVX *= 0.985;
-      pointer.peakVY *= 0.985;
-      pointer.peakSpeed *= 0.985;
-      if(speed > pointer.peakSpeed){
-        pointer.peakSpeed = speed;
-        pointer.peakVX = vx;
-        pointer.peakVY = vy;
-      }
-    }
-
-    function applyCameraRotation(vector){
-      const camDir = new THREE.Vector3();
-      camera.getWorldDirection(camDir);
-      const camAngle = Math.atan2(camDir.x, camDir.z);
-      vector.applyAxisAngle(new THREE.Vector3(0, 1, 0), camAngle + Math.PI);
-      return vector;
-    }
-
-    // Trajectory Preview
-    const PREVIEW_MAX = isMobile ? 120 : 180;
-    const previewPositions = new Float32Array(PREVIEW_MAX * 3);
-    const previewGeo = new THREE.BufferGeometry();
-    previewGeo.setAttribute('position', new THREE.BufferAttribute(previewPositions, 3));
-    const previewMat = new THREE.LineBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.5 });
-    const previewLine = new THREE.Line(previewGeo, previewMat);
-    previewLine.visible = false;
-    scene.add(previewLine);
-
-    function simulatePreview(dx, dy, flick01){
-      flick01 = THREE.MathUtils.clamp(flick01 || 0, 0, 1);
-      const speed = (18 + CONSTANTS.power * Math.pow(flick01, 0.72));
-      
-      const maxDrag = Math.min(window.innerWidth, window.innerHeight) * 0.55;
-      const ndx = THREE.MathUtils.clamp(dx / maxDrag, -1, 1);
-      const ndy = THREE.MathUtils.clamp(dy / maxDrag, -1, 1);
-
-      const maxYaw = THREE.MathUtils.degToRad(18);
-      const maxPitchUp = THREE.MathUtils.degToRad(14);
-      const maxPitchDown = THREE.MathUtils.degToRad(8);
-
-      const yaw = THREE.MathUtils.clamp(ndx, -1, 1) * maxYaw;
-      let pitch = THREE.MathUtils.clamp(-ndy, -1, 1) * (ndy > 0 ? maxPitchDown : maxPitchUp);
-      pitch *= (0.10 + 0.90 * flick01);
-
-      const cy = Math.cos(yaw), sy = Math.sin(yaw);
-      const cp = Math.cos(pitch), sp = Math.sin(pitch);
-
-      const vLocal = new THREE.Vector3(speed * sy * cp, speed * sp, -speed * cy * cp);
-      applyCameraRotation(vLocal);
-
-      let vx = vLocal.x, vy = vLocal.y, vz = vLocal.z;
-      let px = state.pos.x, py = state.pos.y, pz = state.pos.z;
-
-      // Spin sim
-      const spinY = (ndx) * CONSTANTS.spin * (6 + 10 * flick01);
-      const fromSwipe = (-ndy) * 3.0;
-      let spinX = -(CONSTANTS.topspin - fromSwipe) * 2.0;
-      spinX *= (0.15 + 0.85 * Math.pow(flick01, 0.85));
-      spinX = THREE.MathUtils.clamp(spinX, -18, 28);
-
-      const wLocal = new THREE.Vector3(spinX, spinY, 0);
-      applyCameraRotation(wLocal);
-      let ox = wLocal.x, oy = wLocal.y, oz = wLocal.z;
-
-      const dt = 1/90;
-      let count = 0;
-      const tmpP = new THREE.Vector3();
-
-      for(let i=0; i<PREVIEW_MAX; i++){
-        previewPositions[count*3] = px;
-        previewPositions[count*3+1] = py;
-        previewPositions[count*3+2] = pz;
-        count++;
-
-        const spd = Math.sqrt(vx*vx + vy*vy + vz*vz);
-        if(spd < 0.05) break;
-        
-        // Physics step (Simulated)
-        // Gravity
-        let ax = 0, ay = -CONSTANTS.gravity, az = 0;
-        // Drag
-        if(spd > 0.0001){
-           const dF = -CONSTANTS.drag * spd;
-           ax += dF * vx; ay += dF * vy; az += dF * vz;
+          // Gold, Red, White
+          const r = Math.random();
+          if (r < 0.33) { confettiColor[i * 3] = 1; confettiColor[i * 3 + 1] = 0.84; confettiColor[i * 3 + 2] = 0; } // Gold
+          else if (r < 0.66) { confettiColor[i * 3] = 0.9; confettiColor[i * 3 + 1] = 0.2; confettiColor[i * 3 + 2] = 0.2; } // Red
+          else { confettiColor[i * 3] = 1; confettiColor[i * 3 + 1] = 1; confettiColor[i * 3 + 2] = 1; } // White
         }
-        // Magnus
-        const mx = oy * vz - oz * vy;
-        const my = oz * vx - ox * vz;
-        const mz = ox * vy - oy * vx;
-        
-        ax += CONSTANTS.magnus * mx;
-        ay += CONSTANTS.magnus * my;
-        az += CONSTANTS.magnus * mz;
-
-        vx += ax * dt; vy += ay * dt; vz += az * dt;
-        px += vx * dt; py += vy * dt; pz += vz * dt;
-
-        if(py <= CONSTANTS.ballRadius){
-          py = CONSTANTS.ballRadius;
-          vy = -vy * CONSTANTS.restitution;
-        }
-        if(pz < -40) break;
+        confettiGeo.attributes.position.needsUpdate = true;
+        confettiGeo.attributes.color.needsUpdate = true;
       }
 
-      previewGeo.setDrawRange(0, count);
-      previewGeo.attributes.position.needsUpdate = true;
-      previewLine.visible = true;
-    }
-
-
-    function applyKick(dx, dy, flick01){
-      flick01 = THREE.MathUtils.clamp(flick01 || 0, 0, 1);
-      
-      const speed = (18 + CONSTANTS.power * Math.pow(flick01, 0.72)) * CONSTANTS.speedBoost;
-
-      const maxDrag = Math.min(window.innerWidth, window.innerHeight) * 0.55;
-      const ndx = THREE.MathUtils.clamp(dx / maxDrag, -1, 1);
-      const ndy = THREE.MathUtils.clamp(dy / maxDrag, -1, 1);
-
-      const maxYaw = THREE.MathUtils.degToRad(18);
-      const maxPitchUp = THREE.MathUtils.degToRad(14);
-      const maxPitchDown = THREE.MathUtils.degToRad(8);
-
-      const yaw = THREE.MathUtils.clamp(ndx, -1, 1) * maxYaw;
-      let pitch = THREE.MathUtils.clamp(-ndy, -1, 1) * (ndy > 0 ? maxPitchDown : maxPitchUp);
-      pitch *= (0.10 + 0.90 * flick01);
-
-      const cy = Math.cos(yaw), sy = Math.sin(yaw);
-      const cp = Math.cos(pitch), sp = Math.sin(pitch);
-
-      const vLocal = new THREE.Vector3(speed * sy * cp, speed * sp, -speed * cy * cp);
-      applyCameraRotation(vLocal);
-      state.vel.copy(vLocal);
-
-      // Spin
-      const spinY = (ndx) * CONSTANTS.spin * (6 + 10 * flick01);
-      const fromSwipe = (-ndy) * 3.0;
-      let spinX = -(CONSTANTS.topspin - fromSwipe) * 2.0;
-      spinX *= (0.15 + 0.85 * Math.pow(flick01, 0.85));
-      spinX = THREE.MathUtils.clamp(spinX, -18, 28);
-
-      const wLocal = new THREE.Vector3(spinX, spinY, 0);
-      applyCameraRotation(wLocal);
-      state.omega.copy(wLocal);
-
-      state.inFlight = true;
-      state.stopped = false;
-      
-      previewLine.visible = false;
-      requestLoop();
-    }
-
-
-    // ======================
-    // 4) Collision & Step
-    // ======================
-    let goalFlashT = 0;
-    let shakeIntensity = 0;
-
-    function checkWallCollision(){
-      if(!wallGroup.visible) return;
-      // Dummy radius + Ball radius
-      const rSum = 0.3 + CONSTANTS.ballRadius; // Adjusted for Cylinder
-      const colSq = rSum * rSum;
-      
-      for(let i=0; i<wallGroup.children.length; i++){
-        const dummy = wallGroup.children[i];
-        if(state.pos.y > 1.9) continue; // Over the head
-        
-        // Simple X/Z cylinder check
-        const dx = state.pos.x - dummy.position.x; // local coord space is tricky if group rotated
-        // Since wallGroup is rotated, we should check distance in world space or local space carefully.
-        // Simplified: The wall is straight, we know its position.
-        // Actually wallGroup is rotated to face ball. 
-        // Let's do simple world distance check for robustness.
-        const dummyWorld = new THREE.Vector3();
-        dummy.getWorldPosition(dummyWorld);
-        
-        const distX = state.pos.x - dummyWorld.x;
-        const distZ = state.pos.z - dummyWorld.z;
-        const dSq = distX*distX + distZ*distZ;
-        
-        if(dSq < colSq){
-          // Bounce
-          const len = Math.sqrt(dSq);
-          const nx = distX/len; 
-          const nz = distZ/len;
-          
-          const dot = state.vel.x * nx + state.vel.z * nz;
-          state.vel.x = (state.vel.x - 2 * dot * nx) * 0.5; 
-          state.vel.z = (state.vel.z - 2 * dot * nz) * 0.5;
-          state.vel.y *= 0.8;
-          
-          const overlap = rSum - len + 0.05;
-          state.pos.x += nx * overlap;
-          state.pos.z += nz * overlap;
-          state.omega.multiplyScalar(0.7);
+      function updateConfetti(dt) {
+        if (!confettiSys.visible) return;
+        let active = false;
+        for (let i = 0; i < confettiCount; i++) {
+          if (confettiPos[i * 3 + 1] > -1) {
+            confettiVel[i * 3 + 1] -= 9.81 * dt * 0.5;
+            confettiPos[i * 3] += confettiVel[i * 3] * dt;
+            confettiPos[i * 3 + 1] += confettiVel[i * 3 + 1] * dt;
+            confettiPos[i * 3 + 2] += confettiVel[i * 3 + 2] * dt;
+            active = true;
+          }
         }
+        confettiGeo.attributes.position.needsUpdate = true;
+        if (!active) confettiSys.visible = false;
       }
-    }
 
-    function checkPostCollision(){
-      if(state.pos.z > -33.5 || state.pos.z < -34.5) return; // Optimization
-      
-      const colDistSq = 0.30 * 0.30; 
-      const postsX = [-3.66, 3.66];
-      
-      // Vertical Posts
-      for(let i=0; i<2; i++){
-        if(state.pos.y > 2.6) continue;
-        const dx = state.pos.x - postsX[i];
-        const dz = state.pos.z - (-34.0);
-        if(dx*dx + dz*dz < colDistSq){
-          // BOUNCE
-          const len = Math.sqrt(dx*dx + dz*dz);
-          const nx = dx/len, nz = dz/len;
-          const dot = state.vel.x * nx + state.vel.z * nz;
-          state.vel.x = (state.vel.x - 2 * dot * nx) * 0.6;
-          state.vel.z = (state.vel.z - 2 * dot * nz) * 0.6;
-          state.pos.x += nx * (0.32 - len);
-          state.pos.z += nz * (0.32 - len);
-          return; 
+
+      // -- Ball --
+      const ballRadius = CONSTANTS.ballRadius;
+      const ballGeo = new THREE.SphereGeometry(ballRadius, 32, 24);
+      const ballMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.35,
+        metalness: 0.05,
+        map: null // Procedural pattern below would be better but simple white is classic
+      });
+      // Simple geometric ball pattern (optional visual upgrade)
+      // For now, clean white ball looks 'pro' enough with good lighting.
+
+      const ball = new THREE.Mesh(ballGeo, ballMat);
+      ball.castShadow = USE_SHADOWS;
+      ball.receiveShadow = USE_SHADOWS;
+      scene.add(ball);
+
+      // Ball Shadow (Blob) - Cheaper than real shadow for close ground contact
+      const shadowGeo = new THREE.CircleGeometry(ballRadius * 1.05, 16);
+      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
+      const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.position.y = 0.02; // Just above lines
+      scene.add(shadow);
+
+
+      // ======================
+      // 2) Physics & Logic (UNTOUCHED CORE)
+      // ======================
+      let clock = new THREE.Clock();
+      let raf = 0;
+      let needsRender = true;
+
+      // Re-using Vector3 to avoid GC
+      const tmpAcc = new THREE.Vector3();
+      const tmpCross = new THREE.Vector3();
+      const tmpAxis = new THREE.Vector3();
+
+      const state = {
+        pos: new THREE.Vector3(0, ballRadius, -6),
+        prevPos: new THREE.Vector3(0, ballRadius, -6),
+        vel: new THREE.Vector3(),
+        omega: new THREE.Vector3(),
+        inFlight: false,
+        stopped: false,
+        isGoal: false,
+        level: 1
+      };
+
+      const lastStartPos = new THREE.Vector3();
+      const spots = [
+        { x: 0, z: -14 },
+        { x: 0, z: -8 },
+        { x: -10, z: -10 },
+        { x: 10, z: -10 },
+        { x: -15, z: -5 },
+        { x: 15, z: -5 },
+        { x: -5, z: -18 },
+        { x: 5, z: -18 }
+      ];
+
+      function getRandomSpot() {
+        return spots[Math.floor(Math.random() * spots.length)];
+      }
+
+      const cameraBasePos = new THREE.Vector3();
+
+      function updateCameraPosition() {
+        const goalCenter = new THREE.Vector3(0, 1.2, -34);
+        const toGoal = new THREE.Vector3().subVectors(goalCenter, state.pos);
+        toGoal.y = 0;
+        toGoal.normalize();
+
+        const camDist = 6.0;
+        const camHeight = 2.2;
+
+        const camPos = state.pos.clone().sub(toGoal.multiplyScalar(camDist));
+        camPos.y += camHeight;
+
+        camera.position.copy(camPos);
+        camera.lookAt(goalCenter.x, goalCenter.y * 0.5, goalCenter.z);
+        cameraBasePos.copy(camera.position);
+      }
+
+      function placeWall() {
+        const goalCenter = new THREE.Vector3(0, 0, -34);
+        const toGoal = new THREE.Vector3().subVectors(goalCenter, state.pos);
+        const dist = toGoal.length();
+
+        if (dist < 11.0) {
+          wallGroup.visible = false;
+          return;
         }
+
+        wallGroup.visible = true;
+        updateWall(state.level);
+
+        toGoal.normalize();
+        const wallPos = state.pos.clone().add(toGoal.multiplyScalar(9.0));
+        wallGroup.position.set(wallPos.x, 0, wallPos.z);
+        wallGroup.lookAt(state.pos.x, 0, state.pos.z);
       }
-      
-      // Crossbar
-      if(state.pos.x > -3.7 && state.pos.x < 3.7){
-        const dy = state.pos.y - 2.5;
-        const dz = state.pos.z - (-34.0);
-        if(dy*dy + dz*dz < colDistSq){
-          const len = Math.sqrt(dy*dy + dz*dz);
-          const ny = dy/len, nz = dz/len;
-          const dot = state.vel.y * ny + state.vel.z * nz;
-          state.vel.y = (state.vel.y - 2 * dot * ny) * 0.6;
-          state.vel.z = (state.vel.z - 2 * dot * nz) * 0.6;
-          state.pos.y += ny * (0.32 - len);
-          state.pos.z += nz * (0.32 - len);
+
+      let resetTimer = null;
+
+      function resetBall(randomize) {
+        if (resetTimer) {
+          clearTimeout(resetTimer);
+          resetTimer = null;
         }
-      }
-    }
 
-    function enforceNetConstraints() {
-      // Simple net box
-      if (state.pos.z > -34.0) return;
-      if (state.isGoal) {
-        if (state.pos.z < -36.2) { state.pos.z = -36.2; state.vel.z *= -0.2; }
-        if (state.pos.x > 3.6) { state.pos.x = 3.6; state.vel.x *= -0.2; }
-        else if (state.pos.x < -3.6) { state.pos.x = -3.6; state.vel.x *= -0.2; }
-        if (state.pos.y > 2.45) { state.pos.y = 2.45; state.vel.y *= -0.2; }
-        state.vel.multiplyScalar(0.98); // Friction in net
-      } 
-      else {
-        // Outside net logic (bounce off back) - simplified
-        if (state.pos.z < -34.0 && state.pos.z > -36.5 && Math.abs(state.pos.x) < 3.8 && state.pos.y < 2.6) {
-           // If we somehow clipped inside without being a goal? 
-           // Usually handled by posts, but as fallback:
-           // Bounce top
-           if(state.pos.y > 2.5) { state.pos.y = 2.6; state.vel.y = Math.abs(state.vel.y)*0.5; }
-        }
-      }
-    }
+        state.inFlight = false;
+        state.stopped = false;
+        state.isGoal = false;
+        state.vel.set(0, 0, 0);
+        state.omega.set(0, 0, 0);
 
-    function stepPhysics(dt){
-      const subSteps = 3;
-      const h = dt / subSteps;
+        document.getElementById('goalOverlay').classList.remove('active');
+        confettiSys.visible = false;
 
-      for(let i=0;i<subSteps;i++){
-        const spd = state.vel.length();
-        
-        tmpAcc.set(0, -CONSTANTS.gravity, 0);
-        if(spd > 0.0001) tmpAcc.addScaledVector(state.vel, -CONSTANTS.drag * spd);
-        
-        tmpCross.crossVectors(state.omega, state.vel);
-        tmpAcc.addScaledVector(tmpCross, CONSTANTS.magnus);
-        
-        if(state.isGoal){
-          state.vel.multiplyScalar(0.94);
-          state.omega.multiplyScalar(0.92);
+        document.getElementById('levelBadge').textContent = "LVL " + state.level;
+
+        if (randomize || !lastStartPos.lengthSq()) {
+          const spot = getRandomSpot();
+          state.pos.set(spot.x, ballRadius, spot.z);
+          lastStartPos.copy(state.pos);
+        } else {
+          state.pos.copy(lastStartPos);
         }
 
         state.prevPos.copy(state.pos);
-        state.vel.addScaledVector(tmpAcc, h);
-        state.pos.addScaledVector(state.vel, h);
+        ball.position.copy(state.pos);
+        ball.rotation.set(0, 0, 0);
 
-        // Ground collision
-        if(state.pos.y <= CONSTANTS.ballRadius){
-          state.pos.y = CONSTANTS.ballRadius;
-          if(state.vel.y < 0) state.vel.y = -state.vel.y * CONSTANTS.restitution;
-          state.vel.x *= 0.985; // Ground friction
-          state.vel.z *= 0.985;
-          state.omega.multiplyScalar(0.985);
-          if(Math.abs(state.vel.y) < 0.35) state.vel.y = 0;
+        updateCameraPosition();
+        placeWall();
+        requestRender();
+      }
+
+      // ======================
+      // 3) HUD / Input / Preview
+      // ======================
+      const svg = document.getElementById('dragLayer');
+
+      function resizeSVG() {
+        svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+      }
+
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      arrow.setAttribute('fill', 'none');
+      arrow.setAttribute('stroke', 'rgba(255,255,255,0.7)');
+      arrow.setAttribute('stroke-width', '4');
+      arrow.setAttribute('stroke-linecap', 'round');
+      arrow.setAttribute('stroke-linejoin', 'round');
+      arrow.style.display = 'none';
+      arrow.style.filter = 'drop-shadow(0px 0px 3px rgba(0,0,0,0.5))'; // Better visibility
+      svg.appendChild(arrow);
+
+      function setArrow(x1, y1, x2, y2) {
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 6) {
+          arrow.style.display = 'none';
+          return;
+        }
+        arrow.style.display = 'block';
+        arrow.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+      }
+
+      // Input Logic (Flick)
+      const pointer = {
+        down: false, startX: 0, startY: 0, lastT: 0, samples: [],
+        peakVX: 0, peakVY: 0, peakSpeed: 0, flick01: 0,
+        lastDx: 0, lastDy: 0
+      };
+
+      const WINDOW_MS = 120;
+      const ARROW_GAIN = 0.24;
+      const DEAD_SPEED_PS = 110;
+
+      function pushSample(x, y, t) {
+        pointer.samples.push({ x: x, y: y, t: t });
+        while (pointer.samples.length > 0 && (t - pointer.samples[0].t) > WINDOW_MS) {
+          pointer.samples.shift();
+        }
+      }
+
+      function estimateVelocityFromWindow() {
+        if (pointer.samples.length < 2) return { vx: 0, vy: 0, speed: 0 };
+        const a = pointer.samples[0];
+        const b = pointer.samples[pointer.samples.length - 1];
+        const dt = Math.max(1, b.t - a.t);
+        const vx = (b.x - a.x) / dt * 1000;
+        const vy = (b.y - a.y) / dt * 1000;
+        const speed = Math.sqrt(vx * vx + vy * vy);
+        return { vx: vx, vy: vy, speed: speed };
+      }
+
+      function updatePeak(vx, vy, speed) {
+        // Decay old peaks
+        pointer.peakVX *= 0.985;
+        pointer.peakVY *= 0.985;
+        pointer.peakSpeed *= 0.985;
+        if (speed > pointer.peakSpeed) {
+          pointer.peakSpeed = speed;
+          pointer.peakVX = vx;
+          pointer.peakVY = vy;
+        }
+      }
+
+      function applyCameraRotation(vector) {
+        const camDir = new THREE.Vector3();
+        camera.getWorldDirection(camDir);
+        const camAngle = Math.atan2(camDir.x, camDir.z);
+        vector.applyAxisAngle(new THREE.Vector3(0, 1, 0), camAngle + Math.PI);
+        return vector;
+      }
+
+      // Trajectory Preview
+      const PREVIEW_MAX = isMobile ? 120 : 180;
+      const previewPositions = new Float32Array(PREVIEW_MAX * 3);
+      const previewGeo = new THREE.BufferGeometry();
+      previewGeo.setAttribute('position', new THREE.BufferAttribute(previewPositions, 3));
+      const previewMat = new THREE.LineBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.5 });
+      const previewLine = new THREE.Line(previewGeo, previewMat);
+      previewLine.visible = false;
+      scene.add(previewLine);
+
+      function simulatePreview(dx, dy, flick01) {
+        flick01 = THREE.MathUtils.clamp(flick01 || 0, 0, 1);
+        const speed = (18 + CONSTANTS.power * Math.pow(flick01, 0.72));
+
+        const maxDrag = Math.min(window.innerWidth, window.innerHeight) * 0.55;
+        const ndx = THREE.MathUtils.clamp(dx / maxDrag, -1, 1);
+        const ndy = THREE.MathUtils.clamp(dy / maxDrag, -1, 1);
+
+        const maxYaw = THREE.MathUtils.degToRad(18);
+        const maxPitchUp = THREE.MathUtils.degToRad(14);
+        const maxPitchDown = THREE.MathUtils.degToRad(8);
+
+        const yaw = THREE.MathUtils.clamp(ndx, -1, 1) * maxYaw;
+        let pitch = THREE.MathUtils.clamp(-ndy, -1, 1) * (ndy > 0 ? maxPitchDown : maxPitchUp);
+        pitch *= (0.10 + 0.90 * flick01);
+
+        const cy = Math.cos(yaw), sy = Math.sin(yaw);
+        const cp = Math.cos(pitch), sp = Math.sin(pitch);
+
+        const vLocal = new THREE.Vector3(speed * sy * cp, speed * sp, -speed * cy * cp);
+        applyCameraRotation(vLocal);
+
+        let vx = vLocal.x, vy = vLocal.y, vz = vLocal.z;
+        let px = state.pos.x, py = state.pos.y, pz = state.pos.z;
+
+        // Spin sim
+        const spinY = (ndx) * CONSTANTS.spin * (6 + 10 * flick01);
+        const fromSwipe = (-ndy) * 3.0;
+        let spinX = -(CONSTANTS.topspin - fromSwipe) * 2.0;
+        spinX *= (0.15 + 0.85 * Math.pow(flick01, 0.85));
+        spinX = THREE.MathUtils.clamp(spinX, -18, 28);
+
+        const wLocal = new THREE.Vector3(spinX, spinY, 0);
+        applyCameraRotation(wLocal);
+        let ox = wLocal.x, oy = wLocal.y, oz = wLocal.z;
+
+        const dt = 1 / 90;
+        let count = 0;
+        const tmpP = new THREE.Vector3();
+
+        for (let i = 0; i < PREVIEW_MAX; i++) {
+          previewPositions[count * 3] = px;
+          previewPositions[count * 3 + 1] = py;
+          previewPositions[count * 3 + 2] = pz;
+          count++;
+
+          const spd = Math.sqrt(vx * vx + vy * vy + vz * vz);
+          if (spd < 0.05) break;
+
+          // Physics step (Simulated)
+          // Gravity
+          let ax = 0, ay = -CONSTANTS.gravity, az = 0;
+          // Drag
+          if (spd > 0.0001) {
+            const dF = -CONSTANTS.drag * spd;
+            ax += dF * vx; ay += dF * vy; az += dF * vz;
+          }
+          // Magnus
+          const mx = oy * vz - oz * vy;
+          const my = oz * vx - ox * vz;
+          const mz = ox * vy - oy * vx;
+
+          ax += CONSTANTS.magnus * mx;
+          ay += CONSTANTS.magnus * my;
+          az += CONSTANTS.magnus * mz;
+
+          vx += ax * dt; vy += ay * dt; vz += az * dt;
+          px += vx * dt; py += vy * dt; pz += vz * dt;
+
+          if (py <= CONSTANTS.ballRadius) {
+            py = CONSTANTS.ballRadius;
+            vy = -vy * CONSTANTS.restitution;
+          }
+          if (pz < -40) break;
         }
 
-        checkWallCollision();
-        checkPostCollision();
+        previewGeo.setDrawRange(0, count);
+        previewGeo.attributes.position.needsUpdate = true;
+        previewLine.visible = true;
+      }
 
-        // Goal Logic
-        if(!state.isGoal && state.prevPos.z > -34.0 && state.pos.z <= -34.0){
-           // Between posts and under bar
-           if(Math.abs(state.pos.x) < 3.5 && state.pos.y < 2.4){
+
+      function applyKick(dx, dy, flick01) {
+        flick01 = THREE.MathUtils.clamp(flick01 || 0, 0, 1);
+
+        const speed = (18 + CONSTANTS.power * Math.pow(flick01, 0.72)) * CONSTANTS.speedBoost;
+
+        const maxDrag = Math.min(window.innerWidth, window.innerHeight) * 0.55;
+        const ndx = THREE.MathUtils.clamp(dx / maxDrag, -1, 1);
+        const ndy = THREE.MathUtils.clamp(dy / maxDrag, -1, 1);
+
+        const maxYaw = THREE.MathUtils.degToRad(18);
+        const maxPitchUp = THREE.MathUtils.degToRad(14);
+        const maxPitchDown = THREE.MathUtils.degToRad(8);
+
+        const yaw = THREE.MathUtils.clamp(ndx, -1, 1) * maxYaw;
+        let pitch = THREE.MathUtils.clamp(-ndy, -1, 1) * (ndy > 0 ? maxPitchDown : maxPitchUp);
+        pitch *= (0.10 + 0.90 * flick01);
+
+        const cy = Math.cos(yaw), sy = Math.sin(yaw);
+        const cp = Math.cos(pitch), sp = Math.sin(pitch);
+
+        const vLocal = new THREE.Vector3(speed * sy * cp, speed * sp, -speed * cy * cp);
+        applyCameraRotation(vLocal);
+        state.vel.copy(vLocal);
+
+        // Spin
+        const spinY = (ndx) * CONSTANTS.spin * (6 + 10 * flick01);
+        const fromSwipe = (-ndy) * 3.0;
+        let spinX = -(CONSTANTS.topspin - fromSwipe) * 2.0;
+        spinX *= (0.15 + 0.85 * Math.pow(flick01, 0.85));
+        spinX = THREE.MathUtils.clamp(spinX, -18, 28);
+
+        const wLocal = new THREE.Vector3(spinX, spinY, 0);
+        applyCameraRotation(wLocal);
+        state.omega.copy(wLocal);
+
+        state.inFlight = true;
+        state.stopped = false;
+
+        previewLine.visible = false;
+        requestLoop();
+      }
+
+
+      // ======================
+      // 4) Collision & Step
+      // ======================
+      let goalFlashT = 0;
+      let shakeIntensity = 0;
+
+      function checkWallCollision() {
+        if (!wallGroup.visible) return;
+        // Dummy radius + Ball radius
+        const rSum = 0.3 + CONSTANTS.ballRadius; // Adjusted for Cylinder
+        const colSq = rSum * rSum;
+
+        for (let i = 0; i < wallGroup.children.length; i++) {
+          const dummy = wallGroup.children[i];
+          if (state.pos.y > 1.9) continue; // Over the head
+
+          // Simple X/Z cylinder check
+          const dx = state.pos.x - dummy.position.x; // local coord space is tricky if group rotated
+          // Since wallGroup is rotated, we should check distance in world space or local space carefully.
+          // Simplified: The wall is straight, we know its position.
+          // Actually wallGroup is rotated to face ball. 
+          // Let's do simple world distance check for robustness.
+          const dummyWorld = new THREE.Vector3();
+          dummy.getWorldPosition(dummyWorld);
+
+          const distX = state.pos.x - dummyWorld.x;
+          const distZ = state.pos.z - dummyWorld.z;
+          const dSq = distX * distX + distZ * distZ;
+
+          if (dSq < colSq) {
+            // Bounce
+            const len = Math.sqrt(dSq);
+            const nx = distX / len;
+            const nz = distZ / len;
+
+            const dot = state.vel.x * nx + state.vel.z * nz;
+            state.vel.x = (state.vel.x - 2 * dot * nx) * 0.5;
+            state.vel.z = (state.vel.z - 2 * dot * nz) * 0.5;
+            state.vel.y *= 0.8;
+
+            const overlap = rSum - len + 0.05;
+            state.pos.x += nx * overlap;
+            state.pos.z += nz * overlap;
+            state.omega.multiplyScalar(0.7);
+          }
+        }
+      }
+
+      function checkPostCollision() {
+        if (state.pos.z > -33.5 || state.pos.z < -34.5) return; // Optimization
+
+        const colDistSq = 0.30 * 0.30;
+        const postsX = [-3.66, 3.66];
+
+        // Vertical Posts
+        for (let i = 0; i < 2; i++) {
+          if (state.pos.y > 2.6) continue;
+          const dx = state.pos.x - postsX[i];
+          const dz = state.pos.z - (-34.0);
+          if (dx * dx + dz * dz < colDistSq) {
+            // BOUNCE
+            const len = Math.sqrt(dx * dx + dz * dz);
+            const nx = dx / len, nz = dz / len;
+            const dot = state.vel.x * nx + state.vel.z * nz;
+            state.vel.x = (state.vel.x - 2 * dot * nx) * 0.6;
+            state.vel.z = (state.vel.z - 2 * dot * nz) * 0.6;
+            state.pos.x += nx * (0.32 - len);
+            state.pos.z += nz * (0.32 - len);
+            return;
+          }
+        }
+
+        // Crossbar
+        if (state.pos.x > -3.7 && state.pos.x < 3.7) {
+          const dy = state.pos.y - 2.5;
+          const dz = state.pos.z - (-34.0);
+          if (dy * dy + dz * dz < colDistSq) {
+            const len = Math.sqrt(dy * dy + dz * dz);
+            const ny = dy / len, nz = dz / len;
+            const dot = state.vel.y * ny + state.vel.z * nz;
+            state.vel.y = (state.vel.y - 2 * dot * ny) * 0.6;
+            state.vel.z = (state.vel.z - 2 * dot * nz) * 0.6;
+            state.pos.y += ny * (0.32 - len);
+            state.pos.z += nz * (0.32 - len);
+          }
+        }
+      }
+
+      function enforceNetConstraints() {
+        // Simple net box
+        if (state.pos.z > -34.0) return;
+        if (state.isGoal) {
+          if (state.pos.z < -36.2) { state.pos.z = -36.2; state.vel.z *= -0.2; }
+          if (state.pos.x > 3.6) { state.pos.x = 3.6; state.vel.x *= -0.2; }
+          else if (state.pos.x < -3.6) { state.pos.x = -3.6; state.vel.x *= -0.2; }
+          if (state.pos.y > 2.45) { state.pos.y = 2.45; state.vel.y *= -0.2; }
+          state.vel.multiplyScalar(0.98); // Friction in net
+        }
+        else {
+          // Outside net logic (bounce off back) - simplified
+          if (state.pos.z < -34.0 && state.pos.z > -36.5 && Math.abs(state.pos.x) < 3.8 && state.pos.y < 2.6) {
+            // If we somehow clipped inside without being a goal? 
+            // Usually handled by posts, but as fallback:
+            // Bounce top
+            if (state.pos.y > 2.5) { state.pos.y = 2.6; state.vel.y = Math.abs(state.vel.y) * 0.5; }
+          }
+        }
+      }
+
+      function stepPhysics(dt) {
+        const subSteps = 3;
+        const h = dt / subSteps;
+
+        for (let i = 0; i < subSteps; i++) {
+          const spd = state.vel.length();
+
+          tmpAcc.set(0, -CONSTANTS.gravity, 0);
+          if (spd > 0.0001) tmpAcc.addScaledVector(state.vel, -CONSTANTS.drag * spd);
+
+          tmpCross.crossVectors(state.omega, state.vel);
+          tmpAcc.addScaledVector(tmpCross, CONSTANTS.magnus);
+
+          if (state.isGoal) {
+            state.vel.multiplyScalar(0.94);
+            state.omega.multiplyScalar(0.92);
+          }
+
+          state.prevPos.copy(state.pos);
+          state.vel.addScaledVector(tmpAcc, h);
+          state.pos.addScaledVector(state.vel, h);
+
+          // Ground collision
+          if (state.pos.y <= CONSTANTS.ballRadius) {
+            state.pos.y = CONSTANTS.ballRadius;
+            if (state.vel.y < 0) state.vel.y = -state.vel.y * CONSTANTS.restitution;
+            state.vel.x *= 0.985; // Ground friction
+            state.vel.z *= 0.985;
+            state.omega.multiplyScalar(0.985);
+            if (Math.abs(state.vel.y) < 0.35) state.vel.y = 0;
+          }
+
+          checkWallCollision();
+          checkPostCollision();
+
+          // Goal Logic
+          if (!state.isGoal && state.prevPos.z > -34.0 && state.pos.z <= -34.0) {
+            // Between posts and under bar
+            if (Math.abs(state.pos.x) < 3.5 && state.pos.y < 2.4) {
               // GOAL!
               state.isGoal = true;
               state.level++;
@@ -900,186 +951,290 @@
               shakeIntensity = 0.5;
               triggerConfetti();
               document.getElementById('goalOverlay').classList.add('active');
-              
-              if(!resetTimer){
+
+              // LUMUS INTEGRATION: Report level progress
+              window.parent.postMessage({
+                type: 'LUMUS_GAME_PROGRESS',
+                data: { level: state.level, gameId: 'prokick' }
+              }, '*');
+
+              if (!resetTimer) {
                 resetTimer = setTimeout(() => resetBall(true), 1800);
               }
-           }
+            }
+          }
+
+          enforceNetConstraints();
+
+          if (state.vel.length() < 0.12 && state.pos.y <= CONSTANTS.ballRadius + 0.001) {
+            state.stopped = true;
+            state.inFlight = false;
+            break;
+          }
         }
-        
-        enforceNetConstraints();
 
-        if(state.vel.length() < 0.12 && state.pos.y <= CONSTANTS.ballRadius + 0.001){
-           state.stopped = true;
-           state.inFlight = false;
-           break;
+        // Visual Updates
+        ball.position.copy(state.pos);
+        shadow.position.set(state.pos.x, 0.03, state.pos.z);
+        shadow.material.opacity = THREE.MathUtils.clamp(0.3 * (1.0 - (state.pos.y - CONSTANTS.ballRadius) / 3.0), 0, 0.3);
+
+        const omegaLen = state.omega.length();
+        if (omegaLen > 0.0001) {
+          tmpAxis.copy(state.omega).normalize();
+          ball.rotateOnAxis(tmpAxis, omegaLen * dt);
+        }
+
+        // Auto Reset conditions
+        const isBack = state.pos.z > 2.0;
+        const isTooFar = (state.pos.z < -45) || (Math.abs(state.pos.x) > 25);
+
+        if ((state.stopped || isTooFar || isBack) && !state.isGoal && !resetTimer) {
+          state.inFlight = false;
+          resetTimer = setTimeout(() => resetBall(false), 800);
+        }
+
+        needsRender = true;
+      }
+
+      function loop() {
+        raf = 0;
+        const dt = Math.min(clock.getDelta(), 0.033);
+
+        if (state.inFlight) stepPhysics(dt);
+        updateConfetti(dt);
+
+        // Effects
+        if (goalFlashT > 0) {
+          goalFlashT -= dt;
+          // Flash net
+          net.material.opacity = 0.15 + 0.5 * (goalFlashT / 0.5);
+          needsRender = true;
+        } else if (net.material.opacity > 0.16) {
+          net.material.opacity = 0.15;
+          needsRender = true;
+        }
+
+        if (shakeIntensity > 0.001) {
+          const rx = (Math.random() - 0.5) * shakeIntensity;
+          const ry = (Math.random() - 0.5) * shakeIntensity;
+          const rz = (Math.random() - 0.5) * shakeIntensity;
+          camera.position.set(cameraBasePos.x + rx, cameraBasePos.y + ry, cameraBasePos.z + rz);
+          shakeIntensity *= 0.9;
+          if (shakeIntensity < 0.001) camera.position.copy(cameraBasePos);
+          needsRender = true;
+        }
+
+        if (needsRender) {
+          renderer.render(scene, camera);
+          needsRender = false;
+        }
+
+        // Keep loop alive if physics active or effects running
+        if (state.inFlight || goalFlashT > 0 || confettiSys.visible || shakeIntensity > 0 || pointer.down) {
+          requestLoop();
         }
       }
 
-      // Visual Updates
-      ball.position.copy(state.pos);
-      shadow.position.set(state.pos.x, 0.03, state.pos.z);
-      shadow.material.opacity = THREE.MathUtils.clamp(0.3 * (1.0 - (state.pos.y - CONSTANTS.ballRadius)/3.0), 0, 0.3);
-
-      const omegaLen = state.omega.length();
-      if(omegaLen > 0.0001){
-        tmpAxis.copy(state.omega).normalize();
-        ball.rotateOnAxis(tmpAxis, omegaLen * dt);
+      function requestLoop() {
+        if (raf) return;
+        clock.getDelta(); // reset delta
+        raf = requestAnimationFrame(loop);
       }
-      
-      // Auto Reset conditions
-      const isBack = state.pos.z > 2.0;
-      const isTooFar = (state.pos.z < -45) || (Math.abs(state.pos.x) > 25);
-      
-      if((state.stopped || isTooFar || isBack) && !state.isGoal && !resetTimer){
-         state.inFlight = false;
-         resetTimer = setTimeout(() => resetBall(false), 800);
-      }
-      
-      needsRender = true;
-    }
+      function requestRender() { needsRender = true; requestLoop(); }
 
-    function loop(){
-      raf = 0;
-      const dt = Math.min(clock.getDelta(), 0.033);
 
-      if(state.inFlight) stepPhysics(dt);
-      updateConfetti(dt);
 
-      // Effects
-      if(goalFlashT > 0){
-         goalFlashT -= dt;
-         // Flash net
-         net.material.opacity = 0.15 + 0.5 * (goalFlashT / 0.5);
-         needsRender = true;
-      } else if (net.material.opacity > 0.16) {
-         net.material.opacity = 0.15;
-         needsRender = true;
+      // ======================
+      // 5) Event Listeners (Hybrid: Touch for Mobile/PWA, Pointer for Desktop)
+      // ======================
+
+      const canvasEl = renderer.domElement;
+
+      // -- TOUCH EVENTS (iOS PWA Safe) --
+      function onTouchStart(e) {
+        if (e.touches.length > 1) return; // Ignore multi-touch
+        e.preventDefault(); // Prevent scroll/zoom
+
+        if (state.inFlight || state.vel.length() > 0.1) return;
+
+        const touch = e.touches[0];
+        pointer.down = true;
+        pointer.startX = touch.clientX;
+        pointer.startY = touch.clientY;
+        pointer.lastT = performance.now();
+        pointer.samples.length = 0;
+        pointer.peakVX = 0; pointer.peakVY = 0; pointer.peakSpeed = 0;
+
+        pushSample(pointer.startX, pointer.startY, pointer.lastT);
+        setArrow(pointer.startX, pointer.startY, pointer.startX, pointer.startY);
+        requestLoop();
       }
 
-      if(shakeIntensity > 0.001){
-         const rx = (Math.random()-0.5)*shakeIntensity;
-         const ry = (Math.random()-0.5)*shakeIntensity;
-         const rz = (Math.random()-0.5)*shakeIntensity;
-         camera.position.set(cameraBasePos.x+rx, cameraBasePos.y+ry, cameraBasePos.z+rz);
-         shakeIntensity *= 0.9;
-         if(shakeIntensity < 0.001) camera.position.copy(cameraBasePos);
-         needsRender = true;
+      function onTouchMove(e) {
+        if (!pointer.down) return;
+        e.preventDefault(); // CRITICAL: Stop iOS Rubberbanding/Scroll
+
+        const touch = e.touches[0];
+        pushSample(touch.clientX, touch.clientY, performance.now());
+        const v = estimateVelocityFromWindow();
+        updatePeak(v.vx, v.vy, v.speed);
+
+        // Visuals logic duplicated
+        const minPS = 260; const maxPS = 2600;
+        let f = THREE.MathUtils.clamp((pointer.peakSpeed - minPS) / (maxPS - minPS), 0, 1);
+        if (pointer.peakSpeed < DEAD_SPEED_PS) f = 0;
+        pointer.flick01 = f;
+
+        const dx = pointer.peakVX, dy = pointer.peakVY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const nx = (len > 0.001) ? dx / len : 0;
+        const ny = (len > 0.001) ? dy / len : 0;
+
+        let arrowLen = Math.pow(pointer.peakSpeed * ARROW_GAIN, 0.92);
+        arrowLen = THREE.MathUtils.clamp(arrowLen, 24, 400);
+
+        if (pointer.peakSpeed > DEAD_SPEED_PS) {
+          setArrow(pointer.startX, pointer.startY, pointer.startX + nx * arrowLen, pointer.startY + ny * arrowLen);
+          simulatePreview(nx * arrowLen, ny * arrowLen, f);
+        }
+        needsRender = true;
       }
 
-      if(needsRender){
-        renderer.render(scene, camera);
-        needsRender = false;
+      function onTouchEnd(e) {
+        if (!pointer.down) return;
+        e.preventDefault();
+        pointer.down = false;
+        arrow.style.display = 'none';
+        previewLine.visible = false;
+
+        if (pointer.peakSpeed > DEAD_SPEED_PS) {
+          const dx = pointer.peakVX, dy = pointer.peakVY;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const nx = dx / len, ny = dy / len;
+          let arrowLen = Math.pow(pointer.peakSpeed * ARROW_GAIN, 0.92);
+          arrowLen = THREE.MathUtils.clamp(arrowLen, 24, 400);
+
+          applyKick(nx * arrowLen, ny * arrowLen, pointer.flick01);
+        } else {
+          requestRender();
+        }
       }
 
-      // Keep loop alive if physics active or effects running
-      if(state.inFlight || goalFlashT > 0 || confettiSys.visible || shakeIntensity > 0 || pointer.down){
-         requestLoop();
+      // -- POINTER EVENTS (Desktop/Mouse) --
+      function onPointerDown(e) {
+        if (e.pointerType === 'touch') return; // Let touch handler handle it
+        if (state.inFlight || state.vel.length() > 0.1) return;
+
+        pointer.down = true;
+        pointer.pointerId = e.pointerId;
+        pointer.startX = e.clientX;
+        pointer.startY = e.clientY;
+        pointer.lastT = performance.now();
+        pointer.samples.length = 0;
+        pointer.peakVX = 0; pointer.peakVY = 0; pointer.peakSpeed = 0;
+
+        try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) { }
+
+        pushSample(pointer.startX, pointer.startY, pointer.lastT);
+        setArrow(pointer.startX, pointer.startY, pointer.startX, pointer.startY);
+        requestLoop();
       }
-    }
 
-    function requestLoop(){
-      if(raf) return;
-      clock.getDelta(); // reset delta
-      raf = requestAnimationFrame(loop);
-    }
-    function requestRender(){ needsRender = true; requestLoop(); }
+      function onPointerMove(e) {
+        if (e.pointerType === 'touch') return;
+        if (!pointer.down) return;
 
+        pushSample(e.clientX, e.clientY, performance.now());
+        const v = estimateVelocityFromWindow();
+        updatePeak(v.vx, v.vy, v.speed);
 
-    // ======================
-    // 5) Event Listeners
-    // ======================
-    function onPointerDown(e){
-      if(state.inFlight || state.vel.length() > 0.1) return;
-      pointer.down = true;
-      pointer.startX = e.clientX;
-      pointer.startY = e.clientY;
-      pointer.lastT = performance.now();
-      pointer.samples.length = 0;
-      pointer.peakVX = 0; pointer.peakVY = 0; pointer.peakSpeed = 0;
-      
-      // Capture
-      renderer.domElement.setPointerCapture(e.pointerId);
-      
-      pushSample(pointer.startX, pointer.startY, pointer.lastT);
-      setArrow(pointer.startX, pointer.startY, pointer.startX, pointer.startY);
-      requestLoop();
-    }
+        const minPS = 260; const maxPS = 2600;
+        let f = THREE.MathUtils.clamp((pointer.peakSpeed - minPS) / (maxPS - minPS), 0, 1);
+        if (pointer.peakSpeed < DEAD_SPEED_PS) f = 0;
+        pointer.flick01 = f;
 
-    function onPointerMove(e){
-      if(!pointer.down) return;
-      pushSample(e.clientX, e.clientY, performance.now());
-      const v = estimateVelocityFromWindow();
-      updatePeak(v.vx, v.vy, v.speed);
+        const dx = pointer.peakVX, dy = pointer.peakVY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const nx = (len > 0.001) ? dx / len : 0;
+        const ny = (len > 0.001) ? dy / len : 0;
 
-      // Calculate Visuals
-      const minPS = 260; const maxPS = 2600;
-      let f = THREE.MathUtils.clamp((pointer.peakSpeed - minPS)/(maxPS - minPS), 0, 1);
-      if(pointer.peakSpeed < DEAD_SPEED_PS) f = 0;
-      pointer.flick01 = f;
+        let arrowLen = Math.pow(pointer.peakSpeed * ARROW_GAIN, 0.92);
+        arrowLen = THREE.MathUtils.clamp(arrowLen, 24, 400);
 
-      const dx = pointer.peakVX, dy = pointer.peakVY;
-      const len = Math.sqrt(dx*dx + dy*dy);
-      // Normalized dir
-      const nx = (len>0.001) ? dx/len : 0; 
-      const ny = (len>0.001) ? dy/len : 0;
-      
-      // Arrow Length
-      let arrowLen = Math.pow(pointer.peakSpeed * ARROW_GAIN, 0.92);
-      arrowLen = THREE.MathUtils.clamp(arrowLen, 24, 400);
-
-      // Render Arrow
-      if(pointer.peakSpeed > DEAD_SPEED_PS){
-         setArrow(pointer.startX, pointer.startY, pointer.startX + nx*arrowLen, pointer.startY + ny*arrowLen);
-         simulatePreview(nx*arrowLen, ny*arrowLen, f);
+        if (pointer.peakSpeed > DEAD_SPEED_PS) {
+          setArrow(pointer.startX, pointer.startY, pointer.startX + nx * arrowLen, pointer.startY + ny * arrowLen);
+          simulatePreview(nx * arrowLen, ny * arrowLen, f);
+        }
+        needsRender = true;
       }
-      
-      needsRender = true;
-    }
 
-    function onPointerUp(e){
-      if(!pointer.down) return;
-      pointer.down = false;
-      arrow.style.display = 'none';
-      
-      if(pointer.peakSpeed > DEAD_SPEED_PS){
-         const dx = pointer.peakVX, dy = pointer.peakVY;
-         const len = Math.sqrt(dx*dx + dy*dy);
-         const nx = dx/len, ny = dy/len;
-         let arrowLen = Math.pow(pointer.peakSpeed * ARROW_GAIN, 0.92);
-         arrowLen = THREE.MathUtils.clamp(arrowLen, 24, 400);
-         
-         applyKick(nx*arrowLen, ny*arrowLen, pointer.flick01);
-      } else {
-         requestRender();
+      function onPointerUp(e) {
+        if (e.pointerType === 'touch') return;
+        if (!pointer.down) return;
+        pointer.down = false;
+        arrow.style.display = 'none';
+        previewLine.visible = false;
+
+        try { if (pointer.pointerId != null) renderer.domElement.releasePointerCapture(pointer.pointerId); } catch (err) { }
+
+        if (pointer.peakSpeed > DEAD_SPEED_PS) {
+          const dx = pointer.peakVX, dy = pointer.peakVY;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const nx = dx / len, ny = dy / len;
+          let arrowLen = Math.pow(pointer.peakSpeed * ARROW_GAIN, 0.92);
+          arrowLen = THREE.MathUtils.clamp(arrowLen, 24, 400);
+          applyKick(nx * arrowLen, ny * arrowLen, pointer.flick01);
+        } else {
+          requestRender();
+        }
       }
-    }
 
-    const canvasEl = renderer.domElement;
-    canvasEl.addEventListener('pointerdown', onPointerDown, {passive:false}); // False to prevent scroll?
-    window.addEventListener('pointermove', onPointerMove, {passive:false});
-    window.addEventListener('pointerup', onPointerUp, {passive:false});
+      function onPointerCancel(e) {
+        if (e.pointerType === 'touch') return;
+        if (!pointer.down) return;
+        pointer.down = false;
+        arrow.style.display = 'none';
+        previewLine.visible = false;
+        try { if (pointer.pointerId != null) renderer.domElement.releasePointerCapture(pointer.pointerId); } catch (err) { }
+        requestRender();
+      }
 
-    // Reset Btn
-    document.getElementById('resetBtn').addEventListener('click', () => {
-       resetBall(false); // Reset to same spot
-    });
+      // Add Hybrid Listeners
+      canvasEl.addEventListener('touchstart', onTouchStart, { passive: false });
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', onTouchEnd, { passive: false });
+      window.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
-    // Resize
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP));
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      canvasEl.addEventListener('pointerdown', onPointerDown, { passive: false });
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerUp, { passive: false });
+      window.addEventListener('pointercancel', onPointerCancel, { passive: false });
+      window.addEventListener('pointerleave', onPointerCancel, { passive: false });
+
+      // Reset Btn
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        resetBall(false); // Reset to same spot
+      });
+
+      // Resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        resizeSVG();
+        requestRender();
+      });
+
+      // Init
       resizeSVG();
-      requestRender();
-    });
+      resetBall(true);
 
-    // Init
-    resizeSVG();
-    resetBall(true);
+      // LUMUS INTEGRATION: Notify game start
+      window.parent.postMessage({ type: 'LUMUS_GAME_START', data: { gameId: 'prokick' } }, '*');
 
-  })();
+    })();
   </script>
 </body>
+
 </html>

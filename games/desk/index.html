@@ -1255,6 +1255,8 @@
     <script type="module-shim">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
         // --- OPTİMİZASYON İÇİN GEÇİCİ VEKTÖRLER (GC'yi Rahatlatır) ---
         const _vec3_1 = new THREE.Vector3();
@@ -1290,7 +1292,7 @@
 
         // --- WAVE SİSTEMİ ---
         const waveState = {
-            current: 1, // Start at wave 1 (normal)
+            current: 2, // Start at wave 1 (normal)
             enemiesPerWave: 5,
             enemiesSpawned: 0,
             enemiesKilled: 0,
@@ -1583,8 +1585,12 @@
             scene.add(rampGroup);
         }
 
-        // --- MODEL YÜKLEME SİSTEMİ (GLB + FALLBACK) ---
+        // --- MODEL YÜKLEME SİSTEMİ (GLB + DRACO + FALLBACK) ---
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+        
         const loader = new GLTFLoader();
+        loader.setDRACOLoader(dracoLoader);
         let isDeskLoaded = false;
 
         // Fallback: Prosedürel Masa Oluşturucu
@@ -1746,6 +1752,50 @@
         // --- DÜŞMAN VE PARTİKÜL SİSTEMİ ---
         const enemies = [];
         const meteors = [];
+        
+        // --- SOLDIER MODELİ (NORMAL düşmanlar için görsel) ---
+        let soldierModelTemplate = null;
+        
+        // Soldier modelini önceden yükle (performans için)
+        loader.load('soldier.glb', (gltf) => {
+            soldierModelTemplate = gltf.scene;
+            soldierModelTemplate.scale.set(3.0, 3.0, 3.0); // Boyut 2x
+            soldierModelTemplate.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            console.log('Soldier modeli yüklendi.');
+        }, undefined, (error) => {
+            console.warn('Soldier modeli yüklenemedi, küpler kullanılacak:', error);
+        });
+        
+        // --- BOSS MODELİ VE ANİMASYONLARI ---
+        let bossModelTemplate = null;
+        let bossAnimations = null; // walk ve roar animasyonları
+        const animationMixers = []; // Tüm aktif mixer'lar
+        
+        loader.load('bossOne.glb', (gltf) => {
+            bossModelTemplate = gltf.scene;
+            bossModelTemplate.scale.set(16.0, 16.0, 16.0); // Boss boyutu
+            bossModelTemplate.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            
+            // Animasyonları sakla
+            bossAnimations = {};
+            gltf.animations.forEach((clip) => {
+                bossAnimations[clip.name.toLowerCase()] = clip;
+            });
+            
+            console.log('Boss modeli yüklendi. Animasyonlar:', Object.keys(bossAnimations));
+        }, undefined, (error) => {
+            console.warn('Boss modeli yüklenemedi, küpler kullanılacak:', error);
+        });
         
         // Enemy Types Configuration
         const ENEMY_TYPES = {
@@ -1911,6 +1961,19 @@
             }
             if (typeName === 'BOMBER') {
                 enemy.userData.glowPhase = 0;
+            }
+            
+            // --- SOLDIER MODELİ: NORMAL düşmanlar için görsel ---
+            if (typeName === 'NORMAL' && soldierModelTemplate) {
+                // Küpü saydam yap (fizik için kalıyor, görsel olarak gizleniyor)
+                enemy.material.transparent = true;
+                enemy.material.opacity = 0;
+                
+                // Soldier modelini klonla ve ekle
+                const soldierModel = soldierModelTemplate.clone();
+                soldierModel.position.set(0, -type.size / 2, 0); // Küpün zemininden başla
+                enemy.add(soldierModel);
+                enemy.userData.soldierModel = soldierModel;
             }
             
             scene.add(enemy);
@@ -2236,7 +2299,12 @@
                         // Speed calculation
                         let eSpeed;
                         if (isBoss) {
-                            eSpeed = waveState.currentEnemySpeed * (enemy.userData.speedMult || 0.7);
+                            // Roar sırasında boss hareket etmez
+                            if (enemy.userData.isRoaring) {
+                                eSpeed = 0;
+                            } else {
+                                eSpeed = waveState.currentEnemySpeed * (enemy.userData.speedMult || 0.7);
+                            }
                         } else {
                             eSpeed = waveState.currentEnemySpeed * (enemy.userData.speedMult || 1.0);
                         }
@@ -2755,7 +2823,7 @@
         // --- BOSS UI (3D) ---
         function createBossUI(boss, name, maxHealth) {
             const uiGroup = new THREE.Group();
-            uiGroup.position.set(0, 7.5, 0); // Boss'un üzerinde
+            uiGroup.position.set(0, 18, 0); // Boss modelinin üzerinde (16x scale için)
             
             // NOTE: Name moved to 2D UI as per request
             
@@ -2815,6 +2883,40 @@
             boss.castShadow = true;
             boss.receiveShadow = true;
             
+            // --- BOSS MODELİ: Görsel olarak 3D model kullan ---
+            if (bossModelTemplate) {
+                // Küpü saydam yap (fizik için kalıyor)
+                boss.material.transparent = true;
+                boss.material.opacity = 0;
+                boss.castShadow = false; // Saydam küpün shadow'unu kapat
+                
+                // Boss modelini klonla
+                const bossModel = SkeletonUtils.clone(bossModelTemplate);
+                bossModel.position.set(0, -2.25, 0); // Küpün zemininden başla
+                boss.add(bossModel);
+                boss.userData.bossModel = bossModel;
+                
+                // AnimationMixer oluştur
+                const mixer = new THREE.AnimationMixer(bossModel);
+                boss.userData.mixer = mixer;
+                animationMixers.push(mixer);
+                
+                // Walk animasyonunu başlat
+                if (bossAnimations && bossAnimations['walk']) {
+                    const walkAction = mixer.clipAction(bossAnimations['walk']);
+                    walkAction.play();
+                    boss.userData.walkAction = walkAction;
+                }
+                
+                // Roar action'ı hazırla (meteor yağdırırken oynatılacak)
+                if (bossAnimations && bossAnimations['roar']) {
+                    const roarAction = mixer.clipAction(bossAnimations['roar']);
+                    roarAction.setLoop(THREE.LoopOnce);
+                    roarAction.clampWhenFinished = true;
+                    boss.userData.roarAction = roarAction;
+                }
+            }
+            
             scene.add(boss);
             enemies.push(boss);
             
@@ -2835,6 +2937,43 @@
         function triggerMeteorShower() {
             const scaling = getBossScaling();
             const count = scaling.meteorCount; // Scaled count
+            
+            // Boss roar animasyonunu oynat (sadece zaten roar yapmıyorsa)
+            if (waveState.activeBoss && waveState.activeBoss.userData.roarAction && !waveState.activeBoss.userData.isRoaring) {
+                const boss = waveState.activeBoss;
+                const roarAction = boss.userData.roarAction;
+                const walkAction = boss.userData.walkAction;
+                
+                // Boss'u roaring moduna al (hareket etmez)
+                boss.userData.isRoaring = true;
+                
+                // Walk'ı durdur, roar'ı başlat
+                if (walkAction) {
+                    walkAction.fadeOut(0.2);
+                }
+                
+                // Roar'ı sıfırla ve başlat
+                roarAction.stop();
+                roarAction.reset();
+                roarAction.setLoop(THREE.LoopOnce);
+                roarAction.clampWhenFinished = true;
+                roarAction.fadeIn(0.2);
+                roarAction.play();
+                
+                // Roar bitince walk'a geri dön
+                const roarDuration = bossAnimations['roar'].duration * 1000;
+                setTimeout(() => {
+                    if (boss && waveState.activeBoss === boss) {
+                        boss.userData.isRoaring = false;
+                        roarAction.fadeOut(0.2);
+                        if (walkAction) {
+                            walkAction.reset();
+                            walkAction.fadeIn(0.2);
+                            walkAction.play();
+                        }
+                    }
+                }, roarDuration);
+            }
             
             for(let i=0; i<count; i++) {
                 setTimeout(() => {
@@ -3247,6 +3386,11 @@
 
             const delta = clock.getDelta();
             const deltaFactor = delta * 60;
+            
+            // AnimationMixer'ları güncelle (Boss animasyonları için)
+            for (let i = 0; i < animationMixers.length; i++) {
+                animationMixers[i].update(delta);
+            }
 
             updatePhysics(delta);
 

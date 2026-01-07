@@ -1255,7 +1255,6 @@
     <script type="module-shim">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
         // --- OPTİMİZASYON İÇİN GEÇİCİ VEKTÖRLER (GC'yi Rahatlatır) ---
@@ -1292,7 +1291,7 @@
 
         // --- WAVE SİSTEMİ ---
         const waveState = {
-            current: 2, // Start at wave 1 (normal)
+            current: 1, // Start at wave 1 (normal)
             enemiesPerWave: 5,
             enemiesSpawned: 0,
             enemiesKilled: 0,
@@ -1585,12 +1584,8 @@
             scene.add(rampGroup);
         }
 
-        // --- MODEL YÜKLEME SİSTEMİ (GLB + DRACO + FALLBACK) ---
-        const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-        
+        // --- MODEL YÜKLEME SİSTEMİ (GLB + FALLBACK) ---
         const loader = new GLTFLoader();
-        loader.setDRACOLoader(dracoLoader);
         let isDeskLoaded = false;
 
         // Fallback: Prosedürel Masa Oluşturucu
@@ -2823,7 +2818,7 @@
         // --- BOSS UI (3D) ---
         function createBossUI(boss, name, maxHealth) {
             const uiGroup = new THREE.Group();
-            uiGroup.position.set(0, 18, 0); // Boss modelinin üzerinde (16x scale için)
+            uiGroup.position.set(0, 7.5, 0); // Boss'un üzerinde
             
             // NOTE: Name moved to 2D UI as per request
             

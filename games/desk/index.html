@@ -1302,6 +1302,7 @@
             // Recurring Boss System
             bossNumber: 0, // Start with normal waves
             activeBoss: null, // Sahnedeki boss referansı
+            bossWaveActive: false, // Boss + minyon entegre wave aktif mi
             // Meteor System
             lastMeteorTime: 0,
             meteorInterval: 4000 // 4 seconds
@@ -1459,15 +1460,8 @@
 
             isGameActive = true;
 
-            // Start Wave System (DEBUG: Check if starting on boss wave)
-            if (waveState.current % 2 === 0) {
-                 showWaveBanner('⚠️ BOSS INCOMING ⚠️', true);
-                 setTimeout(() => {
-                    spawnBoss();
-                 }, 1000);
-            } else {
-                startWave();
-            }
+            // Start Wave System
+            startWave();
 
             // Start Loop
             animate();
@@ -2626,19 +2620,38 @@
             waveState.enemiesSpawned = 0;
             waveState.enemiesKilled = 0;
             
-            // Dalga başına düşman sayısı: 5 + (wave-1) * 2
-            waveState.enemiesPerWave = 5 + (waveState.current - 1) * 2;
+            // Boss wave mi kontrol et (2, 4, 6, 8...)
+            const isBossWave = waveState.current % 2 === 0;
+            waveState.bossWaveActive = isBossWave;
             
             // Hız artışı: Her 3 dalgada %10
             const speedMultiplier = 1 + Math.floor((waveState.current - 1) / 3) * 0.1;
             waveState.currentEnemySpeed = waveState.baseEnemySpeed * speedMultiplier;
             
+            if (isBossWave) {
+                // Boss wave: sınırsız düşman (boss ölene kadar)
+                waveState.bossNumber = waveState.current / 2;
+                waveState.enemiesPerWave = Infinity;
+                showWaveBanner('⚠️ WAVE ' + waveState.current + ' - BOSS ⚠️', true);
+                // Boss biraz gecikmeyle spawn olsun
+                setTimeout(() => spawnBoss(), 2000);
+            } else {
+                // Normal wave: belirli sayıda düşman
+                waveState.enemiesPerWave = 5 + (waveState.current - 1) * 2;
+                showWaveBanner('WAVE ' + waveState.current);
+            }
+            
             updateWaveUI();
-            showWaveBanner('WAVE ' + waveState.current);
             
             // Spawn interval - 600ms aralıklarla
             waveState.spawnInterval = setInterval(() => {
-                if (waveState.enemiesSpawned < waveState.enemiesPerWave) {
+                // Boss wave: boss yaşadığı sürece spawn devam
+                // Normal wave: limit'e kadar spawn
+                const shouldSpawn = isBossWave 
+                    ? (waveState.activeBoss !== null || waveState.enemiesSpawned < 3) // Boss spawn olana kadar en az 3 düşman
+                    : waveState.enemiesSpawned < waveState.enemiesPerWave;
+                    
+                if (shouldSpawn) {
                     spawnEnemy();
                     waveState.enemiesSpawned++;
                 } else {
@@ -2651,13 +2664,32 @@
         function onEnemyKilled(isBoss = false) {
             if (isBoss) {
                 score += 500;
-                waveState.activeBoss = null;
-                waveState.isCooldown = false;
                 
                 // Hide boss name UI
                 if (ui.els.bossNameUi) ui.els.bossNameUi.style.display = 'none';
                 
-                // Boss öldüğünde hemen sıradaki wave'e geç
+                // Spawn interval'ı durdur
+                if (waveState.spawnInterval) {
+                    clearInterval(waveState.spawnInterval);
+                    waveState.spawnInterval = null;
+                }
+                
+                // TÜM MİNYONLARI ÖLDÜR (Büyük patlama efekti)
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const enemy = enemies[i];
+                    if (!enemy.userData.isBoss) {
+                        createExplosion(enemy.position.clone(), new THREE.Vector3(0, 5, 0));
+                        scene.remove(enemy);
+                        enemies.splice(i, 1);
+                        score += 5; // Bonus kill score
+                    }
+                }
+                
+                waveState.activeBoss = null;
+                waveState.bossWaveActive = false;
+                waveState.isCooldown = false;
+                
+                // Boss öldüğünde sıradaki wave'e geç
                 setTimeout(() => {
                     waveState.current++;
                     startWave();
@@ -2675,14 +2707,18 @@
                 return;
             }
             
-            waveState.enemiesKilled++;
-            
-            // Tüm düşmanlar öldürüldü mü? (spawn bitti ve sahnede kalmadı)
-            if (waveState.enemiesKilled >= waveState.enemiesPerWave && 
-                waveState.spawnInterval === null && 
-                enemies.filter(e => !e.userData.isBoss).length === 0) {
-                completeWave();
+            // Normal enemy killed - sadece normal wave'lerde wave completion'ı kontrol et
+            if (!waveState.bossWaveActive) {
+                waveState.enemiesKilled++;
+                
+                // Tüm düşmanlar öldürüldü mü? (spawn bitti ve sahnede kalmadı)
+                if (waveState.enemiesKilled >= waveState.enemiesPerWave && 
+                    waveState.spawnInterval === null && 
+                    enemies.filter(e => !e.userData.isBoss).length === 0) {
+                    completeWave();
+                }
             }
+            // Boss wave'de minyon öldürülmesi wave completion'ı tetiklemez
         }
 
         function completeWave() {
@@ -2699,17 +2735,8 @@
             
             setTimeout(() => {
                 waveState.current++;
-                
-                // Check if next wave is boss wave (2, 4, 6, 8...)
-                if (waveState.current % 2 === 0) {
-                    waveState.bossNumber = waveState.current / 2;
-                    showWaveBanner('⚠️ BOSS INCOMING ⚠️', true);
-                    setTimeout(() => {
-                        spawnBoss();
-                    }, 3000);
-                } else {
-                    startWave();
-                }
+                // Artık startWave() boss kontrolünü kendisi yapıyor
+                startWave();
             }, 2500);
         }
 

@@ -1255,6 +1255,7 @@
     <script type="module-shim">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
         // --- OPTİMİZASYON İÇİN GEÇİCİ VEKTÖRLER (GC'yi Rahatlatır) ---
@@ -1585,7 +1586,11 @@
         }
 
         // --- MODEL YÜKLEME SİSTEMİ (GLB + FALLBACK) ---
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+        
         const loader = new GLTFLoader();
+        loader.setDRACOLoader(dracoLoader);
         let isDeskLoaded = false;
 
         // Fallback: Prosedürel Masa Oluşturucu
@@ -2818,7 +2823,7 @@
         // --- BOSS UI (3D) ---
         function createBossUI(boss, name, maxHealth) {
             const uiGroup = new THREE.Group();
-            uiGroup.position.set(0, 7.5, 0); // Boss'un üzerinde
+            uiGroup.position.set(0, 18, 0); // Boss modelinin üzerinde (16x scale için)
             
             // NOTE: Name moved to 2D UI as per request
             

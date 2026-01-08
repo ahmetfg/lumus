@@ -1389,6 +1389,11 @@
             turnFactor: 0.2,
         };
 
+        // --- CAR VISUAL SCALE ---
+        // Scales car visuals, wheels, collision, skidmarks, chain hook
+        // Does NOT affect driving physics (speed, turning, etc.)
+        const CAR_VISUAL_SCALE = 2;
+
         // --- GÜLLE (BALL) FİZİK DEĞİŞKENLERİ ---
         const ballState = {
             x: 0,
@@ -1593,6 +1598,13 @@
         loader.setDRACOLoader(dracoLoader);
         let isDeskLoaded = false;
 
+        // --- CUSTOM CAR GLB SYSTEM ---
+        let carBodyModelTemplate = null;
+        let wheelModelTemplate = null;
+        const wheelMeshes = [];      // For spin rotation
+        const wheelGroups = [];      // For position/steering
+        let useGLBCar = true;        // Toggle for fallback
+
         // Fallback: Prosedürel Masa Oluşturucu
         function createFallbackDesk() {
             if (isDeskLoaded) return;
@@ -1666,7 +1678,105 @@
             wheels.push(w);
         });
 
+        // --- CUSTOM CAR GLB LOADING ---
+        // Load car body
+        loader.load('carOne.glb', (gltf) => {
+            carBodyModelTemplate = gltf.scene;
+            carBodyModelTemplate.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            console.log('✅ carOne.glb loaded');
+            tryAttachCarModel();
+        }, undefined, (error) => {
+            console.warn('⚠️ carOne.glb failed, using procedural car');
+            useGLBCar = false;
+        });
 
+        // Load wheel model
+        loader.load('steerOne.glb', (gltf) => {
+            wheelModelTemplate = gltf.scene;
+            wheelModelTemplate.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            console.log('✅ steerOne.glb loaded');
+            tryAttachWheelModels();
+        }, undefined, (error) => {
+            console.warn('⚠️ steerOne.glb failed, using procedural wheels');
+        });
+
+        function tryAttachCarModel() {
+            if (!carBodyModelTemplate || !useGLBCar) return;
+            
+            // Hide procedural body
+            bodyMesh.visible = false;
+            cabinMesh.visible = false;
+            
+            // Attach GLB body with visual scale
+            const carBody = carBodyModelTemplate.clone();
+            const glbBaseScale = 5.0;
+            const finalScale = glbBaseScale * CAR_VISUAL_SCALE;
+            carBody.scale.set(finalScale, finalScale, finalScale);
+            carBody.position.y = -0.30 * CAR_VISUAL_SCALE;
+            carBody.rotation.y = Math.PI; // Face forward (negative Z)
+            carGroup.add(carBody);
+        }
+
+        function tryAttachWheelModels() {
+            if (!wheelModelTemplate) return;
+            
+            // Hide procedural wheels
+            wheels.forEach(w => w.visible = false);
+            
+            const glbBaseScale = 5.0;
+            const finalScale = glbBaseScale * CAR_VISUAL_SCALE;
+            
+            // Base positions (scaled by CAR_VISUAL_SCALE)
+            const x = 0.80 * CAR_VISUAL_SCALE;
+            const y = 0.35 * CAR_VISUAL_SCALE;
+            const rearZ = 0.65 * CAR_VISUAL_SCALE;
+            const frontZ = -1.00 * CAR_VISUAL_SCALE;
+            
+            // Wheel positions: [Rear Left, Rear Right, Front Left, Front Right]
+            const positions = [
+                [-x, y, rearZ],  // 0: Rear Left
+                [x, y, rearZ],   // 1: Rear Right  
+                [-x, y, frontZ], // 2: Front Left
+                [x, y, frontZ]   // 3: Front Right
+            ];
+            
+            // Create 4 GLB wheels with wrapper groups
+            for (let i = 0; i < 4; i++) {
+                const wheelGroup = new THREE.Group();
+                const wheelMesh = wheelModelTemplate.clone();
+                
+                wheelMesh.scale.set(finalScale, finalScale, finalScale);
+                
+                // Left-side wheels (0, 2) flipped so hub faces outward
+                if (i === 0 || i === 2) {
+                    wheelGroup.rotation.y = Math.PI;
+                }
+                
+                wheelMesh.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                wheelGroup.add(wheelMesh);
+                wheelGroup.position.set(...positions[i]);
+                carGroup.add(wheelGroup);
+                
+                wheelGroups.push(wheelGroup);  // For position/steering
+                wheelMeshes.push(wheelMesh);   // For spin
+            }
+        }
 
 
         // --- GÜLLE ve ZİNCİR ---
@@ -2002,8 +2112,8 @@
                 // Geometry shared olduğu için dispose etmiyoruz (skidGeo)
             }
 
-            const offsetL = _vec3_1.set(-0.9, 0.05, 1.2).applyMatrix4(carGroup.matrixWorld);
-            const offsetR = _vec3_2.set(0.9, 0.05, 1.2).applyMatrix4(carGroup.matrixWorld);
+            const offsetL = _vec3_1.set(-0.9 * CAR_VISUAL_SCALE, 0.05, 1.2 * CAR_VISUAL_SCALE).applyMatrix4(carGroup.matrixWorld);
+            const offsetR = _vec3_2.set(0.9 * CAR_VISUAL_SCALE, 0.05, 1.2 * CAR_VISUAL_SCALE).applyMatrix4(carGroup.matrixWorld);
 
             [offsetL, offsetR].forEach(pos => {
                 const m = new THREE.Mesh(skidGeo, skidMatTemplate.clone());
@@ -2214,11 +2324,30 @@
                 const isLeft = controller.ArrowLeft.pressed || controller.a.pressed;
                 const isRight = controller.ArrowRight.pressed || controller.d.pressed;
                 const wheelTurn = isLeft ? 0.5 : (isRight ? -0.5 : 0);
-                wheels[2].rotation.y = wheelTurn;
-                wheels[3].rotation.y = wheelTurn;
+                
+                // GLB wheels - steering on groups, spin on meshes
+                if (wheelGroups.length > 0) {
+                    // Front wheel steering (indices 2, 3)
+                    wheelGroups[2].rotation.y = Math.PI + wheelTurn; // Front Left (flipped)
+                    wheelGroups[3].rotation.y = wheelTurn;           // Front Right
+                    
+                    // Wheel spin based on car speed
+                    const spinSpeed = carState.speed * 0.8;
+                    wheelMeshes.forEach((mesh, i) => {
+                        if (i === 1 || i === 3) {
+                            mesh.rotation.x -= spinSpeed; // Right side
+                        } else {
+                            mesh.rotation.x += spinSpeed; // Left side
+                        }
+                    });
+                } else {
+                    // Procedural wheels - original code
+                    wheels[2].rotation.y = wheelTurn;
+                    wheels[3].rotation.y = wheelTurn;
+                }
             }
 
-            const hookOffset = _vec3_3.set(0, 0.6, 2.0);
+            const hookOffset = _vec3_3.set(0, 0.6 * CAR_VISUAL_SCALE, 2.0 * CAR_VISUAL_SCALE);
             hookOffset.applyMatrix4(carGroup.matrixWorld);
 
             if (!carState.isFalling) {
@@ -2441,8 +2570,8 @@
                     const dz_ce = enemy.position.z - carState.yPos;
                     const carDistSq = dx_ce * dx_ce + dz_ce * dz_ce;
                     
-                    // Boss için daha büyük çarpışma alanı
-                    const minCarDist = isBoss ? 3.5 : 2.0;
+                    // Boss için daha büyük çarpışma alanı (scaled)
+                    const minCarDist = (isBoss ? 3.5 : 2.0) * CAR_VISUAL_SCALE;
 
                     if (carDistSq < minCarDist * minCarDist) {
                         // Boss 3x hasar verir
@@ -2471,7 +2600,7 @@
                 }
 
                 // --- DUMMY BALL PHYSICS & COLLISION ---
-                const carHitRadius = 2.0;
+                const carHitRadius = 2.0 * CAR_VISUAL_SCALE;
                 dummyBalls.forEach(ball => {
                     ball.mesh.position.x += ball.vx * deltaFactor;
                     ball.mesh.position.z += ball.vz * deltaFactor;

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garage Preview</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #center-square-black {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 480px;
+            height: 480px;
+            border: 11px solid black;
+            background: transparent;
+            pointer-events: none;
+            box-sizing: border-box;
+            z-index: 1;
+        }
+
+        #center-square {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 460px;
+            height: 460px;
+            border: 30px solid white;
+            background: transparent;
+            pointer-events: none;
+            box-sizing: border-box;
+            z-index: 2;
+        }
+
+        #arrow-image-right {
+            position: absolute;
+            top: 70%;
+            right: 0%;
+            width: calc(10vw);
+            transform: translate(100%, -50%);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: width 0.15s ease, transform 0.15s ease;
+        }
+
+        #arrow-image-right:active,
+        .arrow-shrink-right {
+            width: calc(8vw) !important;
+            transform: translate(100%, -50%) matrix3d(1, 0, 0, 0.003,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1) !important;
+        }
+
+        #arrow-image-left {
+            position: absolute;
+            top: 70%;
+            left: 0%;
+            width: calc(10vw);
+            transform: translate(-100%, -50%) scaleX(-1);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: width 0.15s ease, transform 0.15s ease, left 0.15s ease;
+        }
+
+        #arrow-image-left:active,
+        .arrow-shrink-left {
+            width: calc(8vw) !important;
+            transform: translate(-100%, -50%) scaleX(-1) matrix3d(1, 0, 0, 0.003,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="center-square-black">
+        <img id="arrow-image-right" src="Arrow.webp" alt="Arrow">
+        <img id="arrow-image-left" src="Arrow.webp" alt="Arrow">
+
+    </div>
+    <div id="center-square">
+    </div>
+
+    <div id="ui-container"
+        style="position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-family: sans-serif; pointer-events: none; user-select: none;">
+        <div style="pointer-events: auto;">
+            <label style="font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px;">Grid Spacing: <span
+                    id="spacing-val" style="color: #00ff88;">1.20</span></label>
+            <input type="range" id="spacing-slider" min="0.5" max="2.0" step="0.01" value="1.20"
+                style="width: 200px; cursor: pointer;">
+        </div>
+        <div style="pointer-events: auto; margin-top: 15px;">
+            <label style="font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px;">Cam Distance: <span
+                    id="distance-val" style="color: #00ff88;">2.0</span></label>
+            <input type="range" id="distance-slider" min="2.0" max="10.0" step="0.1" value="2.0"
+                style="width: 200px; cursor: pointer;">
+        </div>
+        <div style="pointer-events: auto; margin-top: 15px;">
+            <label style="font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px;">Transition Speed:
+                <span id="speed-val" style="color: #00ff88;">0.50</span></label>
+            <input type="range" id="speed-slider" min="0.01" max="0.5" step="0.01" value="0.50"
+                style="width: 200px; cursor: pointer;">
+        </div>
+        <div style="pointer-events: auto; margin-top: 15px;">
+            <label style="font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px;">Shake Force (Mag):
+                <span id="shake-val" style="color: #00ff88;">0.13</span></label>
+            <input type="range" id="shake-slider" min="0.0" max="0.5" step="0.01" value="0.13"
+                style="width: 200px; cursor: pointer;">
+        </div>
+        <div style="pointer-events: auto; margin-top: 5px; display: flex; gap: 10px;">
+            <div>
+                <label style="font-size: 12px; display: block; margin-bottom: 2px;">Length (Decay)</label>
+                <input type="range" id="shake-len-slider" min="0.80" max="0.99" step="0.01" value="0.80"
+                    style="width: 95px;">
+            </div>
+            <div>
+                <label style="font-size: 12px; display: block; margin-bottom: 2px;">Speed (Freq)</label>
+                <input type="range" id="shake-spd-slider" min="5" max="50" step="1" value="25" style="width: 95px;">
+            </div>
+        </div>
+        <div style="pointer-events: auto; margin-top: 15px;">
+            <label style="font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px;">White Square</label>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <div>
+                    <label style="font-size: 12px; display: block; margin-bottom: 2px;">Size: <span id="white-size-val"
+                            style="color: #00ff88;">460</span>px</label>
+                    <input type="range" id="white-size-slider" min="50" max="500" step="10" value="460"
+                        style="width: 95px;">
+                </div>
+                <div>
+                    <label style="font-size: 12px; display: block; margin-bottom: 2px;">Border: <span
+                            id="white-border-val" style="color: #00ff88;">30</span>px</label>
+                    <input type="range" id="white-border-slider" min="1" max="50" step="1" value="30"
+                        style="width: 95px;">
+                </div>
+            </div>
+        </div>
+        <div style="pointer-events: auto; margin-top: 15px;">
+            <label style="font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px;">Black Square</label>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <div>
+                    <label style="font-size: 12px; display: block; margin-bottom: 2px;">Size: <span id="black-size-val"
+                            style="color: #00ff88;">480</span>px</label>
+                    <input type="range" id="black-size-slider" min="50" max="500" step="10" value="480"
+                        style="width: 95px;">
+                </div>
+                <div>
+                    <label style="font-size: 12px; display: block; margin-bottom: 2px;">Border: <span
+                            id="black-border-val" style="color: #00ff88;">11</span>px</label>
+                    <input type="range" id="black-border-slider" min="1" max="50" step="1" value="11"
+                        style="width: 95px;">
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 15px; font-size: 12px; color: #aaa;">
+            Use <b>W, A, S, D</b> to navigate.
+        </div>
+    </div>
+
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
+    <script type="importmap-shim">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module-shim">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+
+        // Camera Setup
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 0, 0); // Position 5 units back
+        
+        // Renderer Setup
+        const renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio*.5);
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Smooth motion
+        controls.dampingFactor = 0.05;
+        controls.enablePan = false;
+        controls.target.set(0, 0, 0);
+        // controls.update() called in animation loop
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        scene.add(ambientLight);
+
+        const directionLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        directionLight.position.set(5, 10, 7);
+        scene.add(directionLight);
+
+        // Grid & Navigation State
+        const gridItems = [];
+        const spacingSlider = document.getElementById('spacing-slider');
+        const spacingLabel = document.getElementById('spacing-val');
+        const distSlider = document.getElementById('distance-slider');
+        const distLabel = document.getElementById('distance-val');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedLabel = document.getElementById('speed-val');
+        const shakeSlider = document.getElementById('shake-slider');
+        const shakeLabel = document.getElementById('shake-val');
+        const shakeLenSlider = document.getElementById('shake-len-slider');
+        const shakeSpdSlider = document.getElementById('shake-spd-slider');
+        
+        // White Square Controls
+        const whiteSizeSlider = document.getElementById('white-size-slider');
+        const whiteSizeLabel = document.getElementById('white-size-val');
+        const whiteBorderSlider = document.getElementById('white-border-slider');
+        const whiteBorderLabel = document.getElementById('white-border-val');
+        const centerSquare = document.getElementById('center-square');
+        
+        // Black Square Controls
+        const blackSizeSlider = document.getElementById('black-size-slider');
+        const blackSizeLabel = document.getElementById('black-size-val');
+        const blackBorderSlider = document.getElementById('black-border-slider');
+        const blackBorderLabel = document.getElementById('black-border-val');
+        const centerSquareBlack = document.getElementById('center-square-black');
+
+        let currentGridY = 0; // Row (-1 to 1)
+        let currentGridZ = 0; // Col (-1 to 1)
+        
+        let currentShake = 0; // Decay factor
+        
+        // Target vectors for smooth transition
+        const targetLookAt = new THREE.Vector3(0, 0, 0);
+        const targetCamPos = new THREE.Vector3(5, 0, 0);
+
+        function updateTargets() {
+            const spacing = parseFloat(spacingSlider.value);
+            const dist = parseFloat(distSlider.value);
+            
+            // Calculate target position based on selected grid cell
+            const targetY = currentGridY * spacing;
+            const targetZ = currentGridZ * spacing;
+            
+            targetLookAt.set(0, targetY, targetZ);
+            targetCamPos.set(dist, targetY, targetZ);
+
+            // Update Target Colors for Highlighting
+            const activeColor = new THREE.Color(0xffffff); // Bright
+            const dimmedColor = new THREE.Color(0x333333); // Darkened
+
+            gridItems.forEach(item => {
+                const isSelected = (item.gridY === currentGridY && item.gridZ === currentGridZ);
+                item.targetColor = isSelected ? activeColor : dimmedColor;
+            });
+            
+            // Trigger Shake
+            currentShake = parseFloat(shakeSlider.value);
+        }
+
+        function updateGridSpacing() {
+            const spacing = parseFloat(spacingSlider.value);
+            spacingLabel.textContent = spacing.toFixed(2);
+
+            gridItems.forEach(item => {
+                item.mesh.position.set(0, item.gridY * spacing, item.gridZ * spacing);
+            });
+            updateTargets();
+        }
+
+        function updateDistance() {
+            const dist = parseFloat(distSlider.value);
+            distLabel.textContent = dist.toFixed(1);
+            updateTargets();
+        }
+        
+        function updateSpeed() {
+             speedLabel.textContent = parseFloat(speedSlider.value).toFixed(2);
+        }
+        
+        function updateShakeVal() {
+            shakeLabel.textContent = parseFloat(shakeSlider.value).toFixed(2);
+        }
+        
+        function updateWhiteSize() {
+            const size = parseInt(whiteSizeSlider.value);
+            whiteSizeLabel.textContent = size;
+            centerSquare.style.width = size + 'px';
+            centerSquare.style.height = size + 'px';
+        }
+        
+        function updateWhiteBorder() {
+            const width = parseInt(whiteBorderSlider.value);
+            whiteBorderLabel.textContent = width;
+            centerSquare.style.borderWidth = width + 'px';
+        }
+        
+        function updateBlackSize() {
+            const size = parseInt(blackSizeSlider.value);
+            blackSizeLabel.textContent = size;
+            centerSquareBlack.style.width = size + 'px';
+            centerSquareBlack.style.height = size + 'px';
+        }
+        
+        function updateBlackBorder() {
+            const width = parseInt(blackBorderSlider.value);
+            blackBorderLabel.textContent = width;
+            centerSquareBlack.style.borderWidth = width + 'px';
+        }
+
+        spacingSlider.addEventListener('input', updateGridSpacing);
+        distSlider.addEventListener('input', updateDistance);
+        speedSlider.addEventListener('input', updateSpeed);
+        shakeSlider.addEventListener('input', updateShakeVal);
+        whiteSizeSlider.addEventListener('input', updateWhiteSize);
+        whiteBorderSlider.addEventListener('input', updateWhiteBorder);
+        blackSizeSlider.addEventListener('input', updateBlackSize);
+        blackBorderSlider.addEventListener('input', updateBlackBorder);
+
+        // Keyboard Navigation
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            let changed = false;
+
+            if (key === 'w') {
+                if (currentGridY < 1) { currentGridY++; changed = true; }
+            } else if (key === 's') {
+                if (currentGridY > -1) { currentGridY--; changed = true; }
+            } else if (key === 'a') {
+                // A (Left) -> +Z
+                if (currentGridZ < 1) { 
+                    currentGridZ++; 
+                    changed = true;
+                    // Trigger left arrow animation
+                    arrowLeft.classList.add('arrow-shrink-left');
+                }
+            } else if (key === 'd') {
+                // D (Right) -> -Z
+                if (currentGridZ > -1) { 
+                    currentGridZ--; 
+                    changed = true;
+                    // Trigger right arrow animation
+                    arrowRight.classList.add('arrow-shrink-right');
+                }
+            }
+
+            if (changed) updateTargets();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            
+            if (key === 'a') {
+                // Reset left arrow
+                arrowLeft.classList.remove('arrow-shrink-left');
+            } else if (key === 'd') {
+                // Reset right arrow
+                arrowRight.classList.remove('arrow-shrink-right');
+            }
+        });
+
+        // Arrow Click Navigation
+        const arrowRight = document.getElementById('arrow-image-right');
+        const arrowLeft = document.getElementById('arrow-image-left');
+
+        arrowRight.addEventListener('click', () => {
+            // Right arrow acts like 'D' key
+            if (currentGridZ > -1) {
+                currentGridZ--;
+                updateTargets();
+            }
+        });
+
+        arrowLeft.addEventListener('click', () => {
+            // Left arrow acts like 'A' key
+            if (currentGridZ < 1) {
+                currentGridZ++;
+                updateTargets();
+            }
+        });
+
+        // Load Model
+        const loader = new GLTFLoader();
+        
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+        loader.setDRACOLoader(dracoLoader);
+
+        loader.load('./box.glb', (gltf) => {
+            const baseModel = gltf.scene;
+
+            // Create a 3x3 Grid centered at (0,0,0)
+            // Camera is at X=5, so the grid should be on the YZ plane (Y: Up/Down, Z: Left/Right)
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    const model = baseModel.clone();
+                    
+                    // Clone Materials to allow independent coloring
+                    const instanceMaterials = [];
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.material = child.material.clone();
+                            instanceMaterials.push(child.material);
+                        }
+                    });
+
+                    scene.add(model);
+                    
+                    // Store item with its materials and color state
+                    gridItems.push({ 
+                        mesh: model, 
+                        gridY: y, 
+                        gridZ: z,
+                        materials: instanceMaterials,
+                        targetColor: new THREE.Color(0xffffff)
+                    });
+                }
+            }
+            
+            // Apply initial spacing and targets
+            updateGridSpacing();
+            updateTargets();
+            
+            console.log('Grid loaded successfully');
+        }, undefined, (error) => {
+            console.error('An error occurred loading the model:', error);
+        });
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const lerpSpeed = parseFloat(speedSlider.value);
+            
+            // Shake Params
+            const decay = parseFloat(shakeLenSlider.value);
+            const freq = parseFloat(shakeSpdSlider.value);
+
+            // Smoothly interpolate camera and target
+            controls.target.lerp(targetLookAt, lerpSpeed);
+            camera.position.lerp(targetCamPos, lerpSpeed);
+            
+            // Apply Shake (Smooth Sine Wave)
+            if (currentShake > 0.001) {
+                const time = Date.now() * 0.001;
+                
+                // Use Sin/Cos for smooth motion - only Y and Z, not X (depth)
+                const ry = Math.cos(time * freq) * currentShake;
+                const rz = Math.sin(time * freq * 1.3) * currentShake; // 1.3 to de-sync Y/Z
+                
+                // Add offset to camera position (0 on X to avoid moving towards/away from object)
+                // Note: since we lerp 'camera.position' each frame, simply adding to it 
+                // creates a temporary deviation which the lerp pulls back, acting like a spring.
+                camera.position.add(new THREE.Vector3(0, ry, rz)); 
+                
+                // Decay shake
+                currentShake *= decay;
+            } else {
+                currentShake = 0;
+            }
+            
+            // Interpolate Colors
+            gridItems.forEach(item => {
+                if (item.materials && item.targetColor) {
+                    item.materials.forEach(mat => {
+                        mat.color.lerp(item.targetColor, lerpSpeed); 
+                    });
+                }
+            });
+
+            controls.update(); // Update controls for damping
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+
+</html>

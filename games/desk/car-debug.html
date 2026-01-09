@@ -154,6 +154,122 @@
             width: 18px;
             height: 18px;
         }
+
+        /* Mobile Toggle Button */
+        #mobile-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.9);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 200;
+            font-size: 14px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+            transition: all 0.2s;
+        }
+
+        #mobile-toggle:hover {
+            background: #00cc6a;
+            transform: scale(1.05);
+        }
+
+        #mobile-toggle.active {
+            background: #ff5555;
+        }
+
+        /* Mobile Controls */
+        .mobile-controls-container {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            height: 150px;
+            pointer-events: none;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 15;
+        }
+
+        .mobile-controls-container.visible {
+            display: flex;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .group-left {
+            flex-direction: column-reverse;
+            align-items: center;
+        }
+
+        .group-right {
+            flex-direction: row;
+            align-items: flex-end;
+        }
+
+        .touch-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(50, 50, 50, 0.4), rgba(0, 0, 0, 0.5));
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            user-select: none;
+            cursor: pointer;
+            transition: all 0.1s;
+            transform: skew(-5deg);
+        }
+
+        .touch-btn:active,
+        .touch-btn.active {
+            background: linear-gradient(135deg, #00aaff, #0055aa);
+            color: #fff;
+            transform: skew(-5deg) scale(0.95);
+            box-shadow: 0 2px 10px rgba(0, 170, 255, 0.6);
+            border-color: #fff;
+        }
+
+        .btn-gas {
+            background: linear-gradient(135deg, rgba(0, 100, 0, 0.4), rgba(0, 50, 0, 0.5));
+            border-color: rgba(0, 255, 0, 0.3);
+            border-bottom: 4px solid rgba(0, 255, 0, 0.5);
+        }
+
+        .btn-gas:active,
+        .btn-gas.active {
+            background: linear-gradient(135deg, #00ff00, #008800);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+        }
+
+        .btn-break {
+            height: 60px;
+            width: 60px;
+            background: linear-gradient(135deg, rgba(100, 0, 0, 0.4), rgba(50, 0, 0, 0.5));
+            border-color: rgba(255, 0, 0, 0.3);
+            border-bottom: 4px solid rgba(255, 0, 0, 0.5);
+            font-size: 18px;
+        }
+
+        .btn-break:active,
+        .btn-break.active {
+            background: linear-gradient(135deg, #ff0000, #aa0000);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </head>
@@ -268,6 +384,32 @@
             <label for="showGrid">Show Grid</label>
         </div>
 
+        <div class="section-title">SUSPENSION (YAYLANMA)</div>
+
+        <div class="slider-group">
+            <label>Max Pitch Angle (Öne/Arkaya)</label>
+            <div class="slider-row">
+                <input type="range" id="maxPitch" min="0" max="0.25" step="0.01" value="0.15">
+                <span class="value" id="maxPitch-val">0.15</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Max Roll Angle (Sağa/Sola)</label>
+            <div class="slider-row">
+                <input type="range" id="maxRoll" min="0" max="0.15" step="0.01" value="0.09">
+                <span class="value" id="maxRoll-val">0.09</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Suspension Softness (Yumuşaklık)</label>
+            <div class="slider-row">
+                <input type="range" id="suspSoftness" min="0.02" max="0.2" step="0.01" value="0.09">
+                <span class="value" id="suspSoftness-val">0.09</span>
+            </div>
+        </div>
+
         <button id="export-btn">📋 Export Config</button>
         <div id="export-output"></div>
     </div>
@@ -280,6 +422,22 @@
     </div>
 
     <div id="speedometer">0 <span>KM/H</span></div>
+
+    <!-- Mobile Toggle Button -->
+    <button id="mobile-toggle">📱 Mobile Mode</button>
+
+    <!-- Mobile Controls -->
+    <div class="mobile-controls-container">
+        <div class="control-group group-left">
+            <div class="touch-btn btn-break" data-key="ArrowDown">S</div>
+            <div class="touch-btn btn-gas" data-key="ArrowUp">W</div>
+        </div>
+
+        <div class="control-group group-right">
+            <div class="touch-btn" data-key="ArrowLeft">◀</div>
+            <div class="touch-btn" data-key="ArrowRight">▶</div>
+        </div>
+    </div>
 
     <script>
         window.esmsInitOptions = { shimMode: true };
@@ -392,6 +550,25 @@
         turnFactor: 0.2,
     };
 
+    // --- SUSPENSION (YAYLANMA) CONSTANTS ---
+    const suspensionConfig = {
+        maxPitchAngle: 0.15,      // Maksimum öne/arkaya eğilme (radyan)
+        maxRollAngle: 0.09,       // Maksimum sağa/sola yatma (radyan)
+        pitchLerpSpeed: 0.09,     // Pitch geçiş hızı (0-1)
+        rollLerpSpeed: 0.1125,    // Roll geçiş hızı (0-1) - pitch * 1.25
+        brakeMultiplier: 1.5,     // Fren etkisi çarpanı
+        accelMultiplier: 1.0,     // Gaz etkisi çarpanı
+        turnMultiplier: 1.2,      // Dönüş etkisi çarpanı
+    };
+
+    // --- SUSPENSION STATE ---
+    const suspensionState = {
+        currentPitch: 0,          // Mevcut pitch (öne/arkaya eğilme)
+        currentRoll: 0,           // Mevcut roll (sağa/sola yatma)
+        targetPitch: 0,           // Hedef pitch
+        targetRoll: 0,            // Hedef roll
+    };
+
     // --- UI CACHE ---
     const ui = {
         camDist: 40
@@ -422,6 +599,57 @@
         if (controller[k] || controller[e.key]) {
             if (controller[k]) controller[k].pressed = false;
             if (controller[e.key]) controller[e.key].pressed = false;
+        }
+    });
+
+    // --- MOBILE CONTROLS ---
+    const touchBtns = document.querySelectorAll('.touch-btn');
+    touchBtns.forEach(btn => {
+        const key = btn.getAttribute('data-key');
+
+        const press = (e) => {
+            e.preventDefault();
+            controller[key].pressed = true;
+            btn.classList.add('active');
+        };
+
+        const release = (e) => {
+            e.preventDefault();
+            controller[key].pressed = false;
+            btn.classList.remove('active');
+        };
+
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release, { passive: false });
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+    });
+
+    // --- MOBILE TOGGLE ---
+    let isMobileMode = false;
+    const mobileToggleBtn = document.getElementById('mobile-toggle');
+    const debugPanel = document.getElementById('debug-panel');
+    const controlsInfo = document.getElementById('controls-info');
+    const mobileControls = document.querySelector('.mobile-controls-container');
+
+    mobileToggleBtn.addEventListener('click', () => {
+        isMobileMode = !isMobileMode;
+        
+        if (isMobileMode) {
+            // Mobile mode ON
+            debugPanel.style.display = 'none';
+            controlsInfo.style.display = 'none';
+            mobileControls.classList.add('visible');
+            mobileToggleBtn.classList.add('active');
+            mobileToggleBtn.textContent = '🖥️ Desktop Mode';
+        } else {
+            // Mobile mode OFF
+            debugPanel.style.display = 'block';
+            controlsInfo.style.display = 'block';
+            mobileControls.classList.remove('visible');
+            mobileToggleBtn.classList.remove('active');
+            mobileToggleBtn.textContent = '📱 Mobile Mode';
         }
     });
 
@@ -610,7 +838,7 @@
     }
 
     // --- SLIDER EVENT LISTENERS ---
-    const sliders = ['wheelRadius', 'wheelWidth', 'wheelX', 'wheelY', 'wheelFrontZ', 'wheelRearZ', 'bodyScale', 'bodyY', 'bodyRotY', 'camDist'];
+    const sliders = ['wheelRadius', 'wheelWidth', 'wheelX', 'wheelY', 'wheelFrontZ', 'wheelRearZ', 'bodyScale', 'bodyY', 'bodyRotY', 'camDist', 'maxPitch', 'maxRoll', 'suspSoftness'];
     
     sliders.forEach(id => {
         const slider = document.getElementById(id);
@@ -627,6 +855,13 @@
                 updateBodyTransform();
             } else if (id === 'camDist') {
                 ui.camDist = parseFloat(slider.value);
+            } else if (id === 'maxPitch') {
+                suspensionConfig.maxPitchAngle = parseFloat(slider.value);
+            } else if (id === 'maxRoll') {
+                suspensionConfig.maxRollAngle = parseFloat(slider.value);
+            } else if (id === 'suspSoftness') {
+                suspensionConfig.pitchLerpSpeed = parseFloat(slider.value);
+                suspensionConfig.rollLerpSpeed = parseFloat(slider.value) * 1.25;
             }
         });
     });
@@ -680,6 +915,11 @@
             body: {
                 scale: parseFloat(document.getElementById('bodyScale').value),
                 yOffset: parseFloat(document.getElementById('bodyY').value)
+            },
+            suspension: {
+                maxPitchAngle: parseFloat(document.getElementById('maxPitch').value),
+                maxRollAngle: parseFloat(document.getElementById('maxRoll').value),
+                lerpSpeed: parseFloat(document.getElementById('suspSoftness').value)
             }
         };
 
@@ -783,6 +1023,47 @@
             wheels.forEach(wheel => {
                 wheel.rotation.x += spinSpeed;
             });
+        }
+
+        // --- SUSPENSION (YAYLANMA) UPDATE ---
+        if (carBodyModel) {
+            // Hedef pitch hesapla (fren = öne, gaz = arkaya)
+            let targetPitch = 0;
+            if (isDown && carState.speed > 0.1) {
+                // Fren: öne eğil (negatif = öne)
+                targetPitch = -suspensionConfig.maxPitchAngle * suspensionConfig.brakeMultiplier * Math.min(carState.speed / carConstants.maxSpeed, 1);
+            } else if (isUp) {
+                // Gaz: arkaya eğil (pozitif = arkaya)
+                const accelIntensity = Math.min(carState.speed / carConstants.maxSpeed, 1);
+                targetPitch = suspensionConfig.maxPitchAngle * suspensionConfig.accelMultiplier * (1 - accelIntensity * 0.5);
+            }
+            
+            // Hedef roll hesapla (dönüşte dışa yat)
+            let targetRoll = 0;
+            if (Math.abs(carState.speed) > 0.1) {
+                if (isLeft) {
+                    // Sola dönüş: sağa yat (pozitif)
+                    targetRoll = suspensionConfig.maxRollAngle * suspensionConfig.turnMultiplier * Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1);
+                } else if (isRight) {
+                    // Sağa dönüş: sola yat (negatif)
+                    targetRoll = -suspensionConfig.maxRollAngle * suspensionConfig.turnMultiplier * Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1);
+                }
+            }
+            
+            // Yumuşak geçiş (lerp)
+            const pitchLerp = 1 - Math.pow(1 - suspensionConfig.pitchLerpSpeed, deltaFactor);
+            const rollLerp = 1 - Math.pow(1 - suspensionConfig.rollLerpSpeed, deltaFactor);
+            
+            suspensionState.currentPitch += (targetPitch - suspensionState.currentPitch) * pitchLerp;
+            suspensionState.currentRoll += (targetRoll - suspensionState.currentRoll) * rollLerp;
+            
+            // Body'ye uygula (base rotation + suspension)
+            const baseRotY = parseFloat(document.getElementById('bodyRotY').value) * Math.PI / 180;
+            carBodyModel.rotation.set(
+                suspensionState.currentPitch,  // Pitch (X ekseni)
+                baseRotY,                       // Yaw (Y ekseni - slider'dan)
+                suspensionState.currentRoll    // Roll (Z ekseni)
+            );
         }
     }
 

@@ -1163,6 +1163,10 @@
             </div>
 
         </div>
+        <button onclick="window.location.href='garage.html'"
+            style="margin-top: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            🔧 OPEN GARAGE
+        </button>
     </div>
 
     <div id="ui-layer">
@@ -1389,6 +1393,22 @@
             turnFactor: 0.2,
         };
 
+        // --- SUSPENSION (YAYLANMA) SYSTEM ---
+        const suspensionConfig = {
+            maxPitchAngle: 0.15,      // Maksimum öne/arkaya eğilme (radyan)
+            maxRollAngle: 0.09,       // Maksimum sağa/sola yatma (radyan)
+            pitchLerpSpeed: 0.09,     // Pitch geçiş hızı (0-1)
+            rollLerpSpeed: 0.1125,    // Roll geçiş hızı (0-1)
+            brakeMultiplier: 1.5,     // Fren etkisi çarpanı
+            accelMultiplier: 1.0,     // Gaz etkisi çarpanı
+            turnMultiplier: 1.2,      // Dönüş etkisi çarpanı
+        };
+
+        const suspensionState = {
+            currentPitch: 0,
+            currentRoll: 0,
+        };
+
         // --- CAR VISUAL SCALE ---
         // Scales car visuals, wheels, collision, skidmarks, chain hook
         // Does NOT affect driving physics (speed, turning, etc.)
@@ -1600,6 +1620,7 @@
 
         // --- CUSTOM CAR GLB SYSTEM ---
         let carBodyModelTemplate = null;
+        let carBodyInstance = null;   // Aktif kaporta modeli (süspansiyon için)
         let wheelModelTemplate = null;
         const wheelMeshes = [];      // For spin rotation
         const wheelGroups = [];      // For position/steering
@@ -1680,7 +1701,16 @@
 
         // --- CUSTOM CAR GLB LOADING ---
         // Load car body
-        loader.load('carOne.glb', (gltf) => {
+        // Create explicit car map to avoid file mismatch attacks or errors
+        const CAR_FILES = {
+            'carOne': 'carOne.glb',
+            'carTwo': 'carTwo.glb'
+        };
+        const selectedId = localStorage.getItem('selectedCar') || 'carOne';
+        const carFile = CAR_FILES[selectedId] || 'carOne.glb';
+
+        // Load car body
+        loader.load(carFile, (gltf) => {
             carBodyModelTemplate = gltf.scene;
             carBodyModelTemplate.traverse((child) => {
                 if (child.isMesh) {
@@ -1725,6 +1755,9 @@
             carBody.position.y = -0.30 * CAR_VISUAL_SCALE;
             carBody.rotation.y = Math.PI; // Face forward (negative Z)
             carGroup.add(carBody);
+            
+            // Süspansiyon için referansı sakla
+            carBodyInstance = carBody;
         }
 
         function tryAttachWheelModels() {
@@ -2344,6 +2377,47 @@
                     // Procedural wheels - original code
                     wheels[2].rotation.y = wheelTurn;
                     wheels[3].rotation.y = wheelTurn;
+                }
+
+                // --- SUSPENSION (YAYLANMA) UPDATE ---
+                if (carBodyInstance && !carState.isJumping) {
+                    const isUp = controller.ArrowUp.pressed || controller.w.pressed;
+                    const isDown = controller.ArrowDown.pressed || controller.s.pressed;
+                    
+                    // Hedef pitch hesapla (fren = öne, gaz = arkaya)
+                    let targetPitch = 0;
+                    if (isDown && carState.speed > 0.1) {
+                        // Fren: öne eğil
+                        targetPitch = -suspensionConfig.maxPitchAngle * suspensionConfig.brakeMultiplier * Math.min(carState.speed / carConstants.maxSpeed, 1);
+                    } else if (isUp) {
+                        // Gaz: arkaya eğil
+                        const accelIntensity = Math.min(carState.speed / carConstants.maxSpeed, 1);
+                        targetPitch = suspensionConfig.maxPitchAngle * suspensionConfig.accelMultiplier * (1 - accelIntensity * 0.5);
+                    }
+                    
+                    // Hedef roll hesapla (dönüşte dışa yat)
+                    let targetRoll = 0;
+                    if (Math.abs(carState.speed) > 0.1) {
+                        if (isLeft) {
+                            targetRoll = suspensionConfig.maxRollAngle * suspensionConfig.turnMultiplier * Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1);
+                        } else if (isRight) {
+                            targetRoll = -suspensionConfig.maxRollAngle * suspensionConfig.turnMultiplier * Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1);
+                        }
+                    }
+                    
+                    // Yumuşak geçiş (lerp)
+                    const pitchLerp = 1 - Math.pow(1 - suspensionConfig.pitchLerpSpeed, deltaFactor);
+                    const rollLerp = 1 - Math.pow(1 - suspensionConfig.rollLerpSpeed, deltaFactor);
+                    
+                    suspensionState.currentPitch += (targetPitch - suspensionState.currentPitch) * pitchLerp;
+                    suspensionState.currentRoll += (targetRoll - suspensionState.currentRoll) * rollLerp;
+                    
+                    // Body'ye uygula (base rotation Y = Math.PI)
+                    carBodyInstance.rotation.set(
+                        suspensionState.currentPitch,
+                        Math.PI,
+                        suspensionState.currentRoll
+                    );
                 }
             }
 

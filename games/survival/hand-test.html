@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Forearm Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: url('dungeon.jpeg') center center / cover no-repeat;
+            background-color: #1a1a1a;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Parent container that scales everything from bottom-right */
+        #arm-root {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            transform-origin: 0 0;
+            /* bottom-right of screen = 0,0 of this element */
+        }
+
+        #forearm {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            transform-origin: right bottom;
+        }
+
+        #hand-wrapper {
+            position: absolute;
+            width: 0;
+            height: 0;
+        }
+
+        #hand {
+            position: absolute;
+        }
+
+        /* Left hand system */
+        #left-arm-root {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            transform-origin: 0 0;
+        }
+
+        #left-hand {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            transform-origin: left bottom;
+        }
+
+        /* Debug UI */
+        #panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+        }
+
+        #toggle-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        #toggle-btn:hover {
+            background: rgba(50, 50, 50, 0.9);
+        }
+
+        #panel-content {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        #panel-content.hidden {
+            display: none;
+        }
+
+        .section {
+            margin-bottom: 12px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+
+        .section-title {
+            color: #4df;
+            margin-bottom: 6px;
+        }
+
+        .row {
+            margin-bottom: 6px;
+        }
+
+        .row label {
+            display: inline-block;
+            width: 130px;
+        }
+
+        .row input {
+            width: 100px;
+        }
+
+        .row span {
+            margin-left: 6px;
+            color: #ff0;
+            min-width: 40px;
+            display: inline-block;
+        }
+
+        /* Sword Collider */
+        #sword-collider {
+            position: absolute;
+            background: rgba(255, 0, 0, 0.4);
+            border: 2px solid rgba(255, 0, 0, 0.8);
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        #shield {
+            position: absolute;
+            pointer-events: none;
+            display: none;
+            /* Hidden by default */
+        }
+
+        #shield.active {
+            display: block;
+        }
+
+        #hand.hidden {
+            display: none;
+        }
+
+        /* Shield activation button */
+        #shield-btn {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(100, 150, 255, 0.3);
+            border: 3px solid rgba(100, 150, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+            z-index: 50;
+        }
+
+        #shield-btn:active,
+        #shield-btn.active {
+            background: rgba(100, 150, 255, 0.6);
+            border-color: rgba(100, 150, 255, 0.9);
+        }
+
+        /* Wolf Animation */
+        #wolf-container {
+            position: absolute;
+            width: 672px;
+            height: 810px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+            transform-origin: bottom center;
+        }
+
+        #wolf-sprite {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 7392px;
+            /* 672 * 11 */
+            height: 810px;
+            background-image: url('wolfAttackFinal.webp');
+            background-repeat: no-repeat;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Wolf Attack Animation -->
+    <div id="wolf-container">
+        <div id="wolf-sprite"></div>
+    </div>
+
+    <!-- Everything inside this root scales together from bottom-right -->
+    <div id="arm-root">
+        <div id="hand-wrapper">
+            <img id="hand" src="RightHandWithSword.webp" alt="Hand">
+            <img id="shield" src="RightHandWithShield.webp" alt="Shield">
+            <div id="sword-collider"></div>
+        </div>
+        <img id="forearm" src="RightForeArm.webp" alt="Forearm">
+    </div>
+
+    <!-- Left hand at bottom-left -->
+    <div id="left-arm-root">
+        <img id="left-hand" src="LeftHand.webp" alt="Left Hand">
+    </div>
+
+    <!-- Shield activation button -->
+    <div id="shield-btn">🛡️</div>
+
+    <div id="panel">
+        <button id="toggle-btn">☰ Panel</button>
+        <div id="panel-content">
+            <div class="section">
+                <div class="section-title">Global Scale</div>
+                <div class="row">
+                    <label>Scale</label>
+                    <input type="range" id="globalScale" min="0.3" max="2" step="0.01" value="0.56">
+                    <span id="val-globalScale">0.56</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Left Hand</div>
+                <div class="row">
+                    <label>Follow Weight</label>
+                    <input type="range" id="leftFollowWeight" min="0" max="1" step="0.01" value="0.69">
+                    <span id="val-leftFollowWeight">0.69</span>
+                </div>
+                <div class="row">
+                    <label>Angle Offset</label>
+                    <input type="range" id="leftAngleOffset" min="-180" max="180" value="28">
+                    <span id="val-leftAngleOffset">28</span>
+                </div>
+                <div class="row">
+                    <label>Lerp Speed</label>
+                    <input type="range" id="leftLerpSpeed" min="0.01" max="1" step="0.01" value="0.34">
+                    <span id="val-leftLerpSpeed">0.34</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Forearm (LookAt)</div>
+                <div class="row">
+                    <label>Angle Offset</label>
+                    <input type="range" id="angleOffset" min="-180" max="180" value="132">
+                    <span id="val-angleOffset">132</span>
+                </div>
+                <div class="row">
+                    <label>Pivot Offset X</label>
+                    <input type="range" id="pivotX" min="-200" max="200" value="147">
+                    <span id="val-pivotX">147</span>
+                </div>
+                <div class="row">
+                    <label>Pivot Offset Y</label>
+                    <input type="range" id="pivotY" min="-200" max="200" value="138">
+                    <span id="val-pivotY">138</span>
+                </div>
+                <div class="row">
+                    <label>Lerp Speed</label>
+                    <input type="range" id="lerpSpeed" min="0.01" max="1" step="0.01" value="0.67">
+                    <span id="val-lerpSpeed">0.67</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Hand Connection</div>
+                <div class="row">
+                    <label>Connect X</label>
+                    <input type="range" id="handConnX" min="-300" max="300" value="0">
+                    <span id="val-handConnX">0</span>
+                </div>
+                <div class="row">
+                    <label>Connect Y</label>
+                    <input type="range" id="handConnY" min="-300" max="300" value="0">
+                    <span id="val-handConnY">0</span>
+                </div>
+                <div class="row">
+                    <label>Hand Pivot X</label>
+                    <input type="range" id="handPivotX" min="-300" max="300" value="0">
+                    <span id="val-handPivotX">0</span>
+                </div>
+                <div class="row">
+                    <label>Hand Pivot Y</label>
+                    <input type="range" id="handPivotY" min="-300" max="300" value="0">
+                    <span id="val-handPivotY">0</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Hand Physics (Lag)</div>
+                <div class="row">
+                    <label>Stiffness</label>
+                    <input type="range" id="handStiffness" min="0.01" max="0.5" step="0.01" value="0.5">
+                    <span id="val-handStiffness">0.5</span>
+                </div>
+                <div class="row">
+                    <label>Damping</label>
+                    <input type="range" id="handDamping" min="0.5" max="0.99" step="0.01" value="0.5">
+                    <span id="val-handDamping">0.5</span>
+                </div>
+                <div class="row">
+                    <label>Inertia</label>
+                    <input type="range" id="handInertia" min="0" max="5" step="0.1" value="1.9">
+                    <span id="val-handInertia">1.9</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Sword Collider</div>
+                <div class="row">
+                    <label>Width %</label>
+                    <input type="range" id="colliderWidth" min="5" max="100" value="29">
+                    <span id="val-colliderWidth">29</span>
+                </div>
+                <div class="row">
+                    <label>Height %</label>
+                    <input type="range" id="colliderHeight" min="5" max="100" value="72">
+                    <span id="val-colliderHeight">72</span>
+                </div>
+                <div class="row">
+                    <label>Offset X %</label>
+                    <input type="range" id="colliderX" min="0" max="100" value="46">
+                    <span id="val-colliderX">46</span>
+                </div>
+                <div class="row">
+                    <label>Offset Y %</label>
+                    <input type="range" id="colliderY" min="0" max="100" value="100">
+                    <span id="val-colliderY">100</span>
+                </div>
+                <div class="row">
+                    <label>Rotation</label>
+                    <input type="range" id="colliderRot" min="-90" max="90" value="13">
+                    <span id="val-colliderRot">13</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Shield Offset</div>
+                <div class="row">
+                    <label>Offset X</label>
+                    <input type="range" id="shieldX" min="-500" max="500" value="-123">
+                    <span id="val-shieldX">-123</span>
+                </div>
+                <div class="row">
+                    <label>Offset Y</label>
+                    <input type="range" id="shieldY" min="-500" max="500" value="366">
+                    <span id="val-shieldY">366</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Wolf Animation</div>
+                <div class="row">
+                    <label>X Offset</label>
+                    <input type="range" id="wolfX" min="-1000" max="1000" value="0">
+                    <span id="val-wolfX">0</span>
+                </div>
+                <div class="row">
+                    <label>Y Offset (Bottom)</label>
+                    <input type="range" id="wolfY" min="-500" max="1000" value="0">
+                    <span id="val-wolfY">0</span>
+                    <div class="row">
+                        <label>FPS</label>
+                        <input type="range" id="wolfFps" min="1" max="60" value="8">
+                        <span id="val-wolfFps">8</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Toggle panel
+            const toggleBtn = document.getElementById('toggle-btn');
+            const panelContent = document.getElementById('panel-content');
+            toggleBtn.addEventListener('click', () => {
+                panelContent.classList.toggle('hidden');
+                toggleBtn.textContent = panelContent.classList.contains('hidden') ? '☰ Show' : '☰ Hide';
+            });
+
+            const armRoot = document.getElementById('arm-root');
+            const forearm = document.getElementById('forearm');
+            const handWrapper = document.getElementById('hand-wrapper');
+            const hand = document.getElementById('hand');
+            const shield = document.getElementById('shield');
+            const leftArmRoot = document.getElementById('left-arm-root');
+            const leftHand = document.getElementById('left-hand');
+            const swordCollider = document.getElementById('sword-collider');
+
+            // Global scale
+            let globalScale = .56;
+
+            // Left hand config
+            let leftFollowWeight = 0.69;
+            let leftAngleOffset = 28;
+            let leftLerpSpeed = 0.34;
+
+            // Wolf Animation config
+            const wolfContainer = document.getElementById('wolf-container');
+            const wolfSprite = document.getElementById('wolf-sprite');
+            let wolfX = 0;
+            let wolfY = 0;
+            let wolfScale = 1;
+            let wolfFps = 8;
+
+            // Wolf Animation state
+            let wolfFrame = 0;
+            let lastWolfFrameTime = 0;
+            const totalWolfFrames = 11;
+            const wolfFrameWidth = 672;
+
+            // Forearm config
+            let angleOffset = 132;
+            let pivotOffsetX = 147;
+            let pivotOffsetY = 138;
+            let lerpSpeed = 0.67;
+
+            // Hand connection config
+            let handConnX = 0;
+            let handConnY = 0;
+            let handPivotX = 0;
+            let handPivotY = 0;
+
+            // Hand physics config
+            let handStiffness = 0.5;
+            let handDamping = 0.5;
+            let handInertia = 1.9;
+
+            // Sword collider config (percentage of hand image)
+            let colliderWidth = 22;
+            let colliderHeight = 72;
+            let colliderX = 43;
+            let colliderY = 100;
+            let colliderRot = 13;
+
+            // Shield offset config
+            let shieldX = -123;
+            let shieldY = 366;
+
+            // State
+            let mouseX = window.innerWidth / 2;
+            let mouseY = window.innerHeight / 2;
+            let currentForearmAngle = 0;
+            let prevForearmAngle = 0;
+            let handAngle = 0;
+            let handAngularVel = 0;
+            let currentLeftHandAngle = 0;
+
+            // Input
+            document.addEventListener('mousemove', e => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+            document.addEventListener('touchmove', e => {
+                e.preventDefault();
+                if (e.touches[0]) {
+                    mouseX = e.touches[0].clientX;
+                    mouseY = e.touches[0].clientY;
+                }
+            }, { passive: false });
+
+            // Shield button logic with dragging
+            const shieldBtn = document.getElementById('shield-btn');
+            let shieldActive = false;
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let btnStartX = 0;
+            let btnStartY = 0;
+            const originalBottom = 10;
+            const originalRight = 10;
+
+            function activateShield() {
+                shieldActive = true;
+                shield.classList.add('active');
+                hand.classList.add('hidden');
+                shieldBtn.classList.add('active');
+            }
+
+            function deactivateShield() {
+                shieldActive = false;
+                shield.classList.remove('active');
+                hand.classList.remove('hidden');
+                shieldBtn.classList.remove('active');
+
+                // Return to original position
+                shieldBtn.style.transition = 'bottom 0.2s ease, right 0.2s ease';
+                shieldBtn.style.bottom = originalBottom + 'px';
+                shieldBtn.style.right = originalRight + 'px';
+                setTimeout(() => {
+                    shieldBtn.style.transition = '';
+                }, 200);
+            }
+
+            // Touch events
+            shieldBtn.addEventListener('touchstart', e => {
+                e.preventDefault();
+                activateShield();
+                isDragging = true;
+
+                const touch = e.touches[0];
+                dragStartX = touch.clientX;
+                dragStartY = touch.clientY;
+
+                const rect = shieldBtn.getBoundingClientRect();
+                btnStartX = window.innerWidth - rect.right;
+                btnStartY = window.innerHeight - rect.bottom;
+            }, { passive: false });
+
+            document.addEventListener('touchmove', e => {
+                if (isDragging && e.touches[0]) {
+                    const touch = e.touches[0];
+                    const deltaX = dragStartX - touch.clientX;
+                    const deltaY = dragStartY - touch.clientY;
+
+                    shieldBtn.style.right = (btnStartX + deltaX) + 'px';
+                    shieldBtn.style.bottom = (btnStartY + deltaY) + 'px';
+                }
+            }, { passive: false });
+
+            shieldBtn.addEventListener('touchend', e => {
+                e.preventDefault();
+                isDragging = false;
+                deactivateShield();
+            }, { passive: false });
+
+            shieldBtn.addEventListener('touchcancel', e => {
+                isDragging = false;
+                deactivateShield();
+            });
+
+            // Mouse events (for desktop testing)
+            shieldBtn.addEventListener('mousedown', e => {
+                e.preventDefault();
+                activateShield();
+                isDragging = true;
+
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+
+                const rect = shieldBtn.getBoundingClientRect();
+                btnStartX = window.innerWidth - rect.right;
+                btnStartY = window.innerHeight - rect.bottom;
+            });
+
+            document.addEventListener('mousemove', e => {
+                if (isDragging) {
+                    const deltaX = dragStartX - e.clientX;
+                    const deltaY = dragStartY - e.clientY;
+
+                    shieldBtn.style.right = (btnStartX + deltaX) + 'px';
+                    shieldBtn.style.bottom = (btnStartY + deltaY) + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', e => {
+                if (shieldActive) {
+                    isDragging = false;
+                    deactivateShield();
+                }
+            });
+
+            function update(timestamp) {
+                // === WOLF ANIMATION ===
+                if (!lastWolfFrameTime) lastWolfFrameTime = timestamp;
+                const elapsed = timestamp - lastWolfFrameTime;
+                const frameDuration = 1000 / wolfFps;
+
+                if (elapsed >= frameDuration) {
+                    wolfFrame = (wolfFrame + 1) % totalWolfFrames;
+                    lastWolfFrameTime = timestamp;
+
+                    // Update sprite position
+                    wolfSprite.style.transform = `translateX(-${wolfFrame * wolfFrameWidth}px)`;
+                }
+
+                // Update container transform (Centered at bottom)
+                // Calculate scale dynamically based on screen width
+                wolfScale = window.innerWidth / 650;
+
+                wolfContainer.style.left = `calc(50% - ${wolfFrameWidth / 2}px + ${wolfX}px)`;
+                wolfContainer.style.bottom = wolfY + 'px';
+                wolfContainer.style.top = 'auto';
+                wolfContainer.style.transform = `scale(${wolfScale})`;
+
+                // Apply global scale to root container
+                armRoot.style.transform = `scale(${globalScale})`;
+
+                // === FOREARM ===
+                // Pivot is at screen bottom-right + offsets (in unscaled space)
+                // But we need to account for scale when calculating mouse position relative to pivot
+                const pivotScreenX = window.innerWidth + pivotOffsetX * globalScale;
+                const pivotScreenY = window.innerHeight + pivotOffsetY * globalScale;
+
+                const dx = mouseX - pivotScreenX;
+                const dy = mouseY - pivotScreenY;
+                let targetAngle = Math.atan2(dy, dx) * (180 / Math.PI) + angleOffset;
+
+                // Lerp forearm
+                let diff = targetAngle - currentForearmAngle;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+
+                prevForearmAngle = currentForearmAngle;
+                currentForearmAngle += diff * lerpSpeed;
+
+                // Apply forearm transform (no scale here - parent handles it)
+                forearm.style.transformOrigin = `calc(100% + ${pivotOffsetX}px) calc(100% + ${pivotOffsetY}px)`;
+                forearm.style.transform = `rotate(${currentForearmAngle}deg)`;
+
+                // === HAND PHYSICS ===
+                const forearmAngularVel = currentForearmAngle - prevForearmAngle;
+                const inertiaForce = -forearmAngularVel * handInertia;
+                const springForce = (0 - handAngle) * handStiffness;
+
+                handAngularVel += inertiaForce + springForce;
+                handAngularVel *= handDamping;
+                handAngle += handAngularVel;
+
+                // === POSITION HAND AT WRIST (all in local/unscaled space) ===
+                const fW = forearm.naturalWidth || forearm.offsetWidth;
+                const fH = forearm.naturalHeight || forearm.offsetHeight;
+
+                // Pivot in local space (relative to arm-root which is at screen bottom-right)
+                const pivX = pivotOffsetX;
+                const pivY = pivotOffsetY;
+
+                // Forearm top-left relative to pivot (before rotation)
+                const localTLX = -fW;
+                const localTLY = -fH;
+
+                // Rotate this point by forearm angle
+                const rad = currentForearmAngle * Math.PI / 180;
+                const cos = Math.cos(rad);
+                const sin = Math.sin(rad);
+
+                const rotatedX = localTLX * cos - localTLY * sin;
+                const rotatedY = localTLX * sin + localTLY * cos;
+
+                // Wrist position in local space
+                const wristLocalX = pivX + rotatedX + handConnX;
+                const wristLocalY = pivY + rotatedY + handConnY;
+
+                // Position hand wrapper (in local space, parent scale applies automatically)
+                handWrapper.style.left = wristLocalX + 'px';
+                handWrapper.style.top = wristLocalY + 'px';
+
+                // Hand image offset
+                const hW = hand.naturalWidth || hand.offsetWidth;
+                const hH = hand.naturalHeight || hand.offsetHeight;
+
+                const handPivFromTL_X = hW + handPivotX;
+                const handPivFromTL_Y = hH + handPivotY;
+
+                hand.style.left = -handPivFromTL_X + 'px';
+                hand.style.top = -handPivFromTL_Y + 'px';
+
+                // === SWORD COLLIDER ===
+                // Size and position relative to hand image
+                swordCollider.style.width = (hW * colliderWidth / 100) + 'px';
+                swordCollider.style.height = (hH * colliderHeight / 100) + 'px';
+                swordCollider.style.left = -(hW * colliderX / 100) + 'px';
+                swordCollider.style.top = -(hH * colliderY / 100) + 'px';
+                swordCollider.style.transform = `rotate(${colliderRot}deg)`;
+                swordCollider.style.transformOrigin = 'center center';
+
+                // === SHIELD ===
+                shield.style.left = (-handPivFromTL_X + shieldX) + 'px';
+                shield.style.top = (-handPivFromTL_Y + shieldY) + 'px';
+
+                // Rotate hand
+                const totalHandAngle = currentForearmAngle + handAngle;
+                handWrapper.style.transform = `rotate(${totalHandAngle}deg)`;
+                handWrapper.style.transformOrigin = '0 0';
+
+                // === LEFT HAND ===
+                // Scale left arm root same as right
+                leftArmRoot.style.transform = `scale(${globalScale})`;
+
+                // Left hand pivot is at screen bottom-left (0, screenHeight)
+                const leftPivotX = 0;
+                const leftPivotY = window.innerHeight;
+
+                // Calculate angle from left hand pivot to mouse
+                const leftDx = mouseX - leftPivotX;
+                const leftDy = mouseY - leftPivotY;
+                let leftTargetAngle = Math.atan2(leftDy, leftDx) * (180 / Math.PI) + leftAngleOffset;
+
+                // Apply follow weight (0 = no follow, 1 = full follow)
+                // Blend between neutral angle (0) and target angle
+                const neutralAngle = 0;
+                const weightedTarget = neutralAngle + (leftTargetAngle - neutralAngle) * leftFollowWeight;
+
+                // Lerp left hand angle
+                let leftDiff = weightedTarget - currentLeftHandAngle;
+                while (leftDiff > 180) leftDiff -= 360;
+                while (leftDiff < -180) leftDiff += 360;
+                currentLeftHandAngle += leftDiff * leftLerpSpeed;
+
+                // Apply transform
+                leftHand.style.transform = `rotate(${currentLeftHandAngle}deg)`;
+
+                requestAnimationFrame(update);
+            }
+
+            // Slider bindings
+            function bind(id, setter) {
+                const el = document.getElementById(id);
+                const disp = document.getElementById('val-' + id);
+                el.addEventListener('input', () => {
+                    const v = parseFloat(el.value);
+                    disp.textContent = v;
+                    setter(v);
+                });
+                disp.textContent = el.value;
+                setter(parseFloat(el.value));
+            }
+
+            bind('globalScale', v => globalScale = v);
+
+            bind('leftFollowWeight', v => leftFollowWeight = v);
+            bind('leftAngleOffset', v => leftAngleOffset = v);
+            bind('leftLerpSpeed', v => leftLerpSpeed = v);
+
+            bind('angleOffset', v => angleOffset = v);
+            bind('pivotX', v => pivotOffsetX = v);
+            bind('pivotY', v => pivotOffsetY = v);
+            bind('lerpSpeed', v => lerpSpeed = v);
+
+            bind('handConnX', v => handConnX = v);
+            bind('handConnY', v => handConnY = v);
+            bind('handPivotX', v => handPivotX = v);
+            bind('handPivotY', v => handPivotY = v);
+
+            bind('handStiffness', v => handStiffness = v);
+            bind('handDamping', v => handDamping = v);
+            bind('handInertia', v => handInertia = v);
+
+            bind('colliderWidth', v => colliderWidth = v);
+            bind('colliderHeight', v => colliderHeight = v);
+            bind('colliderX', v => colliderX = v);
+            bind('colliderY', v => colliderY = v);
+            bind('colliderRot', v => colliderRot = v);
+
+            bind('shieldX', v => shieldX = v);
+            bind('shieldY', v => shieldY = v);
+
+            bind('wolfX', v => wolfX = v);
+            bind('wolfY', v => wolfY = v);
+            // bind('wolfScale', v => wolfScale = v); // Removed
+            bind('wolfFps', v => wolfFps = v);
+
+            requestAnimationFrame(update);
+        </script>
+</body>
+
+</html>

@@ -1,255 +1,304 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>2048 - Fast Swipe</title>
   <style>
-    :root{
-      --bg:#faf8ef;
-      --board:#bbada0;
-      --cell:#cdc1b4;
-      --text:#776e65;
-      --white:#f9f6f2;
-      --shadow:rgba(0,0,0,.12);
-      --radius:14px;
-      --pad:12px;
-      --gap:12px;
-      --tile:78px;
-      --move-ms:200ms; /* Daha seri hissetmesi için süreyi biraz kıstım */
+    :root {
+      --bg: #faf8ef;
+      --board: #bbada0;
+      --cell: #cdc1b4;
+      --text: #776e65;
+      --white: #f9f6f2;
+      --shadow: rgba(0, 0, 0, .12);
+      --radius: 14px;
+      --pad: 12px;
+      --gap: 12px;
+      --tile: 78px;
+      --move-ms: 200ms;
+      /* Daha seri hissetmesi için süreyi biraz kıstım */
       --board-size: calc(2*var(--pad) + 4*var(--tile) + 3*var(--gap));
     }
 
-    *{box-sizing:border-box;}
-    html,body{height:100%;}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      background:var(--bg);
-      color:var(--text);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overscroll-behavior: none; 
-      touch-action: none; /* Tüm sayfa için browser zoom/pan engelle */
+    * {
+      box-sizing: border-box;
     }
 
-    .app{
-      width:min(92vw, 460px);
-      padding:18px 16px 22px;
+    html,
+    body {
+      height: 100%;
     }
 
-    header{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:14px;
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overscroll-behavior: none;
+      touch-action: none;
+      /* Tüm sayfa için browser zoom/pan engelle */
     }
 
-    .title{
-      font-size:52px;
-      font-weight:900;
-      letter-spacing:-1px;
-      line-height:1;
-      margin:0;
+    .app {
+      width: min(92vw, 460px);
+      padding: 18px 16px 22px;
     }
 
-    .hud{
-      display:flex;
-      gap:10px;
-      align-items:flex-end;
-      flex-wrap:wrap;
-      justify-content:flex-end;
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
-    .scorebox{
-      background:#8f7a66;
-      color:#fff;
-      border-radius:10px;
-      padding:8px 12px 9px;
-      text-align:center;
-      box-shadow:0 6px 16px var(--shadow);
-      user-select:none;
+    .title {
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin: 0;
+    }
+
+    .hud {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .scorebox {
+      background: #8f7a66;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 12px 9px;
+      text-align: center;
+      box-shadow: 0 6px 16px var(--shadow);
+      user-select: none;
       min-width: 70px;
     }
-    .scorebox small{
-      display:block;
-      font-size:12px;
-      letter-spacing:.4px;
-      opacity:.85;
-      margin-bottom:2px;
+
+    .scorebox small {
+      display: block;
+      font-size: 12px;
+      letter-spacing: .4px;
+      opacity: .85;
+      margin-bottom: 2px;
       text-transform: uppercase;
     }
-    .scorebox b{
-      font-size:22px;
-      display:block;
-      line-height:1.05;
+
+    .scorebox b {
+      font-size: 22px;
+      display: block;
+      line-height: 1.05;
     }
 
-    .controls{
-      display:flex;
-      gap:10px;
-      margin:10px 0 12px;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0 12px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
     }
 
-    .btn{
-      appearance:none;
-      border:0;
-      border-radius:12px;
-      padding:10px 14px;
-      background:#8f7a66;
-      color:#fff;
-      font-weight:700;
-      cursor:pointer;
-      box-shadow:0 6px 16px var(--shadow);
-      transition:transform 80ms ease;
+    .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: #8f7a66;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 16px var(--shadow);
+      transition: transform 80ms ease;
     }
-    .btn:active{transform:translateY(1px) scale(.99);}
 
-    .hint{
-      font-size:13px;
-      opacity:.8;
-      line-height:1.2;
-      user-select:none;
+    .btn:active {
+      transform: translateY(1px) scale(.99);
+    }
+
+    .hint {
+      font-size: 13px;
+      opacity: .8;
+      line-height: 1.2;
+      user-select: none;
       text-align: right;
     }
-    
-    .msg-desktop { display: inline; }
-    .msg-mobile { display: none; }
 
-    @media (hover: none) and (pointer: coarse), (max-width: 520px) {
-      .msg-desktop { display: none; }
-      .msg-mobile { display: inline; }
+    .msg-desktop {
+      display: inline;
     }
 
-    .board-wrap{
-      position:relative;
-      border-radius:var(--radius);
-      box-shadow:0 10px 26px var(--shadow);
-      background:var(--board);
-      padding:var(--pad);
+    .msg-mobile {
+      display: none;
+    }
+
+    @media (hover: none) and (pointer: coarse),
+    (max-width: 520px) {
+      .msg-desktop {
+        display: none;
+      }
+
+      .msg-mobile {
+        display: inline;
+      }
+    }
+
+    .board-wrap {
+      position: relative;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 26px var(--shadow);
+      background: var(--board);
+      padding: var(--pad);
       width: var(--board-size);
       height: var(--board-size);
       margin: 0 auto;
-      touch-action:none;
-      user-select:none;
+      touch-action: none;
+      user-select: none;
       will-change: transform;
-      transform: translate3d(0,0,0);
+      transform: translate3d(0, 0, 0);
     }
 
-    .grid-layer{
-      display:grid;
-      grid-template-columns:repeat(4, 1fr);
-      gap:var(--gap);
-      width:calc(4*var(--tile) + 3*var(--gap));
-      height:calc(4*var(--tile) + 3*var(--gap));
+    .grid-layer {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--gap);
+      width: calc(4*var(--tile) + 3*var(--gap));
+      height: calc(4*var(--tile) + 3*var(--gap));
     }
 
-    .cell{
-      background:var(--cell);
-      border-radius:12px;
+    .cell {
+      background: var(--cell);
+      border-radius: 12px;
     }
 
-    .tile-layer{
-      position:absolute;
-      inset:var(--pad);
-      pointer-events:none;
-      width:calc(4*var(--tile) + 3*var(--gap));
-      height:calc(4*var(--tile) + 3*var(--gap));
+    .tile-layer {
+      position: absolute;
+      inset: var(--pad);
+      pointer-events: none;
+      width: calc(4*var(--tile) + 3*var(--gap));
+      height: calc(4*var(--tile) + 3*var(--gap));
     }
 
-    .tile{
-      position:absolute;
-      width:var(--tile);
-      height:var(--tile);
-      transform:translate(0px, 0px);
-      transition:transform var(--move-ms) cubic-bezier(0.1, 0.1, 0.1, 1.2);
-      will-change:transform;
+    .tile {
+      position: absolute;
+      width: var(--tile);
+      height: var(--tile);
+      transform: translate(0px, 0px);
+      transition: transform var(--move-ms) cubic-bezier(0.1, 0.1, 0.1, 1.2);
+      will-change: transform;
       z-index: 10;
     }
 
-    .tile-inner{
-      width:100%;
-      height:100%;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:900;
-      line-height:1;
-      color:var(--tile-fg, var(--text));
-      background:var(--tile-bg, #eee4da);
-      box-shadow:0 8px 18px rgba(0,0,0,.10);
-      transform:scale(1);
+    .tile-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--tile-fg, var(--text));
+      background: var(--tile-bg, #eee4da);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, .10);
+      transform: scale(1);
     }
 
-    .pop .tile-inner{ animation: pop 200ms ease-out; }
-    .merge .tile-inner{ animation: pop 180ms ease-out; z-index: 20; }
-
-    @keyframes pop{
-      0%{transform:scale(.18);}
-      60%{transform:scale(1.18);}
-      82%{transform:scale(.98);}
-      100%{transform:scale(1);}
+    .pop .tile-inner {
+      animation: pop 200ms ease-out;
     }
 
-    .overlay{
-      position:absolute;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      border-radius:var(--radius);
-      background:rgba(238,228,218,.78);
-      backdrop-filter:saturate(1.05) blur(2px);
-      text-align:center;
-      padding:18px;
+    .merge .tile-inner {
+      animation: pop 180ms ease-out;
+      z-index: 20;
+    }
+
+    @keyframes pop {
+      0% {
+        transform: scale(.18);
+      }
+
+      60% {
+        transform: scale(1.18);
+      }
+
+      82% {
+        transform: scale(.98);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      background: rgba(238, 228, 218, .78);
+      backdrop-filter: saturate(1.05) blur(2px);
+      text-align: center;
+      padding: 18px;
       z-index: 100;
     }
 
-    .overlay.show{ display:flex; }
-
-    .overlay-card{
-      background:rgba(255,255,255,.85);
-      border-radius:16px;
-      padding:18px 16px;
-      box-shadow:0 10px 26px var(--shadow);
-      width:min(320px, 92%);
+    .overlay.show {
+      display: flex;
     }
 
-    .overlay-card h2{
-      margin:0 0 8px;
-      font-size:28px;
-      letter-spacing:-.3px;
+    .overlay-card {
+      background: rgba(255, 255, 255, .85);
+      border-radius: 16px;
+      padding: 18px 16px;
+      box-shadow: 0 10px 26px var(--shadow);
+      width: min(320px, 92%);
     }
 
-    .overlay-card p{
-      margin:0 0 14px;
-      font-size:14px;
-      opacity:.85;
+    .overlay-card h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: -.3px;
     }
 
-    .overlay-actions{
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      flex-wrap:wrap;
+    .overlay-card p {
+      margin: 0 0 14px;
+      font-size: 14px;
+      opacity: .85;
     }
 
-    .btn.secondary{ background:#b8a392; color:#fff; }
+    .overlay-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
 
-    footer{
-      margin-top:10px;
-      font-size:12px;
-      opacity:.75;
-      line-height:1.35;
+    .btn.secondary {
+      background: #b8a392;
+      color: #fff;
+    }
+
+    footer {
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: .75;
+      line-height: 1.35;
     }
   </style>
 </head>
+
 <body>
   <div class="app">
     <header>
@@ -292,7 +341,8 @@
 
     <footer>
       <div class="msg-desktop">
-        <b>How to play:</b> Use your <strong>arrow keys</strong> or <strong>WASD</strong> to move the tiles. Tiles with the same number merge into one when they touch.
+        <b>How to play:</b> Use your <strong>arrow keys</strong> or <strong>WASD</strong> to move the tiles. Tiles with
+        the same number merge into one when they touch.
       </div>
       <div class="msg-mobile">
         <b>How to play:</b> <strong>Swipe</strong> instantly to move. No need to lift your finger!
@@ -307,27 +357,27 @@
       const BEST_KEY = "bestScore2048_fastswipe";
 
       const elScore = document.getElementById("score");
-      const elBest  = document.getElementById("best");
+      const elBest = document.getElementById("best");
       const elBoard = document.getElementById("board");
-      const elGrid  = document.getElementById("grid");
+      const elGrid = document.getElementById("grid");
       const elTiles = document.getElementById("tiles");
-      const elNew   = document.getElementById("newGame");
+      const elNew = document.getElementById("newGame");
 
       const elOverlay = document.getElementById("overlay");
       const elOverlayTitle = document.getElementById("overlayTitle");
-      const elOverlayText  = document.getElementById("overlayText");
-      const elRestartBtn   = document.getElementById("restartBtn");
-      const elContinueBtn  = document.getElementById("continueBtn");
+      const elOverlayText = document.getElementById("overlayText");
+      const elRestartBtn = document.getElementById("restartBtn");
+      const elContinueBtn = document.getElementById("continueBtn");
 
       // ====== Durum ======
-      let grid = null;                 
-      let tilesById = new Map();       
-      let domById = new Map();         
+      let grid = null;
+      let tilesById = new Map();
+      let domById = new Map();
 
       let score = 0;
       let best = 0;
       let won = false;
-      let locked = false; 
+      let locked = false;
       let idSeq = 1;
 
       // ====== Tile Model ======
@@ -338,14 +388,14 @@
           this.col = col;
           this.value = value;
           this.merged = false;
-          this.toRemove = false;     
+          this.toRemove = false;
           this.justSpawned = true;
           this.justMerged = false;
         }
       }
 
       // ====== Kurulum ======
-      function buildBackgroundGrid(){
+      function buildBackgroundGrid() {
         elGrid.innerHTML = "";
         for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
           const cell = document.createElement("div");
@@ -354,17 +404,17 @@
         }
       }
 
-      function loadBest(){
+      function loadBest() {
         const raw = localStorage.getItem(BEST_KEY);
         best = raw ? Number(raw) || 0 : 0;
         elBest.textContent = String(best);
       }
 
-      function saveBest(){
+      function saveBest() {
         localStorage.setItem(BEST_KEY, String(best));
       }
 
-      function setScore(next){
+      function setScore(next) {
         score = next;
         elScore.textContent = String(score);
         if (score > best) {
@@ -374,8 +424,8 @@
         }
       }
 
-      function resetGame(){
-        grid = Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(null));
+      function resetGame() {
+        grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
 
         tilesById.clear();
         for (const el of domById.values()) el.remove();
@@ -394,12 +444,12 @@
         render();
       }
 
-      function updateSizing(){
+      function updateSizing() {
         const app = elBoard.closest('.app');
         const contentWidth = (el) => {
           if (!el) return 0;
           const cs = getComputedStyle(el);
-          return Math.max(0, el.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0));
+          return Math.max(0, el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0));
         };
 
         const container = contentWidth(app) || (window.innerWidth || 360);
@@ -424,17 +474,17 @@
       }
 
       // ====== Oyun Mekaniği ======
-      function emptyCells(){
+      function emptyCells() {
         const cells = [];
-        for (let r=0;r<GRID_SIZE;r++){
-          for (let c=0;c<GRID_SIZE;c++){
-            if (!grid[r][c]) cells.push({r,c});
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (!grid[r][c]) cells.push({ r, c });
           }
         }
         return cells;
       }
 
-      function spawnRandomTile(){
+      function spawnRandomTile() {
         const empties = emptyCells();
         if (empties.length === 0) return false;
         const pick = empties[Math.floor(Math.random() * empties.length)];
@@ -445,42 +495,42 @@
         return true;
       }
 
-      function within(r,c){
-        return r>=0 && r<GRID_SIZE && c>=0 && c<GRID_SIZE;
+      function within(r, c) {
+        return r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
       }
 
-      function prepareTiles(){
-        for (const t of tilesById.values()){
+      function prepareTiles() {
+        for (const t of tilesById.values()) {
           t.merged = false;
           t.justSpawned = false;
           t.justMerged = false;
         }
       }
 
-      function findFarthest(r,c, dr, dc){
-        let prev = {r,c};
-        let cur = {r:r+dr, c:c+dc};
-        while (within(cur.r,cur.c) && !grid[cur.r][cur.c]){
+      function findFarthest(r, c, dr, dc) {
+        let prev = { r, c };
+        let cur = { r: r + dr, c: c + dc };
+        while (within(cur.r, cur.c) && !grid[cur.r][cur.c]) {
           prev = cur;
-          cur = {r:cur.r+dr, c:cur.c+dc};
+          cur = { r: cur.r + dr, c: cur.c + dc };
         }
         return prev;
       }
 
-      function movesAvailable(){
+      function movesAvailable() {
         if (emptyCells().length > 0) return true;
-        for (let r=0;r<GRID_SIZE;r++){
-          for (let c=0;c<GRID_SIZE;c++){
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
             const t = grid[r][c];
             if (!t) continue;
-            if (c+1<GRID_SIZE && grid[r][c+1] && grid[r][c+1].value === t.value) return true;
-            if (r+1<GRID_SIZE && grid[r+1][c] && grid[r+1][c].value === t.value) return true;
+            if (c + 1 < GRID_SIZE && grid[r][c + 1] && grid[r][c + 1].value === t.value) return true;
+            if (r + 1 < GRID_SIZE && grid[r + 1][c] && grid[r + 1][c].value === t.value) return true;
           }
         }
         return false;
       }
 
-      function move(dir){
+      function move(dir) {
         if (locked) return;
         const vector = dirToVector(dir);
         if (!vector) return;
@@ -493,17 +543,17 @@
         const removals = [];
         let gained = 0;
 
-        for (const r of traversals.rows){
-          for (const c of traversals.cols){
+        for (const r of traversals.rows) {
+          for (const c of traversals.cols) {
             const tile = grid[r][c];
             if (!tile) continue;
 
-            const farthest = findFarthest(r,c, vector.dr, vector.dc);
+            const farthest = findFarthest(r, c, vector.dr, vector.dc);
             const next = { r: farthest.r + vector.dr, c: farthest.c + vector.dc };
 
-            if (within(next.r,next.c) && grid[next.r][next.c] && grid[next.r][next.c].value === tile.value && !grid[next.r][next.c].merged){
+            if (within(next.r, next.c) && grid[next.r][next.c] && grid[next.r][next.c].value === tile.value && !grid[next.r][next.c].merged) {
               const target = grid[next.r][next.c];
-              
+
               grid[r][c] = null;
               tile.row = next.r;
               tile.col = next.c;
@@ -539,7 +589,7 @@
         render();
 
         setTimeout(() => {
-          for (const t of removals){
+          for (const t of removals) {
             tilesById.delete(t.id);
           }
 
@@ -556,17 +606,17 @@
         }, MOVE_MS + 20);
       }
 
-      function dirToVector(dir){
-        switch(dir){
-          case "left": return {dr:0, dc:-1};
-          case "right": return {dr:0, dc:1};
-          case "up": return {dr:-1, dc:0};
-          case "down": return {dr:1, dc:0};
+      function dirToVector(dir) {
+        switch (dir) {
+          case "left": return { dr: 0, dc: -1 };
+          case "right": return { dr: 0, dc: 1 };
+          case "up": return { dr: -1, dc: 0 };
+          case "down": return { dr: 1, dc: 0 };
           default: return null;
         }
       }
 
-      function buildTraversals(dr, dc){
+      function buildTraversals(dr, dc) {
         const rows = [...Array(GRID_SIZE).keys()];
         const cols = [...Array(GRID_SIZE).keys()];
         if (dr === 1) rows.reverse();
@@ -575,25 +625,25 @@
       }
 
       // ====== Render ======
-      function tileStyle(value){
+      function tileStyle(value) {
         const map = {
-          2:  {bg:"#eee4da", fg:"#776e65"},
-          4:  {bg:"#ede0c8", fg:"#776e65"},
-          8:  {bg:"#f2b179", fg:"#f9f6f2"},
-          16: {bg:"#f59563", fg:"#f9f6f2"},
-          32: {bg:"#f67c5f", fg:"#f9f6f2"},
-          64: {bg:"#f65e3b", fg:"#f9f6f2"},
-          128:{bg:"#edcf72", fg:"#f9f6f2"},
-          256:{bg:"#edcc61", fg:"#f9f6f2"},
-          512:{bg:"#edc850", fg:"#f9f6f2"},
-          1024:{bg:"#edc53f", fg:"#f9f6f2"},
-          2048:{bg:"#edc22e", fg:"#f9f6f2"},
+          2: { bg: "#eee4da", fg: "#776e65" },
+          4: { bg: "#ede0c8", fg: "#776e65" },
+          8: { bg: "#f2b179", fg: "#f9f6f2" },
+          16: { bg: "#f59563", fg: "#f9f6f2" },
+          32: { bg: "#f67c5f", fg: "#f9f6f2" },
+          64: { bg: "#f65e3b", fg: "#f9f6f2" },
+          128: { bg: "#edcf72", fg: "#f9f6f2" },
+          256: { bg: "#edcc61", fg: "#f9f6f2" },
+          512: { bg: "#edc850", fg: "#f9f6f2" },
+          1024: { bg: "#edc53f", fg: "#f9f6f2" },
+          2048: { bg: "#edc22e", fg: "#f9f6f2" },
         };
-        const fallback = {bg:"#3c3a32", fg:"#f9f6f2"};
+        const fallback = { bg: "#3c3a32", fg: "#f9f6f2" };
         return map[value] || fallback;
       }
 
-      function fontSizeFor(value){
+      function fontSizeFor(value) {
         const digits = String(value).length;
         if (digits <= 2) return 34;
         if (digits === 3) return 30;
@@ -601,10 +651,10 @@
         return 20;
       }
 
-      function render(){
+      function render() {
         const nextDom = new Map();
 
-        for (const tile of tilesById.values()){
+        for (const tile of tilesById.values()) {
           let outer = domById.get(tile.id);
           let inner;
 
@@ -637,50 +687,70 @@
           outer.style.zIndex = tile.toRemove ? "5" : "10";
           if (tile.justMerged) outer.style.zIndex = "20";
 
-          const {x,y} = cellToPx(tile.row, tile.col);
+          const { x, y } = cellToPx(tile.row, tile.col);
           outer.style.transform = `translate(${x}px, ${y}px)`;
 
           nextDom.set(tile.id, outer);
         }
 
-        for (const [id, el] of domById.entries()){
+        for (const [id, el] of domById.entries()) {
           if (!nextDom.has(id)) el.remove();
         }
         domById = nextDom;
       }
 
-      function cellToPx(row, col){
+      function cellToPx(row, col) {
         const root = getComputedStyle(document.documentElement);
         const tile = parseFloat(root.getPropertyValue("--tile"));
-        const gap  = parseFloat(root.getPropertyValue("--gap"));
+        const gap = parseFloat(root.getPropertyValue("--gap"));
         const x = col * (tile + gap);
         const y = row * (tile + gap);
-        return {x,y};
+        return { x, y };
       }
 
       // ====== Overlay ======
-      function showGameOver(){
+      // ====== LUMUS TOKEN SYSTEM ======
+      function sendGameEnd(finalScore) {
+        // Parent window'a (Lumus ana uygulamasına) oyun sonucu gönder
+        // Token hesaplama: 1000 skor = 1 token
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'LUMUS_GAME_END',
+            data: { score: finalScore }
+          }, '*');
+          console.log('🎮 LUMUS: Game ended with score:', finalScore);
+        }
+      }
+
+      function showGameOver() {
         elOverlayTitle.textContent = "Game Over";
-        elOverlayText.textContent  = "No more moves!";
+        elOverlayText.textContent = "No more moves!";
         elContinueBtn.style.display = "none";
         elOverlay.classList.add("show");
+
+        // 💰 Lumus Token: Oyun bittiğinde skoru gönder
+        sendGameEnd(score);
       }
 
-      function showWinOverlay(){
+      function showWinOverlay() {
         elOverlayTitle.textContent = "You Win!";
-        elOverlayText.textContent  = "You reached 2048! Keep going if you want.";
+        elOverlayText.textContent = "You reached 2048! Keep going if you want.";
         elContinueBtn.style.display = "inline-block";
         elOverlay.classList.add("show");
+
+        // 💰 Lumus Token: Kazanma durumunda da skoru gönder
+        // (Kullanıcı "Keep Going" derse tekrar gönderilmez - overlay kontrol eder)
+        sendGameEnd(score);
       }
 
-      function hideOverlay(){
+      function hideOverlay() {
         elOverlay.classList.remove("show");
       }
 
-      function onKeyDown(e){
+      function onKeyDown(e) {
         if (locked) return;
         const key = e.key.toLowerCase();
-        if (["arrowleft","arrowright","arrowup","arrowdown","a","d","w","s"].includes(key)) {
+        if (["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s"].includes(key)) {
           e.preventDefault();
         }
 
@@ -695,16 +765,16 @@
       let touchStartY = 0;
       let hasSwiped = false; // Bu flag, tek parmak hareketiyle birden fazla hamle yapılmasını engeller
 
-      function onTouchStart(e){
+      function onTouchStart(e) {
         if (locked) return;
-        if (e.touches.length > 1) return; 
-        
+        if (e.touches.length > 1) return;
+
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         hasSwiped = false; // Yeni dokunuş, yeni şans
       }
 
-      function onTouchMove(e){
+      function onTouchMove(e) {
         // Browser'ın native scroll/refresh hareketlerini engelle
         if (e.cancelable) e.preventDefault();
 
@@ -713,7 +783,7 @@
 
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
-        
+
         const dx = currentX - touchStartX;
         const dy = currentY - touchStartY;
         const absDx = Math.abs(dx);
@@ -722,7 +792,7 @@
         // HASSASİYET EŞİĞİ (Threshold)
         // Çok düşük olursa parmak titremesinde bile hamle yapar.
         // 40px ideal bir dengedir.
-        const THRESHOLD = 40; 
+        const THRESHOLD = 40;
 
         if (Math.max(absDx, absDy) > THRESHOLD) {
           // Eşik aşıldı, hamleyi tetikle
@@ -731,21 +801,21 @@
           } else {
             move(dy > 0 ? "down" : "up");
           }
-          
+
           // CRITICAL: Bu hareket için hakkını kullandı. 
           // Artık parmağını kaldırana kadar (TouchEnd) yeni hamle yapamaz.
           hasSwiped = true;
         }
       }
 
-      function onTouchEnd(e){
+      function onTouchEnd(e) {
         // Temizliğe gerek yok, hasSwiped bir sonraki touchStart'ta sıfırlanıyor.
       }
 
-      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+      function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
-      function wireEvents(){
-        window.addEventListener("keydown", onKeyDown, {passive:false});
+      function wireEvents() {
+        window.addEventListener("keydown", onKeyDown, { passive: false });
         elNew.addEventListener("click", resetGame);
         elRestartBtn.addEventListener("click", resetGame);
         elContinueBtn.addEventListener("click", () => {
@@ -754,9 +824,9 @@
         });
 
         // Touch eventleri
-        document.addEventListener("touchstart", onTouchStart, {passive:false});
-        document.addEventListener("touchmove", onTouchMove, {passive:false}); // passive:false önemli (preventDefault için)
-        document.addEventListener("touchend", onTouchEnd, {passive:false});
+        document.addEventListener("touchstart", onTouchStart, { passive: false });
+        document.addEventListener("touchmove", onTouchMove, { passive: false }); // passive:false önemli (preventDefault için)
+        document.addEventListener("touchend", onTouchEnd, { passive: false });
 
         window.addEventListener("resize", () => {
           updateSizing();
@@ -772,4 +842,5 @@
     })();
   </script>
 </body>
+
 </html>

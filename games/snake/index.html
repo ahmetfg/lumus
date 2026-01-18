@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,36 +9,63 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    
+
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #0f0c29;
+            background-color: #0a0818;
+            /* Daha koyu bir arka plan */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             /* Yükseklik her zaman ekran boyu */
-            height: 100dvh; 
+            height: 100dvh;
             width: 100vw;
             color: white;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; 
+            touch-action: none;
         }
+
+        /* Desktop Container - Oyunu ortada sınırlı genişlikte göster */
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            background-color: #0f0c29;
+            /* Desktop'ta estetik köşeler ve gölge */
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        @media (min-width: 601px) {
+            #game-wrapper {
+                height: calc(100dvh - 40px);
+                max-height: 100%;
+                border-radius: 24px;
+                box-shadow:
+                    0 0 0 1px rgba(76, 209, 55, 0.15),
+                    0 25px 80px rgba(0, 0, 0, 0.6),
+                    0 0 60px rgba(76, 209, 55, 0.1);
+            }
+        }
+
         canvas {
             border: none;
             background-color: transparent;
             outline: none;
-            /* Canvas'ı CSS ile ekrana geriyoruz */
+            /* Canvas'ı CSS ile container'a sığdır */
             display: block;
-            width: 100vw;
-            height: 100dvh;
+            width: 100%;
+            height: 100%;
         }
+
         #ui-layer {
             position: absolute;
-            top: 5%; 
+            top: 5%;
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
@@ -45,6 +73,7 @@
             z-index: 5;
             width: 100%;
         }
+
         h1 {
             margin: 0;
             font-size: 24px;
@@ -52,18 +81,19 @@
             text-transform: uppercase;
             letter-spacing: 2px;
         }
+
         #score-board {
             font-family: 'Orbitron', sans-serif;
-            font-size: 64px; 
+            font-size: 64px;
             font-weight: 900;
             color: #fff;
-            text-shadow: 
+            text-shadow:
                 0 0 10px rgba(76, 209, 55, 0.6),
                 0 0 20px rgba(76, 209, 55, 0.3),
                 3px 3px 0px #302b63;
             letter-spacing: 4px;
         }
-        
+
         /* Ekran Stilleri */
         .screen-overlay {
             position: absolute;
@@ -74,7 +104,7 @@
             padding: 40px;
             border-radius: 20px;
             text-align: center;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -118,15 +148,16 @@
             transition: all 0.2s;
             text-transform: uppercase;
             letter-spacing: 2px;
-            min-height: 50px; 
+            min-height: 50px;
             touch-action: manipulation;
         }
-        
+
         /* Yeşil Buton (Free Fall) */
         .btn-green {
             background: linear-gradient(135deg, #4cd137, #2ecc71);
             box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
         }
+
         .btn-green:hover {
             transform: scale(1.05) translateY(-2px);
             box-shadow: 0 8px 20px rgba(46, 204, 113, 0.6);
@@ -138,6 +169,7 @@
             color: white;
             box-shadow: 0 5px 15px rgba(238, 82, 83, 0.4);
         }
+
         .btn-red:hover {
             transform: scale(1.05) translateY(-2px);
             box-shadow: 0 8px 20px rgba(238, 82, 83, 0.6);
@@ -146,7 +178,7 @@
         button:active {
             transform: scale(0.95);
         }
-        
+
         p {
             color: #ccc;
             margin: 0 auto;
@@ -154,6 +186,7 @@
             font-size: 14px;
             font-family: 'Segoe UI', sans-serif;
         }
+
         h2 {
             font-family: 'Orbitron', sans-serif;
             letter-spacing: 4px;
@@ -162,38 +195,41 @@
         }
     </style>
 </head>
+
 <body>
 
-    <div id="ui-layer">
-        <div id="score-board">0</div>
-    </div>
-
-    <!-- START SCREEN -->
-    <div id="start-screen" class="screen-overlay">
-        <h2 style="color: #4cd137; font-size: 42px;">JOMP</h2>
-        <p>Choose your mode:</p>
-        
-        <div class="btn-group">
-            <button class="btn-green" onclick="startGame('FREE_FALL')">FREE FALL MODE</button>
-            <button class="btn-red" onclick="startGame('CLASSIC')">CLASSIC MODE</button>
+    <div id="game-wrapper">
+        <div id="ui-layer">
+            <div id="score-board">0</div>
         </div>
-        
-        <p style="font-size: 12px; opacity: 0.7; margin-top:5px;">
-            Free Fall: No death, relax.<br>
-            Classic: Don't fall off screen!
-        </p>
-    </div>
 
-    <!-- GAME OVER SCREEN -->
-    <div id="game-over-screen" class="screen-overlay hidden">
-        <h2 style="color: #ff4757; font-size: 36px;">GAME OVER</h2>
-        <p id="final-score" style="font-size: 24px; color: white; font-family: 'Orbitron', sans-serif;">Score: 0</p>
-        <div class="btn-group">
-            <button class="btn-red" onclick="returnToMenu()">TRY AGAIN</button>
+        <!-- START SCREEN -->
+        <div id="start-screen" class="screen-overlay">
+            <h2 style="color: #4cd137; font-size: 42px;">JOMP</h2>
+            <p>Choose your mode:</p>
+
+            <div class="btn-group">
+                <button class="btn-green" onclick="startGame('FREE_FALL')">FREE FALL MODE</button>
+                <button class="btn-red" onclick="startGame('CLASSIC')">CLASSIC MODE</button>
+            </div>
+
+            <p style="font-size: 12px; opacity: 0.7; margin-top:5px;">
+                Free Fall: No death, relax.<br>
+                Classic: Don't fall off screen!
+            </p>
         </div>
-    </div>
 
-    <canvas id="gameCanvas" tabindex="1"></canvas>
+        <!-- GAME OVER SCREEN -->
+        <div id="game-over-screen" class="screen-overlay hidden">
+            <h2 style="color: #ff4757; font-size: 36px;">GAME OVER</h2>
+            <p id="final-score" style="font-size: 24px; color: white; font-family: 'Orbitron', sans-serif;">Score: 0</p>
+            <div class="btn-group">
+                <button class="btn-red" onclick="returnToMenu()">TRY AGAIN</button>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" tabindex="1"></canvas>
+    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -204,19 +240,19 @@
         const finalScoreEl = document.getElementById('final-score');
 
         // --- Game Constants ---
-        const CANVAS_WIDTH = 480; 
-        
+        const CANVAS_WIDTH = 480;
+
         let CANVAS_HEIGHT = 800; // Başlangıç değeri
         let FLOOR_LEVEL = CANVAS_HEIGHT - 100;
-        
+
         // Physics & Gameplay
         const GRAVITY = 0.6;
         const JUMP_FORCE = -14;
         const PLAYER_SIZE = 20;
         const PLATFORM_HEIGHT = 18;
-        const BASE_PLATFORM_WIDTH = 120; 
-        const PLATFORM_GAP_Y = 140; 
-        
+        const BASE_PLATFORM_WIDTH = 120;
+        const PLATFORM_GAP_Y = 140;
+
         // --- Game State ---
         let gameState = 'MENU'; // MENU, PLAYING, GAME_OVER
         let gameMode = 'FREE_FALL'; // 'FREE_FALL' or 'CLASSIC'
@@ -224,11 +260,11 @@
         let platforms = [];
         let particles = [];
         let bgStars = [];
-        let cameraY = 0; 
-        
+        let cameraY = 0;
+
         // --- Player Object ---
         const player = {
-            x: CANVAS_WIDTH / 2 - PLAYER_SIZE / 2, 
+            x: CANVAS_WIDTH / 2 - PLAYER_SIZE / 2,
             y: 0,
             vy: 0,
             width: PLAYER_SIZE,
@@ -240,9 +276,10 @@
 
         // --- Resize Logic ---
         function resize() {
-            const windowW = window.innerWidth || 1; 
-            const windowH = window.innerHeight || 1;
-            const ratio = windowH / windowW;
+            const wrapper = document.getElementById('game-wrapper');
+            const wrapperW = wrapper.clientWidth || 1;
+            const wrapperH = wrapper.clientHeight || 1;
+            const ratio = wrapperH / wrapperW;
 
             CANVAS_HEIGHT = CANVAS_WIDTH * ratio;
 
@@ -253,17 +290,17 @@
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
 
-            canvas.style.width = '100vw';
-            canvas.style.height = '100dvh';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
 
             FLOOR_LEVEL = CANVAS_HEIGHT - 100;
 
             if (gameState === 'MENU' && platforms.length > 0) {
-                 platforms[0].y = FLOOR_LEVEL;
-                 player.y = platforms[0].y - player.height;
+                platforms[0].y = FLOOR_LEVEL;
+                player.y = platforms[0].y - player.height;
             }
         }
-        
+
         window.addEventListener('resize', resize);
         resize();
 
@@ -274,9 +311,9 @@
         class BgStar {
             constructor() {
                 this.x = Math.random() * CANVAS_WIDTH;
-                this.y = Math.random() * CANVAS_HEIGHT * 2; 
+                this.y = Math.random() * CANVAS_HEIGHT * 2;
                 this.size = Math.random() * 2 + 0.5;
-                this.speed = Math.random() * 0.2 + 0.05; 
+                this.speed = Math.random() * 0.2 + 0.05;
                 this.alpha = Math.random() * 0.5 + 0.1;
             }
 
@@ -312,7 +349,7 @@
 
                     if (isMoving) {
                         this.x = Math.random() * (CANVAS_WIDTH - this.width);
-                        let speedBase = 2 + (Math.abs(y) * 0.0005); 
+                        let speedBase = 2 + (Math.abs(y) * 0.0005);
                         this.speed = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * speedBase + 1);
                     } else {
                         this.x = CANVAS_WIDTH / 2 - this.width / 2;
@@ -343,10 +380,10 @@
                     } else {
                         ctx.fillStyle = this.color;
                         ctx.fillRect(this.x, drawY, this.width, this.height);
-                        
+
                         ctx.fillStyle = 'rgba(255,255,255, 0.2)';
                         ctx.fillRect(this.x, drawY, this.width, this.height / 2);
-                        
+
                         ctx.fillStyle = 'rgba(0,0,0, 0.3)';
                         ctx.fillRect(this.x, drawY + this.height - 4, this.width, 4);
                     }
@@ -389,27 +426,27 @@
         function initBackground() {
             bgStars = [];
             let starCount = Math.floor(CANVAS_HEIGHT / 15);
-            for(let i=0; i<starCount; i++) {
+            for (let i = 0; i < starCount; i++) {
                 bgStars.push(new BgStar());
             }
         }
 
         function startGame(mode) {
-            resize(); 
+            resize();
 
             gameState = 'PLAYING';
             gameMode = mode; // Seçilen mod
             score = 0;
             cameraY = 0;
             scoreEl.innerText = score;
-            
+
             platforms = [];
             particles = [];
-            
+
             // Ekranları gizle
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
-            
+
             initBackground();
 
             window.focus();
@@ -418,10 +455,10 @@
             // Zemin
             let basePlat = new Platform(FLOOR_LEVEL, false);
             platforms.push(basePlat);
-            
+
             // Başlangıç Platformları
             for (let i = 1; i < 6; i++) {
-                platforms.push(new Platform(FLOOR_LEVEL - (i * PLATFORM_GAP_Y), true)); 
+                platforms.push(new Platform(FLOOR_LEVEL - (i * PLATFORM_GAP_Y), true));
             }
 
             // Oyuncu Reset
@@ -430,21 +467,37 @@
             player.vy = 0;
             player.isGrounded = true;
             player.currentPlatform = basePlat;
-            
+
             gameLoop();
+        }
+
+        // ====== LUMUS TOKEN SYSTEM ======
+        function sendGameEnd(finalScore) {
+            // Parent window'a (Lumus ana uygulamasına) oyun sonucu gönder
+            // Token hesaplama: 1000 skor = 1 token
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'LUMUS_GAME_END',
+                    data: { score: finalScore }
+                }, '*');
+                console.log('🎮 LUMUS: Game ended with score:', finalScore);
+            }
         }
 
         function triggerGameOver() {
             gameState = 'GAME_OVER';
             finalScoreEl.innerText = `SCORE: ${score}`;
             gameOverScreen.classList.remove('hidden');
+
+            // 💰 Lumus Token: Oyun bittiğinde skoru gönder
+            sendGameEnd(score);
         }
 
         function returnToMenu() {
             gameState = 'MENU';
             gameOverScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
-            
+
             // Arka planda boş bir sahne olsun
             platforms = [];
             platforms.push(new Platform(FLOOR_LEVEL, false));
@@ -464,14 +517,14 @@
                 player.vy = JUMP_FORCE;
                 player.isGrounded = false;
                 player.currentPlatform = null;
-                createExplosion(player.x + player.width/2, player.y + player.height, '#fff');
+                createExplosion(player.x + player.width / 2, player.y + player.height, '#fff');
             }
         }
 
         document.addEventListener('keydown', handleInput);
-        document.addEventListener('touchstart', handleInput, {passive: false});
+        document.addEventListener('touchstart', handleInput, { passive: false });
         document.addEventListener('mousedown', handleInput);
-        
+
         canvas.addEventListener('click', () => {
             window.focus();
             if (canvas.focus) canvas.focus();
@@ -485,28 +538,28 @@
             player.y += player.vy;
 
             // --- Floor & Death Logic ---
-            
+
             // Zemin Çarpışması
             // FREE_FALL: Zemin her zaman katıdır.
             // CLASSIC: Zemin katıdır, AMA kamera yukarı çıktıysa zemin aşağıda (ekran dışı) kalır.
             // Bu durumda oyuncu "off-screen" kontrolüne takılır ve ölür.
             if (player.y + player.height > FLOOR_LEVEL) {
-                 if (gameMode === 'FREE_FALL') {
-                     // Eski mantık: Zemine bas ve dur
-                     player.y = FLOOR_LEVEL - player.height;
-                     player.vy = 0;
-                     player.isGrounded = true;
-                     player.currentPlatform = platforms[0];
-                 } else {
-                     // CLASSIC Modu:
-                     // Eğer zemin ekranın içindeyse (oyun başı), tutunabilirsin.
-                     // Eğer zemin ekranın dışındaysa, buradaki kod çalışsa bile
-                     // birazdan yapılacak "Game Over Check" oyuncuyu öldürecektir.
-                     player.y = FLOOR_LEVEL - player.height;
-                     player.vy = 0;
-                     player.isGrounded = true;
-                     player.currentPlatform = platforms[0];
-                 }
+                if (gameMode === 'FREE_FALL') {
+                    // Eski mantık: Zemine bas ve dur
+                    player.y = FLOOR_LEVEL - player.height;
+                    player.vy = 0;
+                    player.isGrounded = true;
+                    player.currentPlatform = platforms[0];
+                } else {
+                    // CLASSIC Modu:
+                    // Eğer zemin ekranın içindeyse (oyun başı), tutunabilirsin.
+                    // Eğer zemin ekranın dışındaysa, buradaki kod çalışsa bile
+                    // birazdan yapılacak "Game Over Check" oyuncuyu öldürecektir.
+                    player.y = FLOOR_LEVEL - player.height;
+                    player.vy = 0;
+                    player.isGrounded = true;
+                    player.currentPlatform = platforms[0];
+                }
             }
 
             // --- Game Over Check (Sadece CLASSIC için) ---
@@ -523,7 +576,7 @@
             if (player.isGrounded && player.currentPlatform) {
                 let p = player.currentPlatform;
                 player.x += p.speed;
-                
+
                 if (player.x < 0) player.x = 0;
                 if (player.x + player.width > CANVAS_WIDTH) player.x = CANVAS_WIDTH - player.width;
 
@@ -547,7 +600,7 @@
                             player.vy = 0;
                             player.isGrounded = true;
                             player.currentPlatform = p;
-                            createExplosion(player.x + player.width/2, player.y + player.height, p.color);
+                            createExplosion(player.x + player.width / 2, player.y + player.height, p.color);
                             break;
                         }
                     }
@@ -558,9 +611,9 @@
             // Move Up (Her iki modda da çalışır)
             let targetUp = player.y - CANVAS_HEIGHT * 0.4;
             if (targetUp < cameraY) {
-                cameraY += (targetUp - cameraY) * 0.1; 
+                cameraY += (targetUp - cameraY) * 0.1;
             }
-            
+
             // Move Down (SADECE FREE FALL MODUNDA)
             if (gameMode === 'FREE_FALL') {
                 let targetDown = player.y - CANVAS_HEIGHT * 0.7;
@@ -572,19 +625,19 @@
             if (cameraY > 0) cameraY = 0;
 
             let currentHeightScore = Math.floor(Math.abs(cameraY / 10));
-            score = currentHeightScore; 
+            score = currentHeightScore;
             scoreEl.innerText = score;
 
             // Platform Generation
             let highestY = Infinity;
-            platforms.forEach(p => { if(p.y < highestY) highestY = p.y; });
-            
+            platforms.forEach(p => { if (p.y < highestY) highestY = p.y; });
+
             if (highestY > cameraY - 200) {
-                platforms.push(new Platform(highestY - PLATFORM_GAP_Y, true)); 
+                platforms.push(new Platform(highestY - PLATFORM_GAP_Y, true));
             }
 
             platforms.forEach(p => p.update());
-            
+
             particles.forEach((p, index) => {
                 p.update();
                 if (p.alpha <= 0) particles.splice(index, 1);
@@ -594,10 +647,10 @@
         function draw() {
             let safeHeight = Number.isFinite(CANVAS_HEIGHT) ? CANVAS_HEIGHT : 800;
             let gradient = ctx.createLinearGradient(0, 0, 0, safeHeight);
-            
-            gradient.addColorStop(0, '#0f0c29');   
-            gradient.addColorStop(0.5, '#302b63'); 
-            gradient.addColorStop(1, '#24243e');   
+
+            gradient.addColorStop(0, '#0f0c29');
+            gradient.addColorStop(0.5, '#302b63');
+            gradient.addColorStop(1, '#24243e');
 
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -628,19 +681,19 @@
             ctx.fillStyle = player.color;
             ctx.shadowBlur = 15;
             ctx.shadowColor = player.color;
-            
+
             let stretch = Math.abs(player.vy) * 0.5;
             if (!player.isGrounded) {
-                ctx.fillRect(player.x + stretch/2, player.y - cameraY, player.width - stretch, player.height + stretch);
+                ctx.fillRect(player.x + stretch / 2, player.y - cameraY, player.width - stretch, player.height + stretch);
             } else {
                 ctx.fillRect(player.x, player.y - cameraY, player.width, player.height);
             }
             ctx.shadowBlur = 0;
-            
+
             ctx.fillStyle = 'black';
             if (!player.isGrounded) {
-                ctx.fillRect(player.x + 5 + stretch/2, player.y - cameraY + 5, 4, 4);
-                ctx.fillRect(player.x + 12 - stretch/2, player.y - cameraY + 5, 4, 4);
+                ctx.fillRect(player.x + 5 + stretch / 2, player.y - cameraY + 5, 4, 4);
+                ctx.fillRect(player.x + 12 - stretch / 2, player.y - cameraY + 5, 4, 4);
             } else {
                 ctx.fillRect(player.x + 5, player.y - cameraY + 5, 4, 4);
                 ctx.fillRect(player.x + 12, player.y - cameraY + 5, 4, 4);
@@ -656,15 +709,16 @@
         }
 
         resize();
-        
+
         // Zemin Platformunu Ekle
         platforms.push(new Platform(FLOOR_LEVEL, false));
         player.y = FLOOR_LEVEL - player.height;
         player.currentPlatform = platforms[0];
-        
+
         initBackground();
-        draw(); 
+        draw();
 
     </script>
 </body>
+
 </html>

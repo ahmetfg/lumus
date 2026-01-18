@@ -1,20 +1,4 @@
 {
-  "version": "2026-01-18T17:08:21.274Z",
-  "updates": [
-    {
-      "gameId": "caosDrift",
-      "notes": [
-        "Boss system updated",
-        "New power-ups added"
-      ],
-      "date": "2026-01-18"
-    },
-    {
-      "gameId": "Survivors",
-      "notes": [
-        "minor bug fixes"
-      ],
-      "date": "2026-01-18"
-    }
-  ]
+  "version": "2026-01-18T18:12:52.280Z",
+  "updates": []
 }

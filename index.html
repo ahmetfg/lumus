@@ -55,7 +55,45 @@
 </head>
 
 <body>
+  <!-- SEO Content - Hidden when JS loads -->
+  <div id="seo-content" style="padding: 20px; font-family: sans-serif;">
+    <header>
+      <h1>Lumus Games - Play Free Browser Games & Earn Tokens</h1>
+      <p>Welcome to Lumus Games! Play amazing browser games and earn tokens. Join our premium gaming platform for the best casual and arcade gaming experience.</p>
+    </header>
+    
+    <nav aria-label="Game Navigation">
+      <h2>Our Games</h2>
+      <ul>
+        <li><a href="/?id=jomp">JOMP - Arcade Bounce Game</a></li>
+        <li><a href="/?id=2048">2048 - Puzzle Game</a></li>
+        <li><a href="/?id=Pacman">Pacman - Classic Arcade</a></li>
+        <li><a href="/?id=Survivors">Pixle Knight Quest - Roguelike Action</a></li>
+        <li><a href="/?id=caosDrift">Caos Drift - Car Racing</a></li>
+        <li><a href="/?id=prokick">Prokick - Football Game</a></li>
+        <li><a href="/?id=Fruits">Fruits - Arcade Game</a></li>
+        <li><a href="/?id=Lost_in_Space">Lost in Space - Space Adventure</a></li>
+        <li><a href="/?id=Market">Market Simulator - Business Game</a></li>
+      </ul>
+    </nav>
+
+    <section>
+      <h2>Why Play on Lumus Games?</h2>
+      <ul>
+        <li>Free to play browser games - no download required</li>
+        <li>Earn tokens while playing your favorite games</li>
+        <li>Track your high scores and compete on leaderboards</li>
+        <li>Save your progress with Google account</li>
+      </ul>
+    </section>
+  </div>
+
   <div id="app"></div>
+  
+  <script>
+    // Hide SEO content when app loads
+    document.getElementById('seo-content').style.display = 'none';
+  </script>
 </body>
 
 </html>

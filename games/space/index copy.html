@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NMS Universe - High Fidelity Planet</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: #00ffaa;
+            pointer-events: none; background: rgba(0,20,10,0.8); padding: 15px; 
+            border: 1px solid #00ffaa; border-radius: 8px; font-family: monospace;
+            box-shadow: 0 0 15px rgba(0,255,170,0.3);
+        }
+        .stat { margin-bottom: 5px; }
+        .stat-label { font-size: 10px; color: #88ffcc; display: block; }
+        .stat-value { font-size: 18px; font-weight: bold; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
+            border: 2px solid rgba(0, 255, 170, 0.4); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none;
+        }
+        #crosshair::before { content: ''; position: absolute; top: 50%; left: 50%; width: 2px; height: 10px; background: #00ffaa; transform: translate(-50%, -50%); }
+        #crosshair::after { content: ''; position: absolute; top: 50%; left: 50%; width: 10px; height: 2px; background: #00ffaa; transform: translate(-50%, -50%); }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="stat"><span class="stat-label">KONUM</span><span class="stat-value" id="loc">SİSTEM TARANIYOR...</span></div>
+    <div class="stat"><span class="stat-label">İRTİFA</span><span class="stat-value" id="alt">0</span></div>
+    <div class="stat"><span class="stat-label">HIZ</span><span class="stat-value" id="speed">0</span></div>
+    <div style="margin-top:10px; font-size:9px; color:#5f5;">W/S: MOTOR | SHIFT: WARP | MOUSE: YÖN</div>
+</div>
+<div id="crosshair"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.js"></script>
+
+<script>
+/**
+ * NO MAN'S SKY RE-ENGINEERED (V4)
+ * - Fixed visibility issues
+ * - Enhanced FBM Noise for realistic terrain
+ * - Dynamic Sky/Fog
+ */
+
+const simplex = new SimplexNoise('planet-seed-99');
+let scene, camera, renderer, clock;
+let shipSpeed = 0;
+const PLANET_RADIUS = 8000; 
+const MAX_LOD = 8;
+
+// Katmanlı Gürültü Fonksiyonu (Daha gerçekçi arazi için)
+function getTerrainHeight(v) {
+    const p = v.clone().normalize();
+    let h = 0;
+    let freq = 1.0;
+    let amp = 400;
+    
+    // 7 Octave FBM
+    for(let i=0; i<7; i++) {
+        const noise = simplex.noise3D(p.x * freq, p.y * freq, p.z * freq);
+        h += noise * amp;
+        freq *= 2.2;
+        amp *= 0.42;
+    }
+
+    // Su seviyesi ve Dağ sivriltme
+    if (h < -20) h = -20 + (h + 20) * 0.1; // Suları biraz daha düz yap
+    if (h > 100) h += Math.pow(h - 100, 1.2) * 0.5; // Dağları sivrilt
+
+    return h;
+}
+
+function getTerrainColor(h, v) {
+    const color = new THREE.Color();
+    // Eğim hesaplama (Basit normal kontrolü)
+    const p = v.clone().normalize();
+    
+    if (h < -15) return color.setHex(0x0a2233); // Derin Deniz
+    if (h < 0) return color.setHex(0x1a4a6e);   // Sığ Deniz
+    if (h < 15) return color.setHex(0xd2b48c);  // Kumsal
+    
+    if (h > 450) return color.setHex(0xffffff); // Kar
+    if (h > 250) return color.setHex(0x555555); // Kaya
+    
+    // Rastgelelik katmak için biraz gürültü
+    const noise = simplex.noise3D(p.x * 50, p.y * 50, p.z * 50);
+    if (noise > 0.3) return color.setHex(0x2d4c1e); // Koyu Orman
+    return color.setHex(0x3e6b2c); // Yeşil Ova
+}
+
+class QuadNode {
+    constructor(parent, center, size, localUp, level) {
+        this.parent = parent;
+        this.center = center;
+        this.size = size;
+        this.localUp = localUp;
+        this.level = level;
+        this.children = [];
+        this.mesh = null;
+        this.isSplit = false;
+        
+        this.axisA = new THREE.Vector3(localUp.y, localUp.z, localUp.x);
+        this.axisB = new THREE.Vector3().crossVectors(localUp, this.axisA);
+    }
+
+    getWorldPos() {
+        return this.center.clone().normalize().multiplyScalar(PLANET_RADIUS).add(this.parent.planetPos);
+    }
+
+    update(camPos) {
+        const dist = camPos.distanceTo(this.getWorldPos());
+        const splitDist = this.size * 3.0;
+        const shouldSplit = dist < splitDist && this.level < MAX_LOD;
+
+        if (shouldSplit && !this.isSplit) this.split(camPos);
+        else if (!shouldSplit && this.isSplit) this.merge(camPos);
+
+        if (this.isSplit) {
+            this.children.forEach(c => c.update(camPos));
+        } else if (!this.mesh) {
+            this.createMesh();
+        }
+    }
+
+    split(camPos) {
+        this.isSplit = true;
+        this.removeMesh();
+        const s = this.size * 0.5;
+        const offsets = [
+            this.axisA.clone().multiplyScalar(-s).add(this.axisB.clone().multiplyScalar(-s)),
+            this.axisA.clone().multiplyScalar(s).add(this.axisB.clone().multiplyScalar(-s)),
+            this.axisA.clone().multiplyScalar(-s).add(this.axisB.clone().multiplyScalar(s)),
+            this.axisA.clone().multiplyScalar(s).add(this.axisB.clone().multiplyScalar(s))
+        ];
+        offsets.forEach(off => {
+            const child = new QuadNode(this.parent, this.center.clone().add(off), s, this.localUp, this.level + 1);
+            this.children.push(child);
+        });
+    }
+
+    merge(camPos) {
+        this.isSplit = false;
+        this.children.forEach(c => c.destroy());
+        this.children = [];
+        this.createMesh();
+    }
+
+    removeMesh() {
+        if (this.mesh) {
+            this.parent.group.remove(this.mesh);
+            this.mesh.geometry.dispose();
+            this.mesh = null;
+        }
+    }
+
+    destroy() {
+        if (this.isSplit) this.children.forEach(c => c.destroy());
+        this.removeMesh();
+    }
+
+    createMesh() {
+        const res = 24; 
+        const geo = new THREE.PlaneGeometry(this.size * 2, this.size * 2, res, res);
+        const posAttr = geo.attributes.position;
+        const colors = [];
+        const v = new THREE.Vector3();
+
+        for (let i = 0; i < posAttr.count; i++) {
+            v.fromBufferAttribute(posAttr, i);
+            let p = this.center.clone()
+                .add(this.axisA.clone().multiplyScalar(v.x))
+                .add(this.axisB.clone().multiplyScalar(v.y));
+            p.normalize();
+            
+            const ix = i % (res + 1);
+            const iy = Math.floor(i / (res + 1));
+            const isEdge = (ix === 0 || ix === res || iy === 0 || iy === res);
+
+            const h = getTerrainHeight(p.clone().multiplyScalar(PLANET_RADIUS));
+            const c = getTerrainColor(h, p);
+            colors.push(c.r, c.g, c.b);
+
+            let finalRadius = PLANET_RADIUS + h;
+            if (isEdge && this.level < MAX_LOD) finalRadius -= 10; // Skirt fix
+            
+            p.multiplyScalar(finalRadius);
+            posAttr.setXYZ(i, p.x, p.y, p.z);
+        }
+
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geo.computeVertexNormals();
+        const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.1 });
+        this.mesh = new THREE.Mesh(geo, mat);
+        this.mesh.frustumCulled = false;
+        this.parent.group.add(this.mesh);
+    }
+}
+
+class Planet {
+    constructor(pos) {
+        this.planetPos = pos;
+        this.group = new THREE.Group();
+        this.group.position.copy(pos);
+        const dirs = [
+            new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0),
+            new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0),
+            new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)
+        ];
+        this.roots = dirs.map(d => new QuadNode(this, d.clone().multiplyScalar(PLANET_RADIUS), PLANET_RADIUS, d, 0));
+        scene.add(this.group);
+    }
+    update(camPos) { this.roots.forEach(r => r.update(camPos)); }
+}
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000208);
+    
+    renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.5, 3000000);
+    camera.position.set(0, 0, 25000);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+    sun.position.set(10000, 10000, 10000);
+    scene.add(sun);
+    scene.add(new THREE.AmbientLight(0x222244, 0.4));
+
+    // Yıldızlar
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = [];
+    for(let i=0; i<40000; i++) starPos.push((Math.random()-0.5)*1000000, (Math.random()-0.5)*1000000, (Math.random()-0.5)*1000000);
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 200, sizeAttenuation: true})));
+
+    const planet = new Planet(new THREE.Vector3(0,0,0));
+
+    clock = new THREE.Clock();
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+    window.addEventListener('mousedown', () => renderer.domElement.requestPointerLock());
+    window.addEventListener('mousemove', e => {
+        if (document.pointerLockElement) {
+            camera.rotation.y -= e.movementX * 0.0012;
+            camera.rotation.x -= e.movementY * 0.0012;
+        }
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+
+        const dist = camera.position.length();
+        const alt = dist - PLANET_RADIUS;
+        
+        // Dinamik Atmosfer ve Sis
+        if (alt < 2000) {
+            const factor = 1 - Math.max(0, alt / 2000);
+            scene.background.lerpColors(new THREE.Color(0x000208), new THREE.Color(0x4488ff), factor);
+            scene.fog = new THREE.FogExp2(scene.background, 0.0005 * factor);
+        } else {
+            scene.background.setHex(0x000208);
+            scene.fog = null;
+        }
+
+        // Hız Kontrolü
+        let targetMaxSpeed = keys['ShiftLeft'] ? 2000 : 150;
+        if (alt < 1500) targetMaxSpeed = Math.min(targetMaxSpeed, 50 + alt * 0.1); 
+
+        if (keys['KeyW']) shipSpeed = Math.min(shipSpeed + 10, targetMaxSpeed);
+        else if (keys['KeyS']) shipSpeed = Math.max(shipSpeed - 10, -50);
+        else shipSpeed *= 0.98;
+
+        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        camera.position.add(dir.multiplyScalar(shipSpeed * dt * 10));
+
+        planet.update(camera.position);
+
+        // UI
+        document.getElementById('alt').innerText = (alt < 0 ? 0 : alt/10).toFixed(1) + " units";
+        document.getElementById('speed').innerText = (shipSpeed).toFixed(0) + " u/s";
+        document.getElementById('loc').innerText = alt > 3000 ? "YÖRÜNGE DIŞI" : (alt < 500 ? "YÜZEY TEMASI" : "STRATOSFER");
+
+        renderer.render(scene, camera);
+    }
+    animate();
+}
+
+window.onload = init;
+</script>
+</body>
+</html>

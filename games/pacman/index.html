@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pacman</title>
+    <style>
+        body {
+            background-color: black;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            /* Flex ile ortala ama boyut zorlama */
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        #pacman {
+            /* Canvas boyutu neyse o olsun */
+            display: block;
+            position: relative; /* Overlay için referans */
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 20;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 40px;
+            color: #FFFF00;
+            margin-bottom: 20px;
+            text-shadow: 4px 4px #000;
+        }
+
+        .msg {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFFFFF;
+            padding: 15px 30px;
+            border: 2px solid #FFD700;
+            background: #222;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .hint {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #bbb;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <!-- Overlay artık pacman div'i içinde değil ama JS ile boyutlar ayarlandığı için sorun yok. 
+             Hatta tam ortalamak için wrapper içinde olması daha iyi. -->
+        <div id="overlay">
+            <div class="title">PACMAN</div>
+            <div id="overlay-msg" class="msg">LOADING...</div>
+            <div id="overlay-hint" class="hint"></div>
+        </div>
+        <div id="pacman"></div>
+    </div>
+
+    <script>
+        // --- GAME CONSTANTS & DATA ---
+        const CONSTANTS = {
+            WALL: 0, BISCUIT: 1, EMPTY: 2, BLOCK: 3, PILL: 4,
+            FPS: 30,
+            // Directions
+            NONE: 4, UP: 3, LEFT: 2, DOWN: 1, RIGHT: 11
+        };
+
+        const MAP_DATA = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+            [0, 4, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 4, 0],
+            [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+            [0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0],
+            [0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
+            [2, 2, 2, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 2, 2, 2],
+            [0, 0, 0, 0, 1, 0, 1, 0, 0, 3, 0, 0, 1, 0, 1, 0, 0, 0, 0],
+            [2, 2, 2, 2, 1, 1, 1, 0, 3, 3, 3, 0, 1, 1, 1, 2, 2, 2, 2],
+            [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
+            [2, 2, 2, 0, 1, 0, 1, 1, 1, 2, 1, 1, 1, 0, 1, 0, 2, 2, 2],
+            [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+            [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
+            [0, 4, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 4, 0],
+            [0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0],
+            [0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ];
+
+        const WALLS_DATA = [
+            [{"move": [0, 9.5]}, {"line": [3, 9.5]}, {"curve": [3.5, 9.5, 3.5, 9]}, {"line": [3.5, 8]}, {"curve": [3.5, 7.5, 3, 7.5]}, {"line": [1, 7.5]}, {"curve": [0.5, 7.5, 0.5, 7]}, {"line": [0.5, 1]}, {"curve": [0.5, 0.5, 1, 0.5]}, {"line": [9, 0.5]}, {"curve": [9.5, 0.5, 9.5, 1]}, {"line": [9.5, 3.5]}],
+            [{"move": [9.5, 1]}, {"curve": [9.5, 0.5, 10, 0.5]}, {"line": [18, 0.5]}, {"curve": [18.5, 0.5, 18.5, 1]}, {"line": [18.5, 7]}, {"curve": [18.5, 7.5, 18, 7.5]}, {"line": [16, 7.5]}, {"curve": [15.5, 7.5, 15.5, 8]}, {"line": [15.5, 9]}, {"curve": [15.5, 9.5, 16, 9.5]}, {"line": [19, 9.5]}],
+            [{"move": [2.5, 5.5]}, {"line": [3.5, 5.5]}],
+            [{"move": [3, 2.5]}, {"curve": [3.5, 2.5, 3.5, 3]}, {"curve": [3.5, 3.5, 3, 3.5]}, {"curve": [2.5, 3.5, 2.5, 3]}, {"curve": [2.5, 2.5, 3, 2.5]}],
+            [{"move": [15.5, 5.5]}, {"line": [16.5, 5.5]}],
+            [{"move": [16, 2.5]}, {"curve": [16.5, 2.5, 16.5, 3]}, {"curve": [16.5, 3.5, 16, 3.5]}, {"curve": [15.5, 3.5, 15.5, 3]}, {"curve": [15.5, 2.5, 16, 2.5]}],
+            [{"move": [6, 2.5]}, {"line": [7, 2.5]}, {"curve": [7.5, 2.5, 7.5, 3]}, {"curve": [7.5, 3.5, 7, 3.5]}, {"line": [6, 3.5]}, {"curve": [5.5, 3.5, 5.5, 3]}, {"curve": [5.5, 2.5, 6, 2.5]}],
+            [{"move": [12, 2.5]}, {"line": [13, 2.5]}, {"curve": [13.5, 2.5, 13.5, 3]}, {"curve": [13.5, 3.5, 13, 3.5]}, {"line": [12, 3.5]}, {"curve": [11.5, 3.5, 11.5, 3]}, {"curve": [11.5, 2.5, 12, 2.5]}],
+            [{"move": [7.5, 5.5]}, {"line": [9, 5.5]}, {"curve": [9.5, 5.5, 9.5, 6]}, {"line": [9.5, 7.5]}],
+            [{"move": [9.5, 6]}, {"curve": [9.5, 5.5, 10.5, 5.5]}, {"line": [11.5, 5.5]}],
+            [{"move": [5.5, 5.5]}, {"line": [5.5, 7]}, {"curve": [5.5, 7.5, 6, 7.5]}, {"line": [7.5, 7.5]}],
+            [{"move": [6, 7.5]}, {"curve": [5.5, 7.5, 5.5, 8]}, {"line": [5.5, 9.5]}],
+            [{"move": [13.5, 5.5]}, {"line": [13.5, 7]}, {"curve": [13.5, 7.5, 13, 7.5]}, {"line": [11.5, 7.5]}],
+            [{"move": [13, 7.5]}, {"curve": [13.5, 7.5, 13.5, 8]}, {"line": [13.5, 9.5]}],
+            [{"move": [0, 11.5]}, {"line": [3, 11.5]}, {"curve": [3.5, 11.5, 3.5, 12]}, {"line": [3.5, 13]}, {"curve": [3.5, 13.5, 3, 13.5]}, {"line": [1, 13.5]}, {"curve": [0.5, 13.5, 0.5, 14]}, {"line": [0.5, 17]}, {"curve": [0.5, 17.5, 1, 17.5]}, {"line": [1.5, 17.5]}],
+            [{"move": [1, 17.5]}, {"curve": [0.5, 17.5, 0.5, 18]}, {"line": [0.5, 21]}, {"curve": [0.5, 21.5, 1, 21.5]}, {"line": [18, 21.5]}, {"curve": [18.5, 21.5, 18.5, 21]}, {"line": [18.5, 18]}, {"curve": [18.5, 17.5, 18, 17.5]}, {"line": [17.5, 17.5]}],
+            [{"move": [18, 17.5]}, {"curve": [18.5, 17.5, 18.5, 17]}, {"line": [18.5, 14]}, {"curve": [18.5, 13.5, 18, 13.5]}, {"line": [16, 13.5]}, {"curve": [15.5, 13.5, 15.5, 13]}, {"line": [15.5, 12]}, {"curve": [15.5, 11.5, 16, 11.5]}, {"line": [19, 11.5]}],
+            [{"move": [5.5, 11.5]}, {"line": [5.5, 13.5]}],
+            [{"move": [13.5, 11.5]}, {"line": [13.5, 13.5]}],
+            [{"move": [2.5, 15.5]}, {"line": [3, 15.5]}, {"curve": [3.5, 15.5, 3.5, 16]}, {"line": [3.5, 17.5]}],
+            [{"move": [16.5, 15.5]}, {"line": [16, 15.5]}, {"curve": [15.5, 15.5, 15.5, 16]}, {"line": [15.5, 17.5]}],
+            [{"move": [5.5, 15.5]}, {"line": [7.5, 15.5]}],
+            [{"move": [11.5, 15.5]}, {"line": [13.5, 15.5]}],
+            [{"move": [2.5, 19.5]}, {"line": [5, 19.5]}, {"curve": [5.5, 19.5, 5.5, 19]}, {"line": [5.5, 17.5]}],
+            [{"move": [5.5, 19]}, {"curve": [5.5, 19.5, 6, 19.5]}, {"line": [7.5, 19.5]}],
+            [{"move": [11.5, 19.5]}, {"line": [13, 19.5]}, {"curve": [13.5, 19.5, 13.5, 19]}, {"line": [13.5, 17.5]}],
+            [{"move": [13.5, 19]}, {"curve": [13.5, 19.5, 14, 19.5]}, {"line": [16.5, 19.5]}],
+            [{"move": [7.5, 13.5]}, {"line": [9, 13.5]}, {"curve": [9.5, 13.5, 9.5, 14]}, {"line": [9.5, 15.5]}],
+            [{"move": [9.5, 14]}, {"curve": [9.5, 13.5, 10, 13.5]}, {"line": [11.5, 13.5]}],
+            [{"move": [7.5, 17.5]}, {"line": [9, 17.5]}, {"curve": [9.5, 17.5, 9.5, 18]}, {"line": [9.5, 19.5]}],
+            [{"move": [9.5, 18]}, {"curve": [9.5, 17.5, 10, 17.5]}, {"line": [11.5, 17.5]}],
+            [{"move": [8.5, 9.5]}, {"line": [8, 9.5]}, {"curve": [7.5, 9.5, 7.5, 10]}, {"line": [7.5, 11]}, {"curve": [7.5, 11.5, 8, 11.5]}, {"line": [11, 11.5]}, {"curve": [11.5, 11.5, 11.5, 11]}, {"line": [11.5, 10]}, {"curve": [11.5, 9.5, 11, 9.5]}, {"line": [10.5, 9.5]}]
+        ];
+
+        // --- GAME LOGIC ---
+
+        const PACMAN = (function () {
+            // Internal States
+            const STATES = {
+                WAITING: 0,
+                PLAYING: 1,
+                DYING: 2,
+                GAME_OVER: 3
+            };
+
+            let currentState = STATES.WAITING;
+            let tick = 0;
+            let timerStart = 0;
+            let ctx = null;
+            let ghosts = [];
+            let ghostSpecs = ["#00FFDE", "#FF0000", "#FFB8DE", "#FFB847"];
+            let map = null;
+            let user = null;
+            let eatenCount = 0;
+            let level = 1;
+            let canvas = null;
+
+            // DOM Elements
+            const overlay = document.getElementById('overlay');
+            const overlayMsg = document.getElementById('overlay-msg');
+            const overlayHint = document.getElementById('overlay-hint');
+
+            function getTick() { return tick; }
+
+            // --- Utils ---
+            function cloneObject(obj) { return JSON.parse(JSON.stringify(obj)); }
+            
+            // --- Classes ---
+
+            // Ghost Class
+            function Ghost(game, map, colour) {
+                var position = null, direction = null, eatable = null, eaten = null, due = null;
+
+                function getNewCoord(dir, current) { 
+                    var speed  = isVunerable() ? 1 : isHidden() ? 4 : 2,
+                        xSpeed = (dir === CONSTANTS.LEFT && -speed || dir === CONSTANTS.RIGHT && speed || 0),
+                        ySpeed = (dir === CONSTANTS.DOWN && speed || dir === CONSTANTS.UP && -speed || 0);
+                    return { "x": addBounded(current.x, xSpeed), "y": addBounded(current.y, ySpeed) };
+                }
+
+                function addBounded(x1, x2) { 
+                    var rem = x1 % 10, result = rem + x2;
+                    if (rem !== 0 && result > 10) return x1 + (10 - rem);
+                    else if(rem > 0 && result < 0) return x1 - rem;
+                    return x1 + x2;
+                }
+                
+                function isVunerable() { return eatable !== null; }
+                function isDangerous() { return eaten === null; }
+                function isHidden() { return eatable === null && eaten !== null; }
+                function getRandomDirection() {
+                    var moves = (direction === CONSTANTS.LEFT || direction === CONSTANTS.RIGHT) 
+                        ? [CONSTANTS.UP, CONSTANTS.DOWN] : [CONSTANTS.LEFT, CONSTANTS.RIGHT];
+                    return moves[Math.floor(Math.random() * 2)];
+                }
+                
+                function reset() {
+                    eaten = null; eatable = null;
+                    position = {"x": 90, "y": 80};
+                    direction = getRandomDirection();
+                    due = getRandomDirection();
+                }
+                
+                function onWholeSquare(x) { return x % 10 === 0; }
+                function oppositeDirection(dir) { 
+                    return dir === CONSTANTS.LEFT && CONSTANTS.RIGHT || 
+                           dir === CONSTANTS.RIGHT && CONSTANTS.LEFT || 
+                           dir === CONSTANTS.UP && CONSTANTS.DOWN || CONSTANTS.UP;
+                }
+                function makeEatable() { direction = oppositeDirection(direction); eatable = game.getTick(); }
+                function eat() { eatable = null; eaten = game.getTick(); }
+                function pointToCoord(x) { return Math.round(x / 10); }
+                function nextSquare(x, dir) {
+                    var rem = x % 10;
+                    if (rem === 0) return x; 
+                    else if (dir === CONSTANTS.RIGHT || dir === CONSTANTS.DOWN) return x + (10 - rem);
+                    else return x - rem;
+                }
+                function onGridSquare(pos) { return onWholeSquare(pos.y) && onWholeSquare(pos.x); }
+                function secondsAgo(tick) { return (game.getTick() - tick) / CONSTANTS.FPS; }
+
+                function getColour() { 
+                    if (eatable) { 
+                        if (secondsAgo(eatable) > 5) return game.getTick() % 20 > 10 ? "#FFFFFF" : "#0000BB";
+                        else return "#0000BB";
+                    } else if(eaten) return "#222"; 
+                    return colour;
+                }
+
+                function draw(ctx) {
+                    var s = map.blockSize, top = (position.y/10) * s, left = (position.x/10) * s;
+                    if (eatable && secondsAgo(eatable) > 8) eatable = null;
+                    if (eaten && secondsAgo(eaten) > 3) eaten = null;
+                    
+                    var tl = left + s, base = top + s - 3, inc = s / 10,
+                        high = game.getTick() % 10 > 5 ? 3  : -3,
+                        low  = game.getTick() % 10 > 5 ? -3 : 3;
+
+                    ctx.fillStyle = getColour();
+                    ctx.beginPath();
+                    ctx.moveTo(left, base);
+                    ctx.quadraticCurveTo(left, top, left + (s/2),  top);
+                    ctx.quadraticCurveTo(left + s, top, left+s,  base);
+                    ctx.quadraticCurveTo(tl-(inc*1), base+high, tl - (inc * 2),  base);
+                    ctx.quadraticCurveTo(tl-(inc*3), base+low, tl - (inc * 4),  base);
+                    ctx.quadraticCurveTo(tl-(inc*5), base+high, tl - (inc * 6),  base);
+                    ctx.quadraticCurveTo(tl-(inc*7), base+low, tl - (inc * 8),  base); 
+                    ctx.quadraticCurveTo(tl-(inc*9), base+high, tl - (inc * 10), base); 
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.fillStyle = "#FFF";
+                    ctx.arc(left + 6,top + 6, s / 6, 0, 300, false);
+                    ctx.arc((left + s) - 6,top + 6, s / 6, 0, 300, false);
+                    ctx.closePath();
+                    ctx.fill();
+                    var f = s / 12, off = {};
+                    off[CONSTANTS.RIGHT] = [f, 0]; off[CONSTANTS.LEFT] = [-f, 0]; 
+                    off[CONSTANTS.UP] = [0, -f]; off[CONSTANTS.DOWN] = [0, f];
+                    ctx.beginPath();
+                    ctx.fillStyle = "#000";
+                    ctx.arc(left+6+off[direction][0], top+6+off[direction][1], s / 15, 0, 300, false);
+                    ctx.arc((left+s)-6+off[direction][0], top+6+off[direction][1], s / 15, 0, 300, false);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                function pane(pos) {
+                    if (pos.y === 100 && pos.x >= 190 && direction === CONSTANTS.RIGHT) return {"y": 100, "x": -10};
+                    if (pos.y === 100 && pos.x <= -10 && direction === CONSTANTS.LEFT) return position = {"y": 100, "x": 190};
+                    return false;
+                }
+                
+                function move(ctx) {
+                    var oldPos = position, onGrid = onGridSquare(position), npos = null;
+                    if (due !== direction) {
+                        npos = getNewCoord(due, position);
+                        if (onGrid && map.isFloorSpace({"y":pointToCoord(nextSquare(npos.y, due)),"x":pointToCoord(nextSquare(npos.x, due))})) {
+                            direction = due;
+                        } else {
+                            npos = null;
+                        }
+                    }
+                    if (npos === null) npos = getNewCoord(direction, position);
+                    if (onGrid && map.isWallSpace({"y" : pointToCoord(nextSquare(npos.y, direction)),"x" : pointToCoord(nextSquare(npos.x, direction))})) {
+                        due = getRandomDirection();            
+                        return move(ctx);
+                    }
+                    position = npos;        
+                    var tmp = pane(position);
+                    if (tmp) position = tmp;
+                    due = getRandomDirection();
+                    return { "new" : position, "old" : oldPos };
+                }
+                
+                return { "eat": eat, "isVunerable": isVunerable, "isDangerous": isDangerous, "makeEatable": makeEatable, "reset": reset, "move": move, "draw": draw };
+            }
+
+            // User Class
+            function User(game, map) {
+                var position = null, direction = null, eaten = null, due = null, lives = null, score = 0, keyMap = {};
+                
+                keyMap[37] = CONSTANTS.LEFT; keyMap[38] = CONSTANTS.UP; keyMap[39] = CONSTANTS.RIGHT; keyMap[40] = CONSTANTS.DOWN;
+
+                function addScore(nScore) { score += nScore; if (score >= 10000 && score - nScore < 10000) lives += 1; }
+                function theScore() { return score; }
+                function loseLife() { lives -= 1; }
+                function getLives() { return lives; }
+                function initUser() { score = 0; lives = 3; newLevel(); }
+                function newLevel() { resetPosition(); eaten = 0; }
+                function resetPosition() { position = {"x": 90, "y": 120}; direction = CONSTANTS.LEFT; due = CONSTANTS.LEFT; }
+                function reset() { initUser(); resetPosition(); }
+                
+                function keyDown(e) {
+                    if (typeof keyMap[e.keyCode] !== "undefined") { 
+                        due = keyMap[e.keyCode];
+                        e.preventDefault(); e.stopPropagation();
+                        return false;
+                    }
+                    return true;
+                }
+                function setDirection(dirCode) { due = dirCode; }
+                function getNewCoord(dir, current) {   
+                    return {
+                        "x": current.x + (dir === CONSTANTS.LEFT && -2 || dir === CONSTANTS.RIGHT && 2 || 0),
+                        "y": current.y + (dir === CONSTANTS.DOWN && 2 || dir === CONSTANTS.UP    && -2 || 0)
+                    };
+                }
+                function onWholeSquare(x) { return x % 10 === 0; }
+                function pointToCoord(x) { return Math.round(x/10); }
+                function nextSquare(x, dir) {
+                    var rem = x % 10;
+                    if (rem === 0) return x; 
+                    else if (dir === CONSTANTS.RIGHT || dir === CONSTANTS.DOWN) return x + (10 - rem);
+                    else return x - rem;
+                }
+                function next(pos, dir) { return { "y" : pointToCoord(nextSquare(pos.y, dir)), "x" : pointToCoord(nextSquare(pos.x, dir)) }; }
+                function onGridSquare(pos) { return onWholeSquare(pos.y) && onWholeSquare(pos.x); }
+                function isOnSamePlane(due, dir) { return ((due === CONSTANTS.LEFT || due === CONSTANTS.RIGHT) && (dir === CONSTANTS.LEFT || dir === CONSTANTS.RIGHT)) || ((due === CONSTANTS.UP || due === CONSTANTS.DOWN) && (dir === CONSTANTS.UP || dir === CONSTANTS.DOWN)); }
+
+                function move(ctx) {
+                    var npos = null, nextWhole = null, oldPosition = position, block = null;
+                    if (due !== direction) {
+                        npos = getNewCoord(due, position);
+                        if (isOnSamePlane(due, direction) || (onGridSquare(position) && map.isFloorSpace(next(npos, due)))) {
+                            direction = due;
+                        } else {
+                            npos = null;
+                        }
+                    }
+                    if (npos === null) npos = getNewCoord(direction, position);
+                    if (onGridSquare(position) && map.isWallSpace(next(npos, direction))) direction = CONSTANTS.NONE;
+                    if (direction === CONSTANTS.NONE) return {"new" : position, "old" : position};
+                    
+                    if (npos.y === 100 && npos.x >= 190 && direction === CONSTANTS.RIGHT) npos = {"y": 100, "x": -10};
+                    if (npos.y === 100 && npos.x <= -12 && direction === CONSTANTS.LEFT) npos = {"y": 100, "x": 190};
+                    
+                    position = npos;        
+                    nextWhole = next(position, direction);
+                    block = map.block(nextWhole);        
+                    
+                    if ((isMidSquare(position.y) || isMidSquare(position.x)) && (block === CONSTANTS.BISCUIT || block === CONSTANTS.PILL)) {
+                        map.setBlock(nextWhole, CONSTANTS.EMPTY);           
+                        addScore((block === CONSTANTS.BISCUIT) ? 10 : 50);
+                        eaten += 1;
+                        if (eaten === 182) game.completedLevel();
+                        if (block === CONSTANTS.PILL) game.eatenPill();
+                    }   
+                    return { "new" : position, "old" : oldPosition };
+                }
+                function isMidSquare(x) { var rem = x % 10; return rem > 3 || rem < 7; }
+                function calcAngle(dir, pos) { 
+                    if (dir == CONSTANTS.RIGHT && (pos.x % 10 < 5)) return {"start":0.25, "end":1.75, "direction": false};
+                    else if (dir === CONSTANTS.DOWN && (pos.y % 10 < 5)) return {"start":0.75, "end":2.25, "direction": false};
+                    else if (dir === CONSTANTS.UP && (pos.y % 10 < 5)) return {"start":1.25, "end":1.75, "direction": true};
+                    else if (dir === CONSTANTS.LEFT && (pos.x % 10 < 5)) return {"start":0.75, "end":1.25, "direction": true};
+                    return {"start":0, "end":2, "direction": false};
+                }
+                function drawDead(ctx, amount) { 
+                    var size = map.blockSize, half = size / 2;
+                    if (amount >= 1) return;
+                    ctx.fillStyle = "#FFFF00";
+                    ctx.beginPath();        
+                    ctx.moveTo(((position.x/10) * size) + half, ((position.y/10) * size) + half);
+                    ctx.arc(((position.x/10) * size) + half, ((position.y/10) * size) + half, half, 0, Math.PI * 2 * amount, true); 
+                    ctx.fill();    
+                }
+                function draw(ctx) { 
+                    var s = map.blockSize, angle = calcAngle(direction, position);
+                    ctx.fillStyle = "#FFFF00";
+                    ctx.beginPath();        
+                    ctx.moveTo(((position.x/10) * s) + s / 2, ((position.y/10) * s) + s / 2);
+                    ctx.arc(((position.x/10) * s) + s / 2, ((position.y/10) * s) + s / 2, s / 2, Math.PI * angle.start, Math.PI * angle.end, angle.direction); 
+                    ctx.fill();    
+                }
+                initUser();
+                return { "draw": draw, "drawDead": drawDead, "loseLife": loseLife, "getLives": getLives, "score": score, "addScore": addScore, "theScore": theScore, "keyDown": keyDown, "move": move, "newLevel": newLevel, "reset": reset, "resetPosition": resetPosition, "setDirection": setDirection };
+            }
+
+            // Map Class
+            function Map(size) {
+                var height = null, width = null, blockSize = size, pillSize = 0, map = null;
+                
+                function withinBounds(y, x) { return y >= 0 && y < height && x >= 0 && x < width; }
+                function isWall(pos) { return withinBounds(pos.y, pos.x) && map[pos.y][pos.x] === CONSTANTS.WALL; }
+                function isFloorSpace(pos) {
+                    if (!withinBounds(pos.y, pos.x)) return false;
+                    var peice = map[pos.y][pos.x];
+                    return peice === CONSTANTS.EMPTY || peice === CONSTANTS.BISCUIT || peice === CONSTANTS.PILL;
+                }
+                
+                function drawWall(ctx) {
+                    var i, j, p, line;
+                    ctx.strokeStyle = "#0000FF";
+                    ctx.lineWidth = 5;
+                    ctx.lineCap = "round";
+                    for (i = 0; i < WALLS_DATA.length; i += 1) {
+                        line = WALLS_DATA[i];
+                        ctx.beginPath();
+                        for (j = 0; j < line.length; j += 1) {
+                            p = line[j];
+                            if (p.move) ctx.moveTo(p.move[0] * blockSize, p.move[1] * blockSize);
+                            else if (p.line) ctx.lineTo(p.line[0] * blockSize, p.line[1] * blockSize);
+                            else if (p.curve) ctx.quadraticCurveTo(p.curve[0] * blockSize, p.curve[1] * blockSize, p.curve[2] * blockSize, p.curve[3] * blockSize);   
+                        }
+                        ctx.stroke();
+                    }
+                }
+                
+                function reset() { map = cloneObject(MAP_DATA); height = map.length; width = map[0].length; }
+                function block(pos) { return map[pos.y][pos.x]; }
+                function setBlock(pos, type) { map[pos.y][pos.x] = type; }
+                function drawPills(ctx) { 
+                    if (++pillSize > 30) pillSize = 0;
+                    for (i = 0; i < height; i += 1) {
+                        for (j = 0; j < width; j += 1) {
+                            if (map[i][j] === CONSTANTS.PILL) {
+                                ctx.beginPath();
+                                ctx.fillStyle = "#000";
+                                ctx.fillRect((j * blockSize), (i * blockSize), blockSize, blockSize);
+                                ctx.fillStyle = "#FFF";
+                                ctx.arc((j * blockSize) + blockSize / 2, (i * blockSize) + blockSize / 2, Math.abs(5 - (pillSize/3)), 0, Math.PI * 2, false); 
+                                ctx.fill();
+                                ctx.closePath();
+                            }
+                        }
+                    }
+                }
+                function draw(ctx) {
+                    var i, j, size = blockSize;
+                    ctx.fillStyle = "#000";
+                    ctx.fillRect(0, 0, width * size, height * size);
+                    drawWall(ctx);
+                    for (i = 0; i < height; i += 1) { for (j = 0; j < width; j += 1) { drawBlock(i, j, ctx); } }
+                }
+                function drawBlock(y, x, ctx) {
+                    var layout = map[y][x];
+                    if (layout === CONSTANTS.PILL) return;
+                    ctx.beginPath();
+                    if (layout === CONSTANTS.EMPTY || layout === CONSTANTS.BLOCK || layout === CONSTANTS.BISCUIT) {
+                        ctx.fillStyle = "#000";
+                        ctx.fillRect((x * blockSize), (y * blockSize), blockSize, blockSize);
+                        if (layout === CONSTANTS.BISCUIT) {
+                            ctx.fillStyle = "#FFF";
+                            ctx.fillRect((x * blockSize) + (blockSize / 2.5), (y * blockSize) + (blockSize / 2.5), blockSize / 6, blockSize / 6);
+                        }
+                    }
+                    ctx.closePath();     
+                }
+                reset();
+                return { "draw": draw, "drawBlock": drawBlock, "drawPills": drawPills, "block": block, "setBlock": setBlock, "reset": reset, "isWallSpace": isWall, "isFloorSpace": isFloorSpace, "height": height, "width": width, "blockSize": blockSize };
+            }
+
+            // --- Game Functions ---
+
+            function completedLevel() {
+                setState(STATES.WAITING);
+                level += 1;
+                map.reset();
+                user.newLevel();
+                showOverlay("LEVEL " + level, "Tap to Start");
+            }
+
+            function eatenPill() {
+                timerStart = tick;
+                eatenCount = 0;
+                for (i = 0; i < ghosts.length; i += 1) ghosts[i].makeEatable(ctx);
+            }
+
+            function drawFooter() {
+                var topLeft = (map.height * map.blockSize), textBase = topLeft + 17;
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(0, topLeft, (map.width * map.blockSize), 30);
+                
+                ctx.fillStyle = "#FFFF00";
+                for (var i = 0, len = user.getLives(); i < len; i++) {
+                    ctx.fillStyle = "#FFFF00";
+                    ctx.beginPath();
+                    ctx.moveTo(150 + (25 * i) + map.blockSize / 2, (topLeft+1) + map.blockSize / 2);
+                    ctx.arc(150 + (25 * i) + map.blockSize / 2, (topLeft+1) + map.blockSize / 2, map.blockSize / 2, Math.PI * 0.25, Math.PI * 1.75, false);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = "#FFFF00";
+                ctx.font      = "14px monospace";
+                ctx.fillText("Score: " + user.theScore(), 30, textBase);
+                ctx.fillText("Level: " + level, 260, textBase);
+            }
+
+            function redrawBlock(pos) {
+                map.drawBlock(Math.floor(pos.y/10), Math.floor(pos.x/10), ctx);
+                map.drawBlock(Math.ceil(pos.y/10), Math.ceil(pos.x/10), ctx);
+            }
+
+            function mainDraw() { 
+                var diff, u, i, len, nScore;
+                ghostPos = [];
+                for (i = 0, len = ghosts.length; i < len; i += 1) ghostPos.push(ghosts[i].move(ctx));
+                u = user.move(ctx);
+                for (i = 0, len = ghosts.length; i < len; i += 1) redrawBlock(ghostPos[i].old);
+                redrawBlock(u.old);
+                for (i = 0, len = ghosts.length; i < len; i += 1) ghosts[i].draw(ctx);
+                user.draw(ctx);
+                userPos = u["new"];
+                for (i = 0, len = ghosts.length; i < len; i += 1) {
+                    if (collided(userPos, ghostPos[i]["new"])) {
+                        if (ghosts[i].isVunerable()) { 
+                            ghosts[i].eat();
+                            eatenCount += 1;
+                            nScore = eatenCount * 50;
+                            // drawScore(nScore, ghostPos[i]); // Skipping small score draw for stability
+                            user.addScore(nScore);                    
+                            timerStart = tick;
+                        } else if (ghosts[i].isDangerous()) {
+                            setState(STATES.DYING);
+                            timerStart = tick;
+                        }
+                    }
+                }                             
+            }
+
+            function collided(user, ghost) {
+                return (Math.sqrt(Math.pow(ghost.x - user.x, 2) + Math.pow(ghost.y - user.y, 2))) < 10;
+            }
+
+            function loseLife() {
+                user.loseLife();
+                if (user.getLives() > 0) {
+                    // Reset positions for next round
+                    user.resetPosition();
+                    for (var i = 0; i < ghosts.length; i += 1) ghosts[i].reset();
+                    
+                    // Force a redraw so user sees the new state behind the overlay
+                    map.draw(ctx);
+                    user.draw(ctx);
+                    ghosts.forEach(g => g.draw(ctx));
+                    drawFooter();
+
+                    showOverlay("OUCH!", "Tap to Continue");
+                    setState(STATES.WAITING);
+                } else {
+                    showOverlay("GAME OVER", "Tap to Restart", true);
+                    setState(STATES.GAME_OVER);
+                }
+            }
+
+            function mainLoop() {
+                if (currentState !== STATES.WAITING) {
+                    tick++;
+                }
+
+                // Always draw pills to keep animation alive if wanted, or just when playing
+                map.drawPills(ctx);
+
+                if (currentState === STATES.PLAYING) {
+                    mainDraw();
+                } else if (currentState === STATES.DYING) {
+                    if (tick - timerStart > (CONSTANTS.FPS * 1.5)) { 
+                        loseLife();
+                    } else { 
+                        redrawBlock(userPos);
+                        for (i = 0, len = ghosts.length; i < len; i += 1) {
+                            redrawBlock(ghostPos[i].old);
+                            ghostPos.push(ghosts[i].draw(ctx));
+                        }                                   
+                        user.drawDead(ctx, (tick - timerStart) / (CONSTANTS.FPS * 1.5));
+                    }
+                }
+                
+                drawFooter();
+            }
+
+            function setState(s) {
+                currentState = s;
+            }
+
+            function startNewGame() {
+                level = 1;
+                user.reset();
+                map.reset();
+                map.draw(ctx);
+                startLevel();
+            }
+
+            function startLevel() {
+                // Ensure positions are reset (redundant but safe)
+                user.resetPosition();
+                for (var i = 0; i < ghosts.length; i += 1) ghosts[i].reset();
+                
+                // Draw map clean
+                map.draw(ctx);
+                
+                // Hide overlay and play
+                hideOverlay();
+                setState(STATES.PLAYING);
+            }
+
+            // --- UI Functions ---
+            function showOverlay(title, hint, showScore = false) {
+                overlayMsg.innerText = title;
+                overlayHint.innerText = hint;
+                if(showScore) {
+                    overlayHint.innerHTML += "<br><br>Score: " + user.theScore();
+                }
+                overlay.classList.remove('hidden');
+            }
+
+            function hideOverlay() {
+                overlay.classList.add('hidden');
+            }
+
+            function handleOverlayClick() {
+                if (currentState === STATES.WAITING) {
+                    // Decide if New Game or Continue
+                    // If we are waiting and have lives, we continue.
+                    // If we are waiting (start of app), level is 1, lives 3, we start.
+                    // Actually simple logic: if overlay is visible, we are paused/waiting.
+                    // Just startLevel if not game over.
+                    
+                    // Logic check:
+                    // If lives > 0 -> Continue level
+                    if (user.getLives() > 0) {
+                        startLevel();
+                    } else {
+                        startNewGame();
+                    }
+                } else if (currentState === STATES.GAME_OVER) {
+                    startNewGame();
+                }
+            }
+
+            function init(wrapper) {
+                // Calculate best fit block size based on viewport
+                // Width constraint: 19 blocks
+                // Height constraint: 22 blocks + 30px footer
+                // Add some safe margin
+                var w = window.innerWidth * 0.98;
+                var h = window.innerHeight * 0.98;
+                
+                var bsW = w / 19;
+                var bsH = (h - 30) / 22;
+                
+                var blockSize = Math.min(bsW, bsH);
+                
+                canvas = document.createElement("canvas");
+                canvas.setAttribute("width", (blockSize * 19) + "px");
+                canvas.setAttribute("height", (blockSize * 22) + 30 + "px");
+                wrapper.appendChild(canvas);
+                ctx = canvas.getContext('2d');
+                
+                map = new Map(blockSize);
+                user = new User({ "completedLevel": completedLevel, "eatenPill": eatenPill, "getTick": getTick }, map);
+
+                for (var i = 0; i < ghostSpecs.length; i++) {
+                    ghosts.push(new Ghost({ "getTick": getTick }, map, ghostSpecs[i]));
+                }
+                
+                // Initial Draw
+                map.draw(ctx);
+                drawFooter();
+                
+                // Show Start Screen
+                showOverlay("PACMAN", "Tap to Start");
+
+                // Input Listeners
+                document.addEventListener("keydown", function(e) {
+                     if(currentState === STATES.PLAYING) user.keyDown(e);
+                });
+                
+                // Touch Swipe Logic
+                var tsX, tsY;
+                document.addEventListener('touchstart', function(e) { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; }, false);
+                document.addEventListener('touchmove', function(e) { e.preventDefault(); }, {passive: false});
+                document.addEventListener('touchend', function(e) {
+                    var teX = e.changedTouches[0].clientX;
+                    var teY = e.changedTouches[0].clientY;
+                    var dx = teX - tsX;
+                    var dy = teY - tsY;
+                    if(Math.abs(dx) > Math.abs(dy)) {
+                        if(Math.abs(dx) > 10) user.setDirection(dx > 0 ? CONSTANTS.RIGHT : CONSTANTS.LEFT);
+                    } else {
+                        if(Math.abs(dy) > 10) user.setDirection(dy > 0 ? CONSTANTS.DOWN : CONSTANTS.UP);
+                    }
+                }, false);
+
+                // Start Loop
+                setInterval(mainLoop, 1000 / CONSTANTS.FPS);
+            }
+
+            return { init: init, handleOverlayClick: handleOverlayClick };
+
+        })();
+
+        // Start
+        window.onload = function() {
+            var el = document.getElementById("pacman");
+            PACMAN.init(el);
+            document.getElementById("overlay").addEventListener("click", PACMAN.handleOverlayClick);
+            
+            // Reload on resize to fix layout
+            window.addEventListener('resize', function() {
+                // Debounce simple reload
+                setTimeout(function(){ window.location.reload(); }, 500);
+            });
+        };
+
+    </script>
+</body>
+</html>

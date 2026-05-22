@@ -1,14 +1,99 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/lumus/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>lumus</title>
-    <script type="module" crossorigin src="/lumus/assets/index-D6NQsOAi.js"></script>
-    <link rel="stylesheet" crossorigin href="/lumus/assets/index-Mr4t5xda.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Lumus Games</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="Play amazing browser games and earn tokens. Join Lumus for premium gaming experience!">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Open Graph Meta Tags (Facebook, Discord, LinkedIn, etc.) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lumus.games/">
+  <meta property="og:title" content="Lumus Games - Premium Browser Games">
+  <meta property="og:description"
+    content="Play amazing browser games and earn tokens. Join Lumus for premium gaming experience!">
+  <meta property="og:image" content="https://lumus.games/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Lumus Games">
+
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://lumus.games/">
+  <meta name="twitter:title" content="Lumus Games - Premium Browser Games">
+  <meta name="twitter:description"
+    content="Play amazing browser games and earn tokens. Join Lumus for premium gaming experience!">
+  <meta name="twitter:image" content="https://lumus.games/og-image.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-1HL86CE4S2"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-1HL86CE4S2');
+  </script>
+
+  <script type="module" crossorigin src="/assets/index-ZEkFwBuB.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CDfILlMf.css">
+</head>
+
+<body>
+  <!-- SEO Content - Hidden when JS loads -->
+  <div id="seo-content" style="padding: 20px; font-family: sans-serif;">
+    <header>
+      <h1>Lumus Games - Play Free Browser Games & Earn Tokens</h1>
+      <p>Welcome to Lumus Games! Play amazing browser games and earn tokens. Join our premium gaming platform for the best casual and arcade gaming experience.</p>
+    </header>
+    
+    <nav aria-label="Game Navigation">
+      <h2>Our Games</h2>
+      <ul>
+        <li><a href="/?id=jomp">JOMP - Arcade Bounce Game</a></li>
+        <li><a href="/?id=2048">2048 - Puzzle Game</a></li>
+        <li><a href="/?id=Pacman">Pacman - Classic Arcade</a></li>
+        <li><a href="/?id=Survivors">Pixle Knight Quest - Roguelike Action</a></li>
+        <li><a href="/?id=caosDrift">Caos Drift - Car Racing</a></li>
+        <li><a href="/?id=prokick">Prokick - Football Game</a></li>
+        <li><a href="/?id=Fruits">Fruits - Arcade Game</a></li>
+        <li><a href="/?id=Lost_in_Space">Lost in Space - Space Adventure</a></li>
+        <li><a href="/?id=Market">Market Simulator - Business Game</a></li>
+      </ul>
+    </nav>
+
+    <section>
+      <h2>Why Play on Lumus Games?</h2>
+      <ul>
+        <li>Free to play browser games - no download required</li>
+        <li>Earn tokens while playing your favorite games</li>
+        <li>Track your high scores and compete on leaderboards</li>
+        <li>Save your progress with Google account</li>
+      </ul>
+    </section>
+  </div>
+
+  <div id="app"></div>
+  
+  <script>
+    // Hide SEO content when app loads
+    document.getElementById('seo-content').style.display = 'none';
+  </script>
+</body>
+
 </html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Select Battleground - Caos Drift</title>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow-x: hidden;
+            background: #000;
+            font-family: 'Russo One', sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+
+        #selection-screen {
+            min-height: 100vh;
+            width: 100%;
+            background:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)),
+                repeating-linear-gradient(45deg, #111 0, #111 10px, #080808 10px, #080808 20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .menu-title {
+            font-size: clamp(48px, 10vw, 100px);
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: -2px;
+            margin: 0;
+            transform: skew(-10deg);
+            position: relative;
+            line-height: 1;
+        }
+
+        .menu-title::after {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 8px;
+            background: #ffcc00;
+            margin-top: 5px;
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
+        }
+
+        .menu-subtitle {
+            font-size: clamp(14px, 3vw, 24px);
+            color: #fff;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.9);
+            opacity: 0.8;
+        }
+
+        .map-selection {
+            display: flex;
+            gap: 30px;
+            perspective: 1500px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1200px;
+        }
+
+        .map-card {
+            width: 320px;
+            height: 500px;
+            background: #1a1a1a;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 4px solid #333;
+            clip-path: polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%);
+            animation: fadeInUp 0.8s ease-out backwards;
+        }
+
+        .map-card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .map-card:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .map-card:hover {
+            transform: translateY(-20px) scale(1.05) rotateY(5deg);
+            border-color: #ffcc00;
+            box-shadow: -10px 20px 50px rgba(255, 204, 0, 0.2);
+            z-index: 10;
+        }
+
+        .map-card.disabled {
+            filter: grayscale(1) brightness(0.5);
+            cursor: not-allowed;
+            border-color: #444;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .map-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.6s;
+            filter: brightness(0.6);
+        }
+
+        .map-card:hover .map-bg {
+            transform: scale(1.1);
+            filter: brightness(0.9);
+        }
+
+        .map-card[data-map="desk"] .map-bg {
+            background-image: url('deskMap.jpg');
+            background-color: #333;
+            /* Fallback */
+        }
+
+        .map-card[data-map="kitchen"] .map-bg {
+            background: repeating-linear-gradient(45deg, #222, #111 20px);
+        }
+
+        .map-card[data-map="garden"] .map-bg {
+            background: repeating-linear-gradient(-45deg, #1a2e1a, #051a05 20px);
+        }
+
+        .card-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 30px 20px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .map-name {
+            font-size: 36px;
+            color: #fff;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .map-label {
+            font-size: 12px;
+            color: #facd00;
+            font-weight: bold;
+            margin-bottom: 8px;
+            background: #000;
+            padding: 4px 12px;
+            transform: skew(-20deg);
+            display: inline-block;
+            border: 1px solid rgba(255, 204, 0, 0.3);
+        }
+
+        .play-btn {
+            margin-top: 20px;
+            background: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 12px 35px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 20px;
+            text-transform: uppercase;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+        }
+
+        .map-card:hover .play-btn {
+            background: #fff;
+            transform: scale(1.1) skew(-5deg);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+
+        .back-btn {
+            margin-top: 50px;
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px 30px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 16px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transform: skew(-15deg);
+            transition: all 0.3s;
+            opacity: 0.6;
+        }
+
+        .back-btn:hover {
+            opacity: 1;
+            background: #fff;
+            color: #000;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive Mobile */
+        @media (max-width: 768px) {
+            #selection-screen {
+                padding-top: 60px;
+                justify-content: flex-start;
+            }
+
+            .map-card {
+                width: 90vw;
+                height: 200px;
+                clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%);
+            }
+
+            .card-content {
+                padding: 15px;
+            }
+
+            .map-name {
+                font-size: 24px;
+            }
+
+            .play-btn {
+                padding: 8px 20px;
+                font-size: 16px;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="selection-screen">
+        <div class="header-section">
+            <h1 class="menu-title">CAOS DRIFT</h1>
+            <div class="menu-subtitle">CHOOSE YOUR BATTLEGROUND</div>
+        </div>
+
+        <div class="map-selection">
+            <!-- MAP: THE DESK -->
+            <div class="map-card" data-map="desk" onclick="navigateToGame('desk')">
+                <div class="map-bg"></div>
+                <div class="card-content">
+                    <div class="map-label">READY TO RACE</div>
+                    <div class="map-name">THE DESK</div>
+                    <button class="play-btn">START ENGINE</button>
+                </div>
+            </div>
+
+            <!-- MAP: KITCHEN (LOCKED) -->
+            <div class="map-card disabled" data-map="kitchen">
+                <div class="map-bg"></div>
+                <div class="card-content">
+                    <div class="map-label" style="background: #333; color: #999;">LOCKED</div>
+                    <div class="map-name" style="color: #666;">KITCHEN</div>
+                    <button class="play-btn" style="background: #444; color: #888;">SOON</button>
+                </div>
+            </div>
+
+            <!-- MAP: GARDEN (LOCKED) -->
+            <div class="map-card disabled" data-map="garden">
+                <div class="map-bg"></div>
+                <div class="card-content">
+                    <div class="map-label" style="background: #333; color: #999;">LOCKED</div>
+                    <div class="map-name" style="color: #666;">GARDEN</div>
+                    <button class="play-btn" style="background: #444; color: #888;">SOON</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="back-btn" onclick="window.location.href='index.html'">
+            BACK TO GARAGE
+        </button>
+    </div>
+
+    <script>
+        function navigateToGame(map) {
+            // Save selected map (optional, index.html can also read it)
+            localStorage.setItem('selectedMap', map);
+
+            // Navigate to game
+            window.location.href = 'game.html?map=' + map;
+        }
+
+        // Add some hover sound effects or interactions if needed later
+    </script>
+</body>
+
+</html>

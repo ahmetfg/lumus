@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raycast Vehicle - Standalone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            overflow: hidden;
+        }
+
+        .webgl {
+            position: fixed;
+            top: 0;
+            left: 0;
+            outline: none;
+        }
+
+        .control-btn {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: pointer;
+            z-index: 999;
+        }
+
+        .control-btn:active,
+        .control-btn.active {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        #btn-left {
+            bottom: 30px;
+            left: 20px;
+        }
+
+        #btn-right {
+            bottom: 30px;
+            left: 120px;
+        }
+
+        #btn-brake {
+            bottom: 30px;
+            right: 20px;
+            font-size: 18px;
+        }
+
+        #btn-gas {
+            bottom: 30px;
+            right: 120px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas class="webgl"></canvas>
+
+    <!-- Mobil Kontroller -->
+    <div id="btn-left" class="control-btn">←</div>
+    <div id="btn-right" class="control-btn">→</div>
+    <div id="btn-gas" class="control-btn">G</div>
+    <div id="btn-brake" class="control-btn">F</div>
+
+    <!-- ES Module Shims for Import Maps -->
+    <script>
+        window.esmsInitOptions = { shimMode: true };
+    </script>
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
+
+    <!-- dat.gui and stats.js as UMD (they work fine) -->
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+
+    <script type="importmap-shim">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
+
+    <script type="module-shim">
+        import * as THREE from 'three';
+        import * as CANNON from 'cannon-es';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { VehicleController, SkidMarkManager } from './VehicleController.js';
+        
+        // ============= CAR CLASS REMOVED (Moved to VehicleController.js) =============
+        // ============= SKID MARK MANAGER REMOVED (Moved to VehicleController.js) =============
+
+
+        // SkidMarkManager'ı başlat
+        // (En aşağıda çağıracağız)
+
+        // ============= MAIN SCENE SETUP =============
+        const stats = new Stats();
+        stats.showPanel(0);
+        document.body.appendChild(stats.dom);
+
+        const canvas = document.querySelector('canvas.webgl');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e); // Koyu lacivert
+
+        const world = new CANNON.World({
+            gravity: new CANNON.Vec3(0, -15, 0)  // Biraz hafifletildi
+        });
+        world.broadphase = new CANNON.SAPBroadphase(world);
+
+        const car = new VehicleController(scene, world);
+
+        car.init();
+
+        // Lights
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(-60, 100, -10);
+        scene.add(dirLight);
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        // Sizes
+        const sizes = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+
+        window.addEventListener('resize', () => {
+            sizes.width = window.innerWidth;
+            sizes.height = window.innerHeight;
+            camera.aspect = sizes.width / sizes.height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(sizes.width, sizes.height);
+        });
+
+        // Grid ve Floor kaldırıldı - Artık tamamen procedural yol üzerindeyiz.
+
+
+        // ============= CLOSED LOOP TRACK SYSTEM (SINGLE MESH) =============
+        window.RoadManager = {
+
+            segments: [],        // Trafik için segment bilgisi (mesh yok, sadece pozisyon/yön)
+            roadMesh: null,      // TEK görsel mesh
+            roadBody: null,      // TEK fizik body
+            roadLine: null,      // Orta çizgi
+            chunkSize: 20,
+            roadWidth: 20,
+            
+            init: function() {
+                // Temizlik
+                if (this.roadMesh) {
+                    scene.remove(this.roadMesh);
+                    this.roadMesh.geometry.dispose();
+                    this.roadMesh.material.dispose();
+                }
+                if (this.roadLine) {
+                    scene.remove(this.roadLine);
+                    this.roadLine.geometry.dispose();
+                    this.roadLine.material.dispose();
+                }
+                if (this.roadBody) {
+                    world.removeBody(this.roadBody);
+                }
+                if (this.safetyPlatform) {
+                    world.removeBody(this.safetyPlatform);
+                }
+
+                this.segments = [];
+
+                // GÜVENLİK PLATFORMU
+                const startBoxShape = new CANNON.Box(new CANNON.Vec3(10, 1, 30));
+                this.safetyPlatform = new CANNON.Body({ mass: 0 });
+                this.safetyPlatform.addShape(startBoxShape);
+                this.safetyPlatform.position.set(0, -1, 0); 
+                world.addBody(this.safetyPlatform);
+
+                // --- TRACK LAYOUT ---
+                const straightCount = 12; 
+                const turnCount = 20;
+                const stepsPerChunk = 10;  // Her chunk içinde kaç adım
+                const stepLength = this.chunkSize / stepsPerChunk;
+                
+                // Tüm chunk'ların açı dizisi
+                const chunkAngles = [];
+                const turnStep = Math.PI / turnCount;
+                
+                for(let i = 0; i < straightCount; i++) chunkAngles.push(0);           // Düzlük 1
+                for(let i = 0; i < turnCount; i++) chunkAngles.push(turnStep);        // U Dönüş 1
+                for(let i = 0; i < straightCount; i++) chunkAngles.push(0);           // Düzlük 2
+                for(let i = 0; i < turnCount; i++) chunkAngles.push(turnStep);        // U Dönüş 2
+                
+                const totalChunks = chunkAngles.length;
+                const totalSteps = totalChunks * stepsPerChunk;
+                
+                // --- TEK BÜYÜK GEOMETRY OLUŞTUR ---
+                const vertices = [];
+                const indices = [];
+                const centerPoints = [];
+                
+                let pos = new THREE.Vector3(0, 0, -20);
+                let dir = new THREE.Vector3(0, 0, 1);
+                const up = new THREE.Vector3(0, 1, 0);
+                
+                const startPos = pos.clone();
+                const startDir = dir.clone();
+                
+                let globalStep = 0;
+                
+                // WOBBLE ayarları
+                const wobbleAmp = 0.015;     // Viraj şiddeti (radyan)
+                const wobbleFreq = 0.3;      // Viraj sıklığı
+                
+                for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+                    const chunkAngle = chunkAngles[chunkIdx];
+                    const angleStep = chunkAngle / stepsPerChunk;
+                    const isStrait = Math.abs(chunkAngle) < 0.001;
+                    
+                    // Segment bilgisini kaydet (trafik için)
+                    this.segments.push({
+                        center: pos.clone(),
+                        dir: dir.clone()
+                    });
+                    
+                    for (let i = 0; i < stepsPerChunk; i++) {
+                        // Elevation (pürüzsüz sinüs dalgası)
+                        const t = globalStep / totalSteps;
+                        const totalDist = globalStep * stepLength;
+                        const amp = 3;
+                        const wavelength = 150;
+                        const elev = amp * Math.sin((totalDist / wavelength) * Math.PI * 2);
+                        
+                        pos.y = elev;
+                        
+                        // Center point for line
+                        centerPoints.push(pos.clone().add(new THREE.Vector3(0, 0.05, 0)));
+                        
+                        // Sol ve sağ vertex
+                        const right = new THREE.Vector3().crossVectors(dir, up).normalize().multiplyScalar(this.roadWidth / 2);
+                        const left = right.clone().negate();
+                        
+                        const vLeft = pos.clone().add(left);
+                        const vRight = pos.clone().add(right);
+                        
+                        vertices.push(vLeft.x, vLeft.y, vLeft.z);
+                        vertices.push(vRight.x, vRight.y, vRight.z);
+                        
+                        // Yönü döndür (Ana viraj + wobble)
+                        let turnAmount = 0;
+                        
+                        // Ana viraj (U dönüşleri)
+                        if (Math.abs(chunkAngle) > 0.001) {
+                            turnAmount += angleStep;
+                        }
+                        
+                        // Lokal wobble (sadece düzlüklerde)
+                        if (isStrait) {
+                            const wobble = Math.sin(globalStep * wobbleFreq) * wobbleAmp;
+                            turnAmount += wobble;
+                        }
+                        
+                        if (Math.abs(turnAmount) > 0.0001) {
+                            dir.applyAxisAngle(up, turnAmount);
+                        }
+                        dir.normalize();
+                        
+                        // İlerle
+                        pos.add(dir.clone().multiplyScalar(stepLength));
+                        globalStep++;
+                    }
+                }
+                
+                // --- LOOP KAPATMA (Pürüzsüz geçiş) ---
+                const closingSteps = 20;
+                const closingStepLength = startPos.clone().sub(pos).length() / closingSteps;
+                
+                for (let i = 1; i <= closingSteps; i++) {
+                    const t = i / closingSteps;
+                    
+                    // Pozisyonu interpolate et
+                    const interpPos = pos.clone().lerp(startPos, t);
+                    
+                    // Yönü interpolate et (slerp benzeri)
+                    const interpDir = dir.clone().lerp(startDir, t).normalize();
+                    
+                    // Elevation da interpolate et
+                    const startElev = pos.y;
+                    const endElev = startPos.y;
+                    interpPos.y = startElev + (endElev - startElev) * t;
+                    
+                    centerPoints.push(interpPos.clone().add(new THREE.Vector3(0, 0.05, 0)));
+                    
+                    const right = new THREE.Vector3().crossVectors(interpDir, up).normalize().multiplyScalar(this.roadWidth / 2);
+                    const left = right.clone().negate();
+                    
+                    const vLeft = interpPos.clone().add(left);
+                    const vRight = interpPos.clone().add(right);
+                    
+                    // Son adımda başlangıç vertex'lerini kullan
+                    if (i === closingSteps) {
+                        vertices.push(vertices[0], vertices[1], vertices[2]);
+                        vertices.push(vertices[3], vertices[4], vertices[5]);
+                    } else {
+                        vertices.push(vLeft.x, vLeft.y, vLeft.z);
+                        vertices.push(vRight.x, vRight.y, vRight.z);
+                    }
+                }
+                
+                const actualTotalSteps = totalSteps + closingSteps;
+                
+                // İndices (üçgenler) - Son satır hariç (zaten başlangıca bağlanıyor)
+                for (let i = 0; i < actualTotalSteps - 1; i++) {
+                    const a = i * 2;
+                    const b = i * 2 + 1;
+                    const c = (i + 1) * 2;
+                    const d = (i + 1) * 2 + 1;
+                    
+                    indices.push(a, c, b);
+                    indices.push(b, c, d);
+                }
+                
+                // BufferGeometry
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                geometry.setIndex(indices);
+                geometry.computeVertexNormals();
+                
+                // Mesh
+                const material = new THREE.MeshToonMaterial({ 
+                    color: 0x222222,
+                    side: THREE.DoubleSide
+                });
+                this.roadMesh = new THREE.Mesh(geometry, material);
+                this.roadMesh.receiveShadow = true;
+                scene.add(this.roadMesh);
+                
+                // Center Line
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints(centerPoints);
+                const lineMaterial = new THREE.LineDashedMaterial({
+                    color: 0xffffff,
+                    linewidth: 1,
+                    scale: 1,
+                    dashSize: 3,
+                    gapSize: 2,
+                });
+                this.roadLine = new THREE.Line(lineGeometry, lineMaterial);
+                this.roadLine.computeLineDistances();
+                scene.add(this.roadLine);
+                
+                // Physics (TEK Trimesh)
+                const indicesReversed = [];
+                for (let i = 0; i < indices.length; i += 3) {
+                    indicesReversed.push(indices[i], indices[i + 2], indices[i + 1]);
+                }
+                const combinedIndices = indices.concat(indicesReversed);
+                
+                const trimeshShape = new CANNON.Trimesh(new Float32Array(vertices), combinedIndices);
+                this.roadBody = new CANNON.Body({ mass: 0 });
+                this.roadBody.addShape(trimeshShape);
+                world.addBody(this.roadBody);
+                
+                console.log("🏁 Single-Mesh Track Generated! Vertices:", vertices.length / 3, "Triangles:", indices.length / 3);
+            },
+
+            update: function(carBody) {}
+        };
+
+        // ============= TRAFFIC SYSTEM =============
+        const TrafficManager = {
+            cars: [],
+            carGeometry: new THREE.BoxGeometry(2.8, 1.5, 4.5), // Geniş araçlar
+            
+            init: function() {
+                // Temizlik
+                this.cars.forEach(car => {
+                    scene.remove(car.mesh);
+                    world.removeBody(car.body);
+                });
+                this.cars = [];
+
+                if (RoadManager.segments.length < 10) return;
+
+                // Trafik Yoğunluğu: Her 3 segmentte bir araç (Sıklaştırıldı)
+                const spacing = 3; 
+                
+                for(let i = 5; i < RoadManager.segments.length; i += spacing) {
+                    // Rastgele şerit (-1 Sol = Geliş, 1 Sağ = Gidiş)
+                    const lane = Math.random() > 0.5 ? 1 : -1;
+                    
+                    // Hız: 0.02 - 0.04 arası
+                    const speed = 0.02 + Math.random() * 0.02; 
+                    this.spawnCar(i, lane, speed);
+                }
+                console.log("🚦 Traffic Generated: " + this.cars.length + " cars.");
+            },
+
+            spawnCar: function(startIndex, lane, speed) {
+                // Görsel
+                const color = Math.random() * 0xffffff;
+                const material = new THREE.MeshToonMaterial({ color: color });
+                const mesh = new THREE.Mesh(this.carGeometry, material);
+                mesh.castShadow = true;
+                scene.add(mesh);
+
+                // Fizik (Başlangıçta KINEMATIC - Çarpınca DYNAMIC olacak)
+                const shape = new CANNON.Box(new CANNON.Vec3(1.4, 0.75, 2.25)); // Geniş collider
+                const body = new CANNON.Body({ 
+                    mass: 0, // Kinematik iken kütle 0 (veya type KINEMATIC)
+                    type: CANNON.Body.KINEMATIC 
+                });
+                body.addShape(shape);
+                world.addBody(body);
+
+                const trafficCar = {
+                    mesh: mesh,
+                    body: body,
+                    segmentIndex: startIndex,
+                    laneOffset: lane * 5, // Merkezden 5 birim sağa/sola
+                    speed: speed,
+                    progress: 0,
+                    laneDir: lane, // 1 veya -1 (Yön)
+                    crashed: false
+                };
+
+                // ÇARPIŞMA SİSTEMİ (HIT-TO-DYNAMIC)
+                body.addEventListener("collide", (e) => {
+                    // Sadece oyuncu çarparsa (veya başka dinamik obje) ve henüz kaza yapmadıysa
+                    if (!trafficCar.crashed) {
+                        // Çarpanın oyuncu olup olmadığını kontrol edebiliriz ama 
+                        // genel olarak sert çarpmada aktife geçmesi yeterli.
+                        // Şimdilik collidedEvent her türlü çarpışmada tetiklenir.
+                        
+                        // Aracı Dinamik Yap
+                        trafficCar.crashed = true;
+                        body.type = CANNON.Body.DYNAMIC;
+                        body.mass = 400; // Hafif bir araç kütlesi
+                        body.updateMassProperties();
+                        
+                        // Çarpışma etkisi için hızı koru veya biraz etki ver
+                        // (Cannon otomatik halleder ama bazen wakeUp gerekir)
+                        body.wakeUp(); 
+                    }
+                });
+
+                this.cars.push(trafficCar);
+            },
+
+            update: function() {
+                const segs = RoadManager.segments;
+                if (segs.length === 0) return;
+
+                this.cars.forEach(car => {
+                    if (car.crashed) {
+                        // Kaza yaptıysa sadece görseli güncelle (Fizik motoru kontrol ediyor)
+                        car.mesh.position.copy(car.body.position);
+                        car.mesh.quaternion.copy(car.body.quaternion);
+                        return;
+                    }
+
+                    // --- NORMAL SÜRÜŞ (KINEMATIC AI) ---
+
+                    // İlerleme (Yöne göre)
+                    // laneDir 1 (Sağ) -> İleri (+progress)
+                    // laneDir -1 (Sol) -> Geri (-progress)
+                    
+                    if (car.laneDir === 1) {
+                        car.progress += car.speed * 0.5;
+                        if (car.progress >= 1.0) {
+                            car.progress = 0;
+                            car.segmentIndex++;
+                            if (car.segmentIndex >= segs.length - 1) car.segmentIndex = 0;
+                        }
+                    } else {
+                        car.progress -= car.speed * 0.5; // Geri git
+                        if (car.progress <= 0.0) {
+                            car.progress = 1.0;
+                            car.segmentIndex--;
+                            if (car.segmentIndex < 0) car.segmentIndex = segs.length - 2; // Loop sonuna sar
+                        }
+                    }
+
+                    // Hedef Segmentler
+                    const currentSeg = segs[car.segmentIndex];
+                    const nextIndex = (car.segmentIndex + 1) % segs.length;
+                    const nextSeg = segs[nextIndex];
+
+                    // Pozisyon Hesapla (Lerp)
+                    const up = new THREE.Vector3(0, 1, 0);
+                    
+                    const p1 = currentSeg.center;
+                    const d1 = currentSeg.dir;
+                    const right1 = new THREE.Vector3().crossVectors(d1, up).normalize();
+                    const pos1 = p1.clone().add(right1.multiplyScalar(car.laneOffset));
+
+                    const p2 = nextSeg.center;
+                    const d2 = nextSeg.dir;
+                    const right2 = new THREE.Vector3().crossVectors(d2, up).normalize();
+                    const pos2 = p2.clone().add(right2.multiplyScalar(car.laneOffset));
+
+                    const x = THREE.MathUtils.lerp(pos1.x, pos2.x, car.progress);
+                    const y = THREE.MathUtils.lerp(pos1.y, pos2.y, car.progress) + 0.75; 
+                    const z = THREE.MathUtils.lerp(pos1.z, pos2.z, car.progress);
+
+                    // Update Physics Body (Kinematic Move)
+                    car.body.position.set(x, y, z);
+
+                    // Rotation (Yöne göre)
+                    car.mesh.position.set(x, y, z);
+                    
+                    if (car.laneDir === 1) {
+                        // Gidiş Şeridi: İleriye bak
+                        car.mesh.lookAt(pos2.x, pos2.y + 0.75, pos2.z);
+                    } else {
+                        // Geliş Şeridi: Geriye bak (Mevcut segmentten bir öncekine veya ters vektöre)
+                        // Pos1 (Current) -> Pos2 (Next). Geri gidiyorsak Pos1'e bakmalıyız gibi ama
+                        // En temizi: Yol yönünün tersine bakmak.
+                        // lookAt fonksiyonu hedef noktayı ister.
+                        // Ters yöndeysek, şu an bulunduğumuz noktadan (x,y,z), "GELDİĞİMİZ" noktaya (pos2 veya pos1'in tersi) değil,
+                        // gitmekte olduğumuz noktaya (pos1) bakmalıyız.
+                        // Logic: progress 1->0 gidiyor. pos2'den pos1'e gidiyoruz.
+                        // O zaman pos1'e bakmalı.
+                        car.mesh.lookAt(pos1.x, pos1.y + 0.75, pos1.z);
+                    }
+                    
+                    car.body.quaternion.copy(car.mesh.quaternion);
+
+                    // Update Visual Mesh exact sync
+                    car.mesh.position.copy(car.body.position);
+                    car.mesh.quaternion.copy(car.body.quaternion);
+
+                    // Update Visual Mesh exact sync
+                    car.mesh.position.copy(car.body.position);
+                    car.mesh.quaternion.copy(car.body.quaternion);
+                });
+            }
+        };
+
+        // Başlat
+        RoadManager.init();
+        TrafficManager.init();
+        SkidMarkManager.init(scene); // Scene hazır olduktan sonra başlat
+
+
+        // Camera Setup
+        const camera = new THREE.PerspectiveCamera(50, sizes.width / sizes.height, 0.1, 10000);
+        camera.position.set(0, 10, -20); // Kamera arkada
+        scene.add(camera);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: 'high-performance' });
+        renderer.setSize(sizes.width, sizes.height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, .75));
+
+        // Animate
+        const tick = () => {
+            stats.begin();
+
+            // Tünellemeyi önlemek için daha fazla alt-adım
+            world.step(1 / 120, 1 / 60, 10);
+
+            // Road Manager Update
+            if (car.car && car.car.chassisBody) {
+                RoadManager.update(car.car.chassisBody);
+            }
+
+            TrafficManager.update();
+
+            // TPS Camera
+            if (car.car && car.car.chassisBody) {
+                const carPos = car.car.chassisBody.position;
+                const carQuat = car.car.chassisBody.quaternion;
+
+                const offset = new THREE.Vector3(0, 5, -12);
+                offset.applyQuaternion(carQuat);
+                offset.add(carPos);
+
+                camera.position.lerp(offset, 0.1);
+                camera.lookAt(carPos.x, carPos.y + 1, carPos.z);
+            }
+
+            renderer.render(scene, camera);
+            stats.end();
+
+            requestAnimationFrame(tick);
+        };
+
+        tick();
+    </script>
+
+    <script>
+        // Sanal Klavye Olayı Gönderici
+        function simulateKey(key, type) {
+            const event = new KeyboardEvent(type, {
+                key: key,
+                code: key,
+                bubbles: true
+            });
+            window.dispatchEvent(event);
+        }
+
+        function setupBtn(id, keyName) {
+            const btn = document.getElementById(id);
+            const start = (e) => {
+                e.preventDefault();
+                btn.classList.add('active');
+                simulateKey(keyName, 'keydown');
+            };
+            const end = (e) => {
+                e.preventDefault();
+                btn.classList.remove('active');
+                simulateKey(keyName, 'keyup');
+            };
+
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', end, { passive: false });
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+            btn.addEventListener('mouseleave', end);
+        }
+
+        // Butonları Klavye Tuşlarına Bağla
+        setupBtn('btn-gas', 'w');
+        setupBtn('btn-brake', 's');
+        setupBtn('btn-left', 'a');
+        setupBtn('btn-right', 'd');
+    </script>
+</body>
+
+</html>

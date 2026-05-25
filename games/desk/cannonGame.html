@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Fizik Top Oyunu - Cannon.js & Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: #4ecdc4;
+        }
+
+        p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .key {
+            display: inline-block;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui-layer">
+        <h1>Fizik Test Sahası</h1>
+        <p>Hareket: <span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span
+                class="key">D</span> veya <span class="key">Yön Tuşları</span></p>
+        <p>Amaç: Kutuları devir, platformdan düşme.</p>
+        <p id="status">Durum: Aktif</p>
+    </div>
+
+    <div id="game-container"></div>
+
+    <!-- Modül tipi script ile modern kütüphaneleri import ediyoruz -->
+    <script type="module">
+        // CDN üzerinden Three.js ve Cannon-es import ediliyor
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+        import * as CANNON from 'https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js';
+
+        // --- DEĞİŞKENLER ---
+        let scene, camera, renderer;
+        let world; // Fizik dünyası
+        let clock; // Zaman takibi için
+        let ballMesh, ballBody;
+        let carGroup; // Dummy araba grubu
+        const obstacles = []; // Fizik ve görsel eşleşmeleri tutmak için
+
+        // Klavye kontrol durumu
+        const keyState = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+
+        // Fizik Ayarları
+        const timeStep = 1 / 60; // Hedeflenen adım (60 FPS)
+
+        // --- BAŞLATMA ---
+        init();
+        animate();
+
+        function init() {
+            // Zamanlayıcıyı başlat
+            clock = new THREE.Clock();
+
+            // 1. THREE.JS SAHNE KURULUMU
+            const container = document.getElementById('game-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x202025);
+            scene.fog = new THREE.Fog(0x202025, 20, 100);
+
+            // Kamera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 20, 30);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Işıklar
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(20, 30, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.left = -30;
+            dirLight.shadow.camera.right = 30;
+            dirLight.shadow.camera.top = 30;
+            dirLight.shadow.camera.bottom = -30;
+            scene.add(dirLight);
+
+            // 2. CANNON.JS FİZİK DÜNYASI KURULUMU
+            world = new CANNON.World();
+            world.gravity.set(0, -30, 0); // GÜNCELLENDİ: Daha ağır ve gerçekçi hissetmesi için yerçekimi artırıldı (-9.82 -> -30)
+            world.broadphase = new CANNON.NaiveBroadphase(); // Çarpışma algılama yöntemi
+            world.solver.iterations = 10; // Çözümleyici hassasiyeti
+
+            // Materyaller (Sürtünme ve sekme ayarları için)
+            const defaultMaterial = new CANNON.Material('default');
+            const defaultContactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
+                friction: 0.4,      // Sürtünme
+                restitution: 0.3    // Sekme (Bounciness)
+            });
+            world.addContactMaterial(defaultContactMaterial);
+
+            // 3. NESNELERİ OLUŞTURMA
+
+            // Zemin (Ground)
+            const groundGeometry = new THREE.PlaneGeometry(60, 60);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                roughness: 0.8,
+                side: THREE.DoubleSide
+            });
+            const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+            groundMesh.rotation.x = -Math.PI / 2;
+            groundMesh.receiveShadow = true;
+            scene.add(groundMesh);
+
+            // Zemin Fizik Bedeni
+            const groundShape = new CANNON.Box(new CANNON.Vec3(30, 30, 0.1)); // Cannon'da Plane sonsuzdur, Box kullanarak sınır çiziyoruz
+            const groundBody = new CANNON.Body({ mass: 0, material: defaultMaterial }); // Mass 0 = Statik
+            groundBody.addShape(groundShape);
+            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+            world.addBody(groundBody);
+
+            // Izgara Yardimcısı (Görsel)
+            const gridHelper = new THREE.GridHelper(60, 60, 0x4ecdc4, 0x555555);
+            scene.add(gridHelper);
+
+            // OYUNCU TOPU (Player Ball)
+            const ballRadius = 1;
+            const ballGeo = new THREE.SphereGeometry(ballRadius, 32, 32);
+            const ballMat = new THREE.MeshStandardMaterial({ color: 0xff0055, roughness: 0.4, metalness: 0.3 });
+            ballMesh = new THREE.Mesh(ballGeo, ballMat);
+            ballMesh.castShadow = true;
+            scene.add(ballMesh);
+
+            // Top Fizik Bedeni
+            const ballShape = new CANNON.Sphere(ballRadius);
+            ballBody = new CANNON.Body({
+                mass: 5, // Dinamik nesne
+                material: defaultMaterial,
+                linearDamping: 0.3, // Hava sürtünmesi gibi, sonsuza kadar gitmesini engeller
+                angularDamping: 0.3
+            });
+            ballBody.addShape(ballShape);
+            ballBody.position.set(0, 5, 0); // Başlangıç pozisyonu
+            world.addBody(ballBody);
+
+
+            // ENGEL KUTULAR (Random Obstacles)
+            // Birkaç tane rastgele kutu ekleyelim
+            createBox(2, 2, 2, 5, 1, 5, 1, 0x4ecdc4);
+            createBox(2, 4, 2, -5, 2, 5, 2, 0xffd700);
+            createBox(1, 1, 1, 0, 0.5, 8, 0.5, 0x00ffaa);
+
+            // Kule şeklinde kutular
+            for (let i = 0; i < 3; i++) {
+                createBox(2, 2, 2, 8, 1 + (i * 2), 0, 1, 0x3388ff);
+            }
+
+            // RAMPA (TAKOZ) EKLEME
+            // Genişlik: 6, Uzunluk: 12, Z-Konumu: -10 (Daha küçük ve daha ortada)
+            createRamp(6, 12, -10);
+
+            // 4. EVENT LISTENERS
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+
+            // Dummy Araba Oluştur
+            createDummyCar();
+
+            // Topu Gizle
+            ballMesh.visible = false;
+        }
+
+        // Yardımcı Fonksiyon: Kutu Oluşturucu
+        function createBox(w, h, d, x, y, z, mass, color) {
+            // Three.js Mesh
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mat = new THREE.MeshStandardMaterial({ color: color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            // Cannon.js Body
+            // Cannon'da box boyutları yarım boyut (halfExtents) olarak verilir
+            const shape = new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2));
+            const body = new CANNON.Body({ mass: mass });
+            body.addShape(shape);
+            body.position.set(x, y, z);
+            world.addBody(body);
+
+            // Eşleştirmeyi diziye at
+            obstacles.push({ mesh: mesh, body: body });
+        }
+
+        // Yardımcı Fonksiyon: Rampa Oluşturucu
+        function createRamp(width, length, zPos) {
+            const thickness = 1;
+            const angle = Math.PI / 8; // Yaklaşık 22.5 derece eğim
+
+            // Görsel Mesh
+            const geo = new THREE.BoxGeometry(width, thickness, length);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xff5500 }); // Turuncu rampa
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            // Fizik Body (Statik)
+            const shape = new CANNON.Box(new CANNON.Vec3(width / 2, thickness / 2, length / 2));
+            const body = new CANNON.Body({ mass: 0 });
+            body.addShape(shape);
+
+            // Pozisyon ve Rotasyon Hesaplaması
+            // Rampanın alt ucu zemine (y=0) denk gelsin diye merkez noktasını yukarı taşıyoruz.
+            // Trigonometri: Yükseklik = (Uzunluk / 2) * sin(açı)
+            const yPos = (Math.sin(angle) * (length / 2)) - 0.5; // -0.5 hafifçe gömmek için
+
+            mesh.position.set(0, yPos, zPos);
+            mesh.rotation.x = angle; // Arkası kalkık olsun
+
+            body.position.set(0, yPos, zPos);
+            body.quaternion.setFromEuler(angle, 0, 0);
+
+            scene.add(mesh);
+            world.addBody(body);
+
+            // Rampanın sonuna eğlence için birkaç kutu daha ekleyelim
+            createBox(1, 4, 1, -2, 2, zPos - length / 2 - 2, 1, 0x00ff00);
+            createBox(1, 4, 1, 2, 2, zPos - length / 2 - 2, 1, 0x00ff00);
+            createBox(4, 1, 1, 0, 5, zPos - length / 2 - 2, 0.5, 0xff00ff); // Üst direk
+        }
+
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'ArrowUp':
+                case 'KeyW': keyState.forward = true; break;
+                case 'ArrowDown':
+                case 'KeyS': keyState.backward = true; break;
+                case 'ArrowLeft':
+                case 'KeyA': keyState.left = true; break;
+                case 'ArrowRight':
+                case 'KeyD': keyState.right = true; break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'ArrowUp':
+                case 'KeyW': keyState.forward = false; break;
+                case 'ArrowDown':
+                case 'KeyS': keyState.backward = false; break;
+                case 'ArrowLeft':
+                case 'KeyA': keyState.left = false; break;
+                case 'ArrowRight':
+                case 'KeyD': keyState.right = false; break;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // DELTA TIME HESAPLAMASI (ÖNEMLİ DÜZELTME)
+            // İki kare arasında geçen süreyi (saniye cinsinden) alıyoruz.
+            // Eğer pencere değiştirip geri gelirseniz çok büyük bir değer gelebilir,
+            // bu yüzden max 0.1 saniye (10 FPS eşdeğeri) ile sınırlıyoruz ki fizik patlamasın.
+            const deltaTime = Math.min(clock.getDelta(), 0.1);
+
+            // Fizik dünyasını ilerlet
+            // world.step(fixedTimeStep, timeSinceLastCalled, maxSubSteps)
+            // timeStep: İdeal fizik adımı (1/60s)
+            // deltaTime: Son kareden beri geçen gerçek zaman
+            // 3: Eğer oyun çok yavaşlarsa, arayı kapatmak için en fazla 3 fizik adımı hesapla.
+            world.step(timeStep, deltaTime, 3);
+
+            // --- OYUN MANTIĞI ---
+
+            // 1. Oyuncu Kontrolü (Tork/Dönme Kuvveti Uygulama)
+            // Yerçekimi arttığı için yere basma kuvveti arttı, bu yüzden hareket etmek için daha fazla güç (speed) gerekiyor.
+            const speed = 50;
+
+            if (keyState.forward) {
+                ballBody.angularVelocity.x -= speed * timeStep;
+            }
+            if (keyState.backward) {
+                ballBody.angularVelocity.x += speed * timeStep;
+            }
+            if (keyState.left) {
+                ballBody.angularVelocity.z += speed * timeStep;
+            }
+            if (keyState.right) {
+                ballBody.angularVelocity.z -= speed * timeStep;
+            }
+
+            // 2. Senkronizasyon (Fizik -> Görsel)
+            // Topu güncelle (GİZLENDİ - Artık araba var)
+            ballMesh.position.copy(ballBody.position);
+            ballMesh.quaternion.copy(ballBody.quaternion);
+
+            // Dummy Araba Güncellemesi
+            if (carGroup) {
+                // Pozisyon eşitleme (Hafif bir Y offset verilebilir, tekerlekler yere tam bassın diye ama top yarıçapı 1, tekerlek yarıçapı 0.5)
+                // Topun merkezi yerden 1 birim yukarıda (radius=1). Araba grubunun merkezi (0,0,0) ise tekerleklerin alt noktası olmalı.
+                // Bizim carGroup tasarımımızda tekerlek merkezi y=0.5. Yani carGroup'u topun merkezinden 0.5 aşağı indirirsek tekerlekler yere basar.
+                carGroup.position.copy(ballBody.position);
+                carGroup.position.y -= 0.9; // Görsel ayar
+
+                // Yönelim (Rotation) - Tuş Girdisine göre
+                let moveX = 0;
+                let moveZ = 0;
+
+                if (keyState.forward) moveZ -= 1;
+                if (keyState.backward) moveZ += 1;
+                if (keyState.left) moveX -= 1;
+                if (keyState.right) moveX += 1;
+
+                if (moveX !== 0 || moveZ !== 0) {
+                    const angle = Math.atan2(moveX, moveZ);
+                    const targetRotation = new THREE.Quaternion();
+                    targetRotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+                    carGroup.quaternion.slerp(targetRotation, 0.2);
+                }
+            }
+
+            // Kutuları güncelle
+            obstacles.forEach(obj => {
+                obj.mesh.position.copy(obj.body.position);
+                obj.mesh.quaternion.copy(obj.body.quaternion);
+            });
+
+            // 3. Kamera Takibi
+            const offset = new THREE.Vector3(0, 15, 20);
+            // Takip edilen nesne artık carGroup olabilir veya ballMesh (ikisi aynı yerde)
+            const targetPos = ballMesh.position.clone().add(offset);
+            camera.position.lerp(targetPos, 0.1);
+            camera.lookAt(ballMesh.position);
+
+            // 4. Reset Mekanizması
+            if (ballBody.position.y < -10) {
+                // Top düştü
+                document.getElementById('status').innerText = "Durum: DÜŞTÜ - Yeniden Başlatılıyor...";
+                document.getElementById('status').style.color = "#ff4444";
+
+                // Fiziksel reset
+                ballBody.position.set(0, 5, 0);
+                ballBody.velocity.set(0, 0, 0);
+                ballBody.angularVelocity.set(0, 0, 0);
+
+                // Araba rotasyonunu da sıfırla
+                if (carGroup) {
+                    carGroup.rotation.set(0, 0, 0);
+                }
+
+                setTimeout(() => {
+                    document.getElementById('status').innerText = "Durum: Aktif";
+                    document.getElementById('status').style.color = "white";
+                }, 1000);
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // --- DUMMY CAR ---
+
+        function createDummyCar() {
+            carGroup = new THREE.Group();
+
+            // 1. Gövde (Body)
+            const bodyGeo = new THREE.BoxGeometry(2, 1, 4); // Genişlik, Yükseklik, Derinlik
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Kırmızı araba
+            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            bodyMesh.position.y = 0.5; // Tekerleklerin üzerinde dursun
+            bodyMesh.castShadow = true;
+            carGroup.add(bodyMesh);
+
+            // 2. Kabin (Cabin)
+            const cabinGeo = new THREE.BoxGeometry(1.5, 0.8, 2);
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x333333 }); // Koyu cam/kabin
+            const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat);
+            cabinMesh.position.y = 1.4;
+            cabinMesh.position.z = -0.5; // Biraz arkaya
+            cabinMesh.castShadow = true;
+            carGroup.add(cabinMesh);
+
+            // 3. Tekerlekler (Wheels)
+            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+            const wheelPositions = [
+                { x: -1.2, y: 0.5, z: 1.2 },  // Sol Ön
+                { x: 1.2, y: 0.5, z: 1.2 },   // Sağ Ön
+                { x: -1.2, y: 0.5, z: -1.2 }, // Sol Arka
+                { x: 1.2, y: 0.5, z: -1.2 }   // Sağ Arka
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2; // Silindiri yan çevir
+                wheel.position.set(pos.x, pos.y, pos.z);
+                wheel.castShadow = true;
+                carGroup.add(wheel);
+            });
+
+            scene.add(carGroup);
+        }
+
+        // Init fonksiyonunun sonunda çağırılmalı veya global değişkenler hazır olunca
+        // Ancak init içinde çağırmak daha düzenli. Kodun akışı gereği init fonksiyonuna ekleme yapacağız.
+
+    </script>
+</body>
+
+</html>

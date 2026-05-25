@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Debug - Wheel Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #debug-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            z-index: 100;
+            width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #debug-panel h2 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: block;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-row input[type="range"] {
+            flex: 1;
+            accent-color: #00ff88;
+        }
+
+        .slider-row .value {
+            min-width: 50px;
+            text-align: right;
+            font-family: monospace;
+            color: #00ff88;
+        }
+
+        .section-title {
+            color: #ffcc00;
+            font-size: 14px;
+            margin: 20px 0 10px 0;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+
+        #controls-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        #controls-info span {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        #speedometer {
+            display: none;
+            /* Hidden by user request */
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 32px;
+            font-family: 'Orbitron', monospace;
+            color: #00ff88;
+            border: 2px solid #00ff88;
+        }
+
+        #speedometer span {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        #export-btn {
+            width: 100%;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        #export-btn:hover {
+            background: #00cc6a;
+        }
+
+        #export-output {
+            margin-top: 10px;
+            padding: 10px;
+            background: #111;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+            word-break: break-all;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group input {
+            accent-color: #00ff88;
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Mobile Toggle Button */
+        #mobile-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.9);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 200;
+            font-size: 14px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+            transition: all 0.2s;
+        }
+
+        #mobile-toggle:hover {
+            background: #00cc6a;
+            transform: scale(1.05);
+        }
+
+        #mobile-toggle.active {
+            background: #ff5555;
+        }
+
+        /* Mobile Controls */
+        .mobile-controls-container {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            height: 150px;
+            pointer-events: none;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 15;
+        }
+
+        .mobile-controls-container.visible {
+            display: flex;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .group-left {
+            flex-direction: column-reverse;
+            align-items: center;
+        }
+
+        .group-right {
+            flex-direction: row;
+            align-items: flex-end;
+        }
+
+        .touch-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(50, 50, 50, 0.4), rgba(0, 0, 0, 0.5));
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            user-select: none;
+            cursor: pointer;
+            transition: all 0.1s;
+            transform: skew(-5deg);
+        }
+
+        .touch-btn:active,
+        .touch-btn.active {
+            background: linear-gradient(135deg, #00aaff, #0055aa);
+            color: #fff;
+            transform: skew(-5deg) scale(0.95);
+            box-shadow: 0 2px 10px rgba(0, 170, 255, 0.6);
+            border-color: #fff;
+        }
+
+        .btn-gas {
+            background: linear-gradient(135deg, rgba(0, 100, 0, 0.4), rgba(0, 50, 0, 0.5));
+            border-color: rgba(0, 255, 0, 0.3);
+            border-bottom: 4px solid rgba(0, 255, 0, 0.5);
+        }
+
+        .btn-gas:active,
+        .btn-gas.active {
+            background: linear-gradient(135deg, #00ff00, #008800);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+        }
+
+        .btn-break {
+            height: 60px;
+            width: 60px;
+            background: linear-gradient(135deg, rgba(100, 0, 0, 0.4), rgba(50, 0, 0, 0.5));
+            border-color: rgba(255, 0, 0, 0.3);
+            border-bottom: 4px solid rgba(255, 0, 0, 0.5);
+            font-size: 18px;
+        }
+
+        .btn-break:active,
+        .btn-break.active {
+            background: linear-gradient(135deg, #ff0000, #aa0000);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div id="debug-panel">
+        <h2>🚗 Wheel Editor</h2>
+
+        <div class="section-title">CAMERA</div>
+
+        <div class="slider-group">
+            <label>Camera Distance (Zoom)</label>
+            <div class="slider-row">
+                <input type="range" id="camDist" min="10" max="150" step="1" value="10.000">
+                <span class="value" id="camDist-val">10.000</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Camera Height</label>
+            <div class="slider-row">
+                <input type="range" id="camHeight" min="2" max="50" step="0.5" value="6.000">
+                <span class="value" id="camHeight-val">6.000</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Camera Follow Speed</label>
+            <div class="slider-row">
+                <input type="range" id="camLerp" min="0.01" max="0.2" step="0.005" value="0.145">
+                <span class="value" id="camLerp-val">0.145</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Look At Height</label>
+            <div class="slider-row">
+                <input type="range" id="lookHeight" min="0" max="10" step="0.5" value="2.5">
+                <span class="value" id="lookHeight-val">2.5</span>
+            </div>
+        </div>
+
+        <div class="section-title">WHEEL GEOMETRY</div>
+
+        <div class="slider-group">
+            <label>Wheel Radius</label>
+            <div class="slider-row">
+                <input type="range" id="wheelRadius" min="0.1" max="1.5" step="0.05" value="0.35">
+                <span class="value" id="wheelRadius-val">0.35</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Wheel Width</label>
+            <div class="slider-row">
+                <input type="range" id="wheelWidth" min="0.1" max="1.0" step="0.05" value="0.25">
+                <span class="value" id="wheelWidth-val">0.25</span>
+            </div>
+        </div>
+
+        <div class="section-title">WHEEL POSITIONS</div>
+
+        <div class="slider-group">
+            <label>X Offset (Left-Right Spread)</label>
+            <div class="slider-row">
+                <input type="range" id="wheelX" min="0.3" max="3.0" step="0.05" value="0.80">
+                <span class="value" id="wheelX-val">0.80</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Y Offset (Height)</label>
+            <div class="slider-row">
+                <input type="range" id="wheelY" min="0" max="2.0" step="0.05" value="0.35">
+                <span class="value" id="wheelY-val">0.35</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Rear Z (Positive = Back)</label>
+            <div class="slider-row">
+                <input type="range" id="wheelRearZ" min="0.3" max="4.0" step="0.05" value="0.65">
+                <span class="value" id="wheelRearZ-val">0.65</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Front Z (Negative = Forward)</label>
+            <div class="slider-row">
+                <input type="range" id="wheelFrontZ" min="-4.0" max="-0.3" step="0.05" value="-1.00">
+                <span class="value" id="wheelFrontZ-val">-1.00</span>
+            </div>
+        </div>
+
+        <div class="section-title">CAR BODY (GLB)</div>
+
+        <div class="slider-group">
+            <label>Body Scale</label>
+            <div class="slider-row">
+                <input type="range" id="bodyScale" min="0.1" max="10.0" step="0.1" value="5.0">
+                <span class="value" id="bodyScale-val">5.00</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Body Y Offset</label>
+            <div class="slider-row">
+                <input type="range" id="bodyY" min="-3" max="3" step="0.05" value="-0.30">
+                <span class="value" id="bodyY-val">-0.30</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Body Rotation Y (degrees)</label>
+            <div class="slider-row">
+                <input type="range" id="bodyRotY" min="0" max="360" step="1" value="180">
+                <span class="value" id="bodyRotY-val">180</span>
+            </div>
+        </div>
+
+        <div class="section-title">OPTIONS</div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="useGLBWheels" checked>
+            <label for="useGLBWheels">Use GLB Wheels (steerOne.glb)</label>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="showAxes" checked>
+            <label for="showAxes">Show Axes Helper</label>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="showGrid" checked>
+            <label for="showGrid">Show Grid</label>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="cliffFall" checked>
+            <label for="cliffFall">Cliff Fall (Auto-Fall)</label>
+        </div>
+
+        <div class="section-title">SUSPENSION (YAYLANMA)</div>
+
+        <div class="slider-group">
+            <label>Max Pitch Angle (Öne/Arkaya)</label>
+            <div class="slider-row">
+                <input type="range" id="maxPitch" min="0" max="0.25" step="0.01" value="0.13">
+                <span class="value" id="maxPitch-val">0.13</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Max Roll Angle (Sağa/Sola)</label>
+            <div class="slider-row">
+                <input type="range" id="maxRoll" min="0" max="0.25" step="0.01" value="0.15">
+                <span class="value" id="maxRoll-val">0.15</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Suspension Softness (Yumuşaklık)</label>
+            <div class="slider-row">
+                <input type="range" id="suspSoftness" min="0.02" max="0.5" step="0.01" value="0.2">
+                <span class="value" id="suspSoftness-val">0.2</span>
+            </div>
+        </div>
+
+        <div class="section-title">DRIVING PHYSICS</div>
+
+        <div class="slider-group">
+            <label>Max Speed</label>
+            <div class="slider-row">
+                <input type="range" id="physMaxSpeed" min="1.0" max="25.0" step="0.1" value="15.0">
+                <span class="value" id="physMaxSpeed-val">15.0</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Acceleration</label>
+            <div class="slider-row">
+                <input type="range" id="physAccel" min="0.001" max="0.2" step="0.001" value="0.074">
+                <span class="value" id="physAccel-val">0.074</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Drift Factor</label>
+            <div class="slider-row">
+                <input type="range" id="physDrift" min="0.5" max="3.0" step="0.1" value="1.4">
+                <span class="value" id="physDrift-val">1.4</span>
+            </div>
+        </div>
+
+        <div class="slider-group">
+            <label>Turn Sharpeness</label>
+            <div class="slider-row">
+                <input type="range" id="physTurn" min="0.05" max="0.5" step="0.01" value="0.11">
+                <span class="value" id="physTurn-val">0.11</span>
+            </div>
+        </div>
+
+        <button id="export-btn">📋 Export Config</button>
+        <div id="export-output"></div>
+    </div>
+
+    <div id="controls-info">
+        <span>W/↑</span> Gas &nbsp;|&nbsp;
+        <span>S/↓</span> Brake &nbsp;|&nbsp;
+        <span>A/←</span> Left &nbsp;|&nbsp;
+        <span>D/→</span> Right
+    </div>
+
+    <div id="speedometer">0 <span>KM/H</span></div>
+
+    <!-- Mobile Toggle Button -->
+    <button id="mobile-toggle">📱 Mobile Mode</button>
+
+    <!-- Mobile Controls -->
+    <div class="mobile-controls-container">
+        <div class="control-group group-left">
+            <div class="touch-btn btn-break" data-key="ArrowDown">S</div>
+            <div class="touch-btn btn-gas" data-key="ArrowUp">W</div>
+        </div>
+
+        <div class="control-group group-right">
+            <div class="touch-btn" data-key="ArrowLeft">◀</div>
+            <div class="touch-btn" data-key="ArrowRight">▶</div>
+        </div>
+    </div>
+
+    <script>
+        window.esmsInitOptions = { shimMode: true };
+    </script>
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
+
+    <script type="importmap-shim">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+</script>
+
+    <script type="module-shim">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+    // --- TEMPORARY VECTORS (GC Optimization - FROM ORIGINAL) ---
+    const _vec3_1 = new THREE.Vector3();
+    const _vec3_cam_offset = new THREE.Vector3();
+    const _vec3_cam_target = new THREE.Vector3();
+    const _raycaster_down = new THREE.Raycaster();
+    const _down_dir = new THREE.Vector3(0, -1, 0);
+
+    // --- SCENE SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x222222);
+    scene.fog = new THREE.Fog(0x222222, 40, 400);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- LIGHTS (FROM ORIGINAL) ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight.position.set(50, 80, 50);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 512;
+    dirLight.shadow.mapSize.height = 512;
+    const d = 60;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    scene.add(dirLight);
+
+    // --- GROUND ---
+    // --- GROUND (REMOVED FOR ENDLESS ROAD) ---
+    // --- GROUND (REMOVED) ---
+
+    // --- GRID & AXES ---
+    // --- GRID & AXES (REMOVED) ---
+
+    // --- MAP BOUNDS (FROM ORIGINAL) ---
+    const mapBounds = {
+        minX: -1000, maxX: 1000,
+        minZ: -1000, maxZ: 1000
+    };
+
+    // --- CAR PHYSICS CONSTANTS (FROM ORIGINAL) ---
+    const dragFactor = 0.98;
+    const frictionFactor = 0.94;
+
+    const carState = {
+        xPos: 0,
+        yPos: 0,
+        altitude: 0,
+        verticalSpeed: 0,
+        isFalling: false,
+        xSpeed: 0,
+        ySpeed: 0,
+        speed: 0,
+        driftAngle: 0,
+        angle: 0,
+        angularVelocity: 0,
+        isTurning: false,
+        isReversing: false,
+        isJumping: false,
+    };
+
+    const carConstants = {
+        maxSpeed: 15.0,
+        maxReverseSpeed: -1.5,
+        accelerationFactor: 0.074,
+        decelerationFactor: 0.02,
+        driftFactor: 1.4,
+        turnFactor: 0.11,
+    };
+
+    // --- SUSPENSION (YAYLANMA) CONSTANTS ---
+    const suspensionConfig = {
+        maxPitchAngle: 0.13,      // UPDATED DEFAULT
+        maxRollAngle: 0.15,       // UPDATED DEFAULT
+        pitchLerpSpeed: 0.2,     // UPDATED DEFAULT
+        rollLerpSpeed: 0.25,      // pitch * 1.25
+        brakeMultiplier: 1.5,     // Fren etkisi çarpanı
+        accelMultiplier: 1.0,     // Gaz etkisi çarpanı
+        turnMultiplier: 1.2,      // Dönüş etkisi çarpanı
+    };
+
+    // --- SUSPENSION STATE ---
+    const suspensionState = {
+        currentPitch: 0,          // Mevcut pitch (öne/arkaya eğilme)
+        currentRoll: 0,           // Mevcut roll (sağa/sola yatma)
+        targetPitch: 0,           // Hedef pitch
+        targetRoll: 0,            // Hedef roll
+    };
+
+    // --- UI CACHE ---
+    const ui = {
+        camDist: 10.0,
+        camHeight: 6.0,
+        camLerp: 0.145,
+        lookHeight: 2.5,
+        cliffFall: true // Default on
+    };
+
+    // --- CONTROLS (FROM ORIGINAL) ---
+    const controller = {
+        ArrowUp: { pressed: false },
+        ArrowDown: { pressed: false },
+        ArrowLeft: { pressed: false },
+        ArrowRight: { pressed: false },
+        w: { pressed: false },
+        s: { pressed: false },
+        a: { pressed: false },
+        d: { pressed: false }
+    };
+
+    window.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (controller[k] || controller[e.key]) {
+            if (controller[k]) controller[k].pressed = true;
+            if (controller[e.key]) controller[e.key].pressed = true;
+        }
+    });
+
+    window.addEventListener("keyup", (e) => {
+        const k = e.key.toLowerCase();
+        if (controller[k] || controller[e.key]) {
+            if (controller[k]) controller[k].pressed = false;
+            if (controller[e.key]) controller[e.key].pressed = false;
+        }
+    });
+
+    // --- MOBILE CONTROLS ---
+    const touchBtns = document.querySelectorAll('.touch-btn');
+    touchBtns.forEach(btn => {
+        const key = btn.getAttribute('data-key');
+
+        const press = (e) => {
+            e.preventDefault();
+            controller[key].pressed = true;
+            btn.classList.add('active');
+        };
+
+        const release = (e) => {
+            e.preventDefault();
+            controller[key].pressed = false;
+            btn.classList.remove('active');
+        };
+
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release, { passive: false });
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+    });
+
+    // --- MOBILE TOGGLE ---
+    let isMobileMode = true; // Default to Mobile Mode
+    const mobileToggleBtn = document.getElementById('mobile-toggle');
+    const debugPanel = document.getElementById('debug-panel');
+    const controlsInfo = document.getElementById('controls-info');
+    const mobileControls = document.querySelector('.mobile-controls-container');
+
+    // Apply initial Mobile Mode state
+    debugPanel.style.display = 'none';
+    controlsInfo.style.display = 'none';
+    mobileControls.classList.add('visible');
+    mobileToggleBtn.classList.add('active');
+    mobileToggleBtn.textContent = '🖥️ Desktop Mode';
+
+    mobileToggleBtn.addEventListener('click', () => {
+        isMobileMode = !isMobileMode;
+        
+        if (isMobileMode) {
+            // Mobile mode ON
+            debugPanel.style.display = 'none';
+            controlsInfo.style.display = 'none';
+            mobileControls.classList.add('visible');
+            mobileToggleBtn.classList.add('active');
+            mobileToggleBtn.textContent = '🖥️ Desktop Mode';
+        } else {
+            // Mobile mode OFF
+            debugPanel.style.display = 'block';
+            controlsInfo.style.display = 'block';
+            mobileControls.classList.remove('visible');
+            mobileToggleBtn.classList.remove('active');
+            mobileToggleBtn.textContent = '📱 Mobile Mode';
+        }
+    });
+
+    // --- CAR GROUP ---
+    const carGroup = new THREE.Group();
+    scene.add(carGroup);
+
+    // --- GLB BODY ---
+    let carBodyModel = null;
+    
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(dracoLoader);
+
+    // Determine which car to load
+    const savedCar = localStorage.getItem('selectedTestCar') || 'carOne';
+    const carModelName = savedCar + '.glb'; // 'carOne.glb' or 'carTwo.glb'
+    console.log('Loading car model:', carModelName);
+
+    loader.load(carModelName, (gltf) => {
+        carBodyModel = gltf.scene;
+        carBodyModel.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        // Apply initial transform
+        carBodyModel.scale.set(5.0, 5.0, 5.0);
+        carBodyModel.position.y = -0.30;
+        carBodyModel.rotation.y = Math.PI; // 180 degrees - face forward (negative Z)
+        carGroup.add(carBodyModel);
+        console.log('✅ carOne.glb loaded successfully');
+    }, undefined, (error) => {
+        console.error('❌ Error loading carOne.glb:', error);
+        // Fallback: Create a simple box as placeholder
+        const fallbackGeo = new THREE.BoxGeometry(1.8, 0.6, 3.8);
+        const fallbackMat = new THREE.MeshStandardMaterial({ color: 0x0088ff, roughness: 0.2, metalness: 0.6 });
+        const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
+        fallbackMesh.position.y = 0.6;
+        fallbackMesh.castShadow = true;
+        carBodyModel = fallbackMesh;
+        carGroup.add(fallbackMesh);
+        console.log('⚠️ Using fallback box model');
+    });
+
+    // --- WHEELS ---
+    const wheels = [];
+    let wheelModelTemplate = null;
+    let useGLBWheels = true; // Toggle between GLB and procedural
+    
+    const wheelMat = new THREE.MeshStandardMaterial({ 
+        color: 0x111111, 
+        roughness: 0.3,
+        metalness: 0.5
+    });
+
+    // Load wheel GLB model
+    loader.load('steerOne.glb', (gltf) => {
+        wheelModelTemplate = gltf.scene;
+        wheelModelTemplate.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        
+        // Replace procedural wheels with GLB wheels
+        if (useGLBWheels) {
+            replaceWheelsWithGLB();
+        }
+        
+        console.log('✅ steerOne.glb loaded successfully');
+    }, undefined, (error) => {
+        console.error('❌ Error loading steerOne.glb:', error);
+        console.log('⚠️ Using procedural wheels');
+    });
+
+    // Create initial 4 procedural wheels (will be replaced if GLB loads)
+    for (let i = 0; i < 4; i++) {
+        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 24);
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.castShadow = true;
+        carGroup.add(wheel);
+        wheels.push(wheel);
+    }
+
+    function replaceWheelsWithGLB() {
+        if (!wheelModelTemplate) return;
+        
+        // Remove old procedural wheels
+        wheels.forEach(wheel => {
+            carGroup.remove(wheel);
+            if (wheel.geometry) wheel.geometry.dispose();
+        });
+        wheels.length = 0;
+        wheelMeshes.length = 0;
+        
+        // Get current body scale
+        const bodyScale = parseFloat(document.getElementById('bodyScale').value);
+        
+        // Create 4 GLB wheel instances with wrapper groups
+        for (let i = 0; i < 4; i++) {
+            // Wrapper group handles position, steering, flip
+            const wheelGroup = new THREE.Group();
+            
+            // GLB mesh handles only spin
+            const wheelMesh = wheelModelTemplate.clone();
+            wheelMesh.scale.set(bodyScale, bodyScale, bodyScale);
+            
+            // Left-side wheels (0, 2) need to be flipped so hub faces outward
+            if (i === 0 || i === 2) {
+                wheelGroup.rotation.y = Math.PI; // 180 degrees flip on GROUP
+            }
+            
+            wheelMesh.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            
+            wheelGroup.add(wheelMesh);
+            carGroup.add(wheelGroup);
+            
+            wheels.push(wheelGroup);      // For position/steering
+            wheelMeshes.push(wheelMesh);  // For spin
+        }
+        
+        // Update positions with current slider values
+        updateWheelPositions();
+        console.log('🔄 Replaced wheels with GLB models (scale: ' + bodyScale + ')');
+    }
+    
+    // Separate array for wheel meshes (for spin)
+    const wheelMeshes = [];
+
+    // Initial wheel positions - MATCHING ORIGINAL COORDINATE SYSTEM
+    // Positive Z = REAR (back of car), Negative Z = FRONT (forward)
+    // wheels[0,1] = Rear, wheels[2,3] = Front (steering)
+    function updateWheelPositions() {
+        const x = parseFloat(document.getElementById('wheelX').value);
+        const y = parseFloat(document.getElementById('wheelY').value);
+        const rearZ = parseFloat(document.getElementById('wheelRearZ').value);   // Positive
+        const frontZ = parseFloat(document.getElementById('wheelFrontZ').value); // Negative
+
+        // ORIGINAL ORDER: [Rear Left, Rear Right, Front Left, Front Right]
+        wheels[0].position.set(-x, y, rearZ);  // Rear Left
+        wheels[1].position.set(x, y, rearZ);   // Rear Right
+        wheels[2].position.set(-x, y, frontZ); // Front Left (steers)
+        wheels[3].position.set(x, y, frontZ);  // Front Right (steers)
+    }
+
+    function updateWheelGeometry() {
+        // GLB wheels have fixed geometry, only procedural wheels can be resized
+        if (useGLBWheels && wheelModelTemplate) {
+            console.log('⚠️ Wheel geometry sliders disabled for GLB wheels');
+            return;
+        }
+        
+        const radius = parseFloat(document.getElementById('wheelRadius').value);
+        const width = parseFloat(document.getElementById('wheelWidth').value);
+
+        wheels.forEach(wheel => {
+            wheel.geometry.dispose();
+            wheel.geometry = new THREE.CylinderGeometry(radius, radius, width, 24);
+        });
+    }
+
+    function updateBodyTransform() {
+        if (!carBodyModel) return;
+        const scale = parseFloat(document.getElementById('bodyScale').value);
+        const yOffset = parseFloat(document.getElementById('bodyY').value);
+        const rotY = parseFloat(document.getElementById('bodyRotY').value);
+        
+        carBodyModel.scale.set(scale, scale, scale);
+        carBodyModel.position.y = yOffset;
+        carBodyModel.rotation.y = (rotY * Math.PI) / 180;
+        
+        // Update wheel mesh scales if using GLB wheels (same export)
+        if (useGLBWheels && wheelModelTemplate) {
+            wheelMeshes.forEach(mesh => {
+                if (mesh.scale) {
+                    mesh.scale.set(scale, scale, scale);
+                }
+            });
+        }
+    }
+
+    // --- SLIDER EVENT LISTENERS ---
+    const sliders = [
+        'wheelRadius', 'wheelWidth', 'wheelX', 'wheelY', 'wheelFrontZ', 'wheelRearZ', 
+        'bodyScale', 'bodyY', 'bodyRotY', 
+        'camDist', 'camHeight', 'camLerp', 'lookHeight', 
+        'maxPitch', 'maxRoll', 'suspSoftness',
+        'physMaxSpeed', 'physAccel', 'physDrift', 'physTurn'
+    ];
+    
+    sliders.forEach(id => {
+        const slider = document.getElementById(id);
+        const valueDisplay = document.getElementById(id + '-val');
+        
+        slider.addEventListener('input', () => {
+            let val = parseFloat(slider.value);
+            valueDisplay.textContent = val.toFixed(3); // More precision for small values
+            
+            if (id === 'wheelRadius' || id === 'wheelWidth') {
+                updateWheelGeometry();
+            } else if (id.startsWith('wheel')) {
+                updateWheelPositions();
+            } else if (id.startsWith('body')) {
+                updateBodyTransform();
+            } else if (id === 'camDist') {
+                ui.camDist = val;
+            } else if (id === 'camHeight') {
+                ui.camHeight = val;
+            } else if (id === 'camLerp') {
+                ui.camLerp = val;
+            } else if (id === 'lookHeight') {
+                ui.lookHeight = val;
+            } else if (id === 'maxPitch') {
+                suspensionConfig.maxPitchAngle = val;
+            } else if (id === 'maxRoll') {
+                suspensionConfig.maxRollAngle = val;
+            } else if (id === 'suspSoftness') {
+                suspensionConfig.pitchLerpSpeed = val;
+                suspensionConfig.rollLerpSpeed = val * 1.25;
+            } else if (id === 'physMaxSpeed') {
+                carConstants.maxSpeed = val;
+            } else if (id === 'physAccel') {
+                carConstants.accelerationFactor = val;
+            } else if (id === 'physDrift') {
+                carConstants.driftFactor = val;
+            } else if (id === 'physTurn') {
+                carConstants.turnFactor = val;
+            }
+        });
+    });
+
+    // Checkbox handlers
+    document.getElementById('useGLBWheels').addEventListener('change', (e) => {
+        useGLBWheels = e.target.checked;
+        if (useGLBWheels && wheelModelTemplate) {
+            replaceWheelsWithGLB();
+        } else {
+            // Revert to procedural wheels
+            wheels.forEach(wheel => {
+                carGroup.remove(wheel);
+                if (wheel.geometry) wheel.geometry.dispose();
+            });
+            wheels.length = 0;
+            
+            // Recreate procedural wheels
+            for (let i = 0; i < 4; i++) {
+                const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 24);
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.castShadow = true;
+                carGroup.add(wheel);
+                wheels.push(wheel);
+            }
+            updateWheelPositions();
+            console.log('🔄 Reverted to procedural wheels');
+        }
+    });
+
+    document.getElementById('showAxes').addEventListener('change', (e) => {
+        // axesHelper.visible = e.target.checked;
+    });
+
+    document.getElementById('showGrid').addEventListener('change', (e) => {
+        // gridHelper.visible = e.target.checked; 
+    });
+
+    document.getElementById('cliffFall').addEventListener('change', (e) => {
+        ui.cliffFall = e.target.checked;
+    });
+
+    // Export button
+    document.getElementById('export-btn').addEventListener('click', () => {
+        const config = {
+            camera: {
+                dist: parseFloat(document.getElementById('camDist').value),
+                height: parseFloat(document.getElementById('camHeight').value),
+                followSpeed: parseFloat(document.getElementById('camLerp').value),
+                lookHeight: parseFloat(document.getElementById('lookHeight').value)
+            },
+            wheel: {
+                radius: parseFloat(document.getElementById('wheelRadius').value),
+                width: parseFloat(document.getElementById('wheelWidth').value),
+                xOffset: parseFloat(document.getElementById('wheelX').value),
+                yOffset: parseFloat(document.getElementById('wheelY').value),
+                frontZ: parseFloat(document.getElementById('wheelFrontZ').value),
+                rearZ: parseFloat(document.getElementById('wheelRearZ').value)
+            },
+            body: {
+                scale: parseFloat(document.getElementById('bodyScale').value),
+                yOffset: parseFloat(document.getElementById('bodyY').value)
+            },
+            suspension: {
+                maxPitchAngle: parseFloat(document.getElementById('maxPitch').value),
+                maxRollAngle: parseFloat(document.getElementById('maxRoll').value),
+                lerpSpeed: parseFloat(document.getElementById('suspSoftness').value)
+            },
+            physics: {
+                maxSpeed:  parseFloat(document.getElementById('physMaxSpeed').value),
+                acceleration: parseFloat(document.getElementById('physAccel').value),
+                driftFactor: parseFloat(document.getElementById('physDrift').value),
+                turnFactor: parseFloat(document.getElementById('physTurn').value)
+            }
+        };
+
+        const output = document.getElementById('export-output');
+        output.style.display = 'block';
+        output.textContent = JSON.stringify(config, null, 2);
+        
+        navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+        console.log('📋 Config copied to clipboard:', config);
+    });
+
+    // Initialize positions
+    updateWheelPositions();
+
+    // --- CLOCK & DELTA (FROM ORIGINAL) ---
+    const clock = new THREE.Clock();
+
+    // --- SPEEDOMETER ---
+    const speedometerEl = document.getElementById('speedometer');
+
+
+
+    // --- PROCEDURAL ROAD SYSTEM ---
+    const RoadManager = {
+        segments: [],
+        chunkSize: 50, // Length of one road segment
+        renderDistance: 15, // How many segments ahead to draw
+        removeDistance: 5, // How many segments behind to keep
+        currentSegmentIndex: 0,
+        roadWidth: 20,
+        noiseOffset: 0,
+        lastPosition: new THREE.Vector3(0, 0, 0),
+        lastDirection: new THREE.Vector3(0, 0, -1),
+        // Fix gap: Store the last left/right vertices to stitch segments perfectly
+        lastLeftVertex: null,
+        lastRightVertex: null,
+        
+        // Curve definitions
+        curveState: {
+            currentAngle: 0,
+            targetAngle: 0,
+            currentIncline: 0, // Vertical angle (Pitch)
+            targetIncline: 0,
+            transitionProgress: 0,
+            segmentCountInCurve: 0,
+            curveLength: 0
+        },
+
+        init: function() {
+            // CLEANUP: Remove existing meshes from scene to prevent duplicates/leaks
+            if (this.segments.length > 0) {
+                this.segments.forEach(seg => {
+                    if (seg.mesh) {
+                        scene.remove(seg.mesh);
+                        if(seg.mesh.geometry) seg.mesh.geometry.dispose();
+                        if(seg.mesh.material) seg.mesh.material.dispose();
+                    }
+                    if (seg.lineMesh) {
+                        scene.remove(seg.lineMesh);
+                        if(seg.lineMesh.geometry) seg.lineMesh.geometry.dispose();
+                        if(seg.lineMesh.material) seg.lineMesh.material.dispose();
+                    }
+                });
+            }
+
+            // Reset state
+            this.segments = [];
+            this.lastPosition = new THREE.Vector3(0, 0, 0);
+            this.lastDirection = new THREE.Vector3(0, 0, -1);
+            this.lastLeftVertex = null;
+            this.lastRightVertex = null;
+            
+            // Curve state reset
+            this.curveState = {
+                currentAngle: 0,
+                targetAngle: 0,
+                currentIncline: 0,
+                targetIncline: 0,
+                transitionProgress: 0,
+                segmentCountInCurve: 0,
+                curveLength: 0
+            };
+
+            // Force first 5 segments to be absolutely straight for safe start
+            for(let i = 0; i < this.renderDistance; i++) {
+                const isSafeZone = i < 5; 
+                this.spawnSegment(isSafeZone);
+            }
+        },
+
+        update: function(carPos) {
+            // Cleanup & Spawn Logic
+            if (this.segments.length > 0) {
+                // Remove old segments if they are too far behind
+                // We use the first segment to check distance
+                const firstSeg = this.segments[0];
+                const distToFirst = carPos.distanceTo(firstSeg.center);
+                
+                // Only remove if we have enough buffer ahead AND it's far behind
+                // Use a generous distance (removeDistance * chunkSize)
+                if (this.segments.length > this.renderDistance && distToFirst > this.chunkSize * this.removeDistance) {
+                    const oldSeg = this.segments.shift();
+                    scene.remove(oldSeg.mesh);
+                    if (oldSeg.lineMesh) scene.remove(oldSeg.lineMesh);
+                    
+                    oldSeg.mesh.geometry.dispose();
+                    if(oldSeg.lineMesh) oldSeg.lineMesh.geometry.dispose();
+                }
+                
+                // Spawn new segments
+                const lastSeg = this.segments[this.segments.length - 1];
+                const distToLast = carPos.distanceTo(lastSeg.center);
+                
+                // If the end of the road is getting closer (within render distance), spawn more
+                // Using (renderDistance - 5) as buffer
+                if (distToLast < this.chunkSize * (this.renderDistance - 4)) {
+                    this.spawnSegment();
+                }
+            }
+        },
+        
+        spawnSegment: function(forceStraight = false) {
+            // PROCEDURAL CURVE LOGIC
+            if (forceStraight) {
+                this.curveState.targetAngle = 0;
+                this.curveState.currentAngle = 0;
+            } else {
+                // Decide curve every N segments
+                // Decide curve every N segments
+                if (this.curveState.segmentCountInCurve >= this.curveState.curveLength) {
+                    // Pick new curve
+                    this.curveState.segmentCountInCurve = 0;
+                    this.curveState.curveLength = Math.floor(Math.random() * 3) + 2; 
+                    
+                    const intensity = 0.8; 
+                    const dir = Math.random() > 0.5 ? 1 : -1;
+                    
+                    // Horizontal Curve
+                    if (Math.random() > 0.2) {
+                        this.curveState.targetAngle = (Math.random() * intensity) * dir;
+                    } else {
+                        this.curveState.targetAngle = 0;
+                    }
+
+                    // Vertical Curve (Incline/Hills)
+                    // Chance for flat, up, or down
+                    const rand = Math.random();
+                     
+                    if (rand > 0.6) {
+                        // Slope (Up or Down)
+                        // Max incline ~0.3 radians (~17 degrees)
+                        const slopeDir = Math.random() > 0.5 ? 1 : -1;
+                        this.curveState.targetIncline = (Math.random() * 0.3) * slopeDir;
+                    } else {
+                        // Return to Flat
+                        this.curveState.targetIncline = 0;
+                    }
+                }
+                // Smoothly transition angles
+                this.curveState.currentAngle = THREE.MathUtils.lerp(this.curveState.currentAngle, this.curveState.targetAngle, 0.3);
+                this.curveState.currentIncline = THREE.MathUtils.lerp(this.curveState.currentIncline, this.curveState.targetIncline, 0.1); // Slower vertical transition
+                
+                this.curveState.segmentCountInCurve++;
+            }
+
+            // Calculate Grid Points
+            // We create a road mesh that curves based on currentAngle
+            
+            const segmentLength = this.chunkSize;
+            const segmentsCount = 10; // Resolution within one chunk
+            const stepLength = segmentLength / segmentsCount;
+            
+            const pts = [];
+            const centerLine = [];
+            
+            // Start from last pos/dir
+            let pos = this.lastPosition.clone();
+            let dir = this.lastDirection.clone();
+
+            // DEBUG: CREATE A GAP/DROP TO TEST PHYSICS
+            if (this.segments.length === 10) {
+                // Move "cursor" forward and down effectively creating a jump
+                const jumpDist = 30;
+                const dropHeight = 20;
+                pos.add(dir.clone().multiplyScalar(jumpDist));
+                pos.y -= dropHeight;
+                
+                // Reset stitching to avoid stretching mesh across the gap
+                this.lastLeftVertex = null;
+                this.lastRightVertex = null;
+                
+                // Update persistent state so next segment starts here
+                this.lastPosition.copy(pos);
+            }
+            
+            // Left/Right vectors
+            const up = new THREE.Vector3(0, 1, 0);
+            
+            // Build geometry points
+            // Simple ribbon: 2 triangles per step
+            
+            const geometry = new THREE.PlaneGeometry(this.roadWidth, segmentLength, 1, segmentsCount);
+            const posAttribute = geometry.attributes.position;
+            
+            // Modify plane vertices to follow curve
+            for (let i = 0; i <= segmentsCount; i++) {
+                // Current Center Point
+                // Store center for camera/gameplay logic
+                if (i === segmentsCount / 2) {
+                    // Logic center of this chunk
+                }
+                
+                // Add center line point for visual
+                centerLine.push(pos.clone().add(new THREE.Vector3(0, 0.05, 0)));
+                
+                // Calculate Left and Right vertices
+                // Use Cross product to find perpendicular vector (Side vector)
+                // Note: 'dir' might be pitching up/down, so we must be careful with 'up' vector
+                // We use a temporary standard Up (0,1,0) for cross product, which works as long as road isn't vertical
+                const right = new THREE.Vector3().crossVectors(dir, up).normalize().multiplyScalar(this.roadWidth / 2);
+                const left = right.clone().negate();
+                
+                const vLeft = pos.clone().add(left);
+                const vRight = pos.clone().add(right);
+                
+                // Apply to Plane Geometry (Plane matches Z-forward, but we need to map correctly)
+                // PlaneGeo Vertices are ordered loop. 
+                // Row i: 
+                // Left: index (i * 2)
+                // Right: index (i * 2 + 1)
+                
+                // NOTE: PlaneGeometry(w, h, wSeg, hSeg)
+                // width is X, height is Y (which we map to Z)
+                // vertices are indexed: (x, y, z)
+                
+                const leftIdx = i * 2;
+                const rightIdx = i * 2 + 1;
+                
+                // Update Plane Vertices
+                // Standard Plane is X/Y. We need X/Z. 
+                // Actually easier to build BufferGeometry manually but let's hack standard
+                
+                posAttribute.setXYZ(leftIdx, vLeft.x, vLeft.y, vLeft.z);
+                posAttribute.setXYZ(rightIdx, vRight.x, vRight.y, vRight.z);
+                
+                // Advance
+                // Rotate direction by horizontal angle (Yaw - Y axis)
+                const rotAxisY = new THREE.Vector3(0, 1, 0);
+                dir.applyAxisAngle(rotAxisY, this.curveState.currentAngle / segmentsCount);
+                
+                // Rotate direction by vertical angle (Pitch - Relative X axis)
+                // We calculate the Right vector again to use as axis for pitching
+                const pitchAxis = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+                dir.applyAxisAngle(pitchAxis, this.curveState.currentIncline / segmentsCount);
+
+                dir.normalize();
+                
+                // Move forward
+                pos.add(dir.clone().multiplyScalar(stepLength));
+            }
+
+            // STITCHING FIX:
+            // Ensure the very first vertices of this segment MATCH the very last vertices of the previous segment
+            // (Only for i=0)
+            if (this.lastLeftVertex && this.lastRightVertex) {
+                posAttribute.setXYZ(0, this.lastLeftVertex.x, this.lastLeftVertex.y, this.lastLeftVertex.z);
+                posAttribute.setXYZ(1, this.lastRightVertex.x, this.lastRightVertex.y, this.lastRightVertex.z);
+            }
+
+            // Save the LAST vertices of THIS segment for the NEXT segment to connect to
+            const lastLeftIdx = segmentsCount * 2;
+            const lastRightIdx = segmentsCount * 2 + 1;
+            
+            this.lastLeftVertex = new THREE.Vector3(
+                posAttribute.getX(lastLeftIdx),
+                posAttribute.getY(lastLeftIdx), 
+                posAttribute.getZ(lastLeftIdx)
+            );
+            
+            this.lastRightVertex = new THREE.Vector3(
+                posAttribute.getX(lastRightIdx),
+                posAttribute.getY(lastRightIdx), 
+                posAttribute.getZ(lastRightIdx)
+            );
+            
+            geometry.computeVertexNormals();
+            
+            // Material
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x333333, 
+                roughness: 0.9, 
+                metalness: 0.1,
+                side: THREE.DoubleSide
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            
+            // Center Line Visual
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(centerLine);
+            const lineMat = new THREE.LineDashedMaterial({
+                color: 0xffffff,
+                linewidth: 1,
+                scale: 1,
+                dashSize: 3,
+                gapSize: 2,
+            });
+            const line = new THREE.Line(lineGeo, lineMat);
+            line.computeLineDistances();
+            line.position.y = 0.05;
+            scene.add(line);
+            
+            // Store segment data
+            this.segments.push({
+                mesh: mesh,
+                lineMesh: line,
+                center: this.lastPosition.clone() // Start of segment acts as anchor
+            });
+            
+            // Update global state
+            this.lastPosition = pos;
+            this.lastDirection = dir;
+        }
+    };
+
+    // --- INFINITE GROUND ---
+    // --- INFINITE GROUND ---
+    // REMOVED BY USER REQUEST (VOID MODE)
+    const InfiniteGround = {
+        mesh: null,
+        init: function() {
+            // No ground mesh
+        },
+        update: function(carPos) {
+            // No ground update
+        }
+    };
+    
+    // START ENDLESS SYSTEMS
+    RoadManager.init();
+    // InfiniteGround.init();
+
+    // --- PHYSICS UPDATE (FROM ORIGINAL - EXACT COPY) ---
+    function updatePhysics(delta) {
+        // DELTA CLAMPING: Frame drop olduğunda fizik patlamasını önle
+        const clampedDelta = Math.min(delta, 0.033);
+        const deltaFactor = clampedDelta * 60;
+
+        const isUp = controller.ArrowUp.pressed || controller.w.pressed;
+        const isDown = controller.ArrowDown.pressed || controller.s.pressed;
+        const isLeft = controller.ArrowLeft.pressed || controller.a.pressed;
+        const isRight = controller.ArrowRight.pressed || controller.d.pressed;
+
+        // --- YERDE SÜRÜŞ FİZİĞİ ---
+        // Allow controls always (even in air) for arcade feel vs suspension jitter
+        {
+            if (isUp && carState.speed < carConstants.maxSpeed) carState.speed += carConstants.accelerationFactor * deltaFactor;
+            if (isDown && carState.speed > carConstants.maxReverseSpeed) carState.speed -= carConstants.decelerationFactor * deltaFactor;
+
+            carState.isTurning = false;
+            if (isLeft) {
+                carState.isTurning = true;
+                // BETTER TURNING (Coasting Logic):
+                const speedRatio = Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1.0);
+                const turnPower = isUp ? 1.0 : Math.max(speedRatio, 0.5); 
+                carState.angularVelocity += carConstants.turnFactor * turnPower * deltaFactor;
+            }
+            if (isRight) {
+                carState.isTurning = true;
+                const speedRatio = Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1.0);
+                const turnPower = isUp ? 1.0 : Math.max(speedRatio, 0.5);
+                carState.angularVelocity -= carConstants.turnFactor * turnPower * deltaFactor;
+            }
+
+            carState.isReversing = carState.speed < 0;
+            carState.angularVelocity *= Math.pow(frictionFactor, deltaFactor);
+
+            if (!carState.isReversing) carState.driftAngle += carConstants.driftFactor * carState.angularVelocity * deltaFactor;
+            carState.driftAngle *= Math.pow(frictionFactor, deltaFactor);
+            carState.angle += carState.angularVelocity * deltaFactor;
+
+            carState.speed = carState.speed * Math.pow(dragFactor, deltaFactor) - (carState.isReversing ? -1 : 1) * ((Math.abs(carState.driftAngle) * carState.speed) / 1000) * deltaFactor;
+
+            carState.xSpeed = Math.sin((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
+            carState.ySpeed = Math.cos((Math.PI / 180) * (carState.angle - carState.driftAngle)) * carState.speed;
+        }
+
+        // --- SPRING SUSPENSION PHYSICS (REFINED) ---
+        
+        // Physics Constants - TUNED FOR "HEAVY" FEEL (NO BOUNCE)
+        const GRAVITY = -0.05 * deltaFactor; 
+        const SUSPENSION_REST_DIST = 1.0; 
+        const SPRING_STRENGTH = 0.3 * deltaFactor; // Stiffer spring
+        const DAMPER = 0.85 * deltaFactor; // Heavy damping (kills oscillation)
+        
+        let onGround = false;
+        
+        // 1. Raycast to find ground distance
+        // Start ray HIGH to catch the road early when falling fast
+        const rayOriginY = carState.altitude + 50.0; 
+        // We cast downwards from way up high to find the road surface directly below us
+        _raycaster_down.set(new THREE.Vector3(carState.xPos, rayOriginY, carState.yPos), _down_dir);
+        
+        // Collect colliders
+        const colliders = [];
+        RoadManager.segments.forEach(seg => {
+            if(seg.mesh) colliders.push(seg.mesh);
+        });
+        
+        const intersects = _raycaster_down.intersectObjects(colliders);
+        
+        // 2. Apply Spring Forces
+        if (intersects.length > 0) {
+            const hit = intersects[0];
+            const groundHeight = hit.point.y;
+            const diff = carState.altitude - groundHeight; // Height above ground
+            
+            // If we are close enough (or slightly below!)
+            // We use a larger window to "catch" the car
+            if (diff < SUSPENSION_REST_DIST + 1.0) {
+                onGround = true;
+                
+                // Spring Physics
+                const compression = SUSPENSION_REST_DIST - diff;
+                
+                // Force = (k * x) - (c * v)
+                let springForce = compression * SPRING_STRENGTH;
+                
+                // STICKY TIRES: Downhill & High Speed Fix
+                // If suspension is EXTENDED (car flying off road slightly), pull it back down!
+                if (compression < 0) {
+                    // Only pull down if we are not deliberately jumping (vSpeed isn't huge upwards)
+                    if (carState.verticalSpeed > -0.5) {
+                        // Apply strong negative force to stick to road
+                        springForce *= 1.5; 
+                    }
+                }
+                
+                const dampingForce = -carState.verticalSpeed * DAMPER;
+                
+                carState.verticalSpeed += (springForce + dampingForce);
+                
+                // --- PENETRATION FIX (Anti-Tunneling) ---
+                // If we somehow went BELOW the road, push us up immediately
+                if (diff < 0) {
+                    carState.altitude = groundHeight + 0.1;
+                    // Cancel downward momentum instantly
+                    if (carState.verticalSpeed < 0) carState.verticalSpeed = 0;
+                }
+                
+                // --- SLOPE ALIGNMENT (EULER - RESTORED) ---
+                const nMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+                const roadNormal = hit.face.normal.clone().applyMatrix3(nMatrix).normalize();
+                
+                const totalYaw = THREE.MathUtils.degToRad(carState.angle + carState.driftAngle);
+                const forward = new THREE.Vector3(-Math.sin(totalYaw), 0, -Math.cos(totalYaw));
+                
+                const pitchDot = forward.dot(roadNormal);
+                const targetPitch = Math.asin(Math.max(-1, Math.min(1, pitchDot)));
+                
+                // Smoothly align rotation.x
+                carGroup.rotation.x = THREE.MathUtils.lerp(carGroup.rotation.x || 0, targetPitch, 0.2);
+                
+                carState.isFalling = false;
+            }
+        } else {
+            onGround = false;
+        }
+
+        // 3. Apply Gravity
+        carState.verticalSpeed += GRAVITY;
+
+        // 4. Update Position
+        carState.xPos -= carState.xSpeed * deltaFactor;
+        carState.yPos -= carState.ySpeed * deltaFactor;
+        carState.altitude += carState.verticalSpeed * deltaFactor;
+        
+        // 5. Landing / Air State
+        if (!onGround) {
+            carState.isFalling = true;
+            carGroup.rotation.x = THREE.MathUtils.lerp(carGroup.rotation.x, 0, 0.05);
+        }
+        
+        // Fall protection / Respawn
+        if (carState.altitude < -200) {
+             if (ui.cliffFall) {
+                 // RESPAWN
+                 carState.xPos = 0;
+                 carState.yPos = 0;
+                 carState.altitude = 0.5; // Start ON GROUND (suspension height)
+                 carState.speed = 0;
+                 carState.xSpeed = 0;
+                 carState.ySpeed = 0;
+                 carState.verticalSpeed = 0;
+                 carState.isFalling = false;
+                 carState.isJumping = false;
+                 carState.driftAngle = 0;
+                 carState.angle = 0;
+                 carState.angularVelocity = 0;
+                 
+                 carGroup.position.set(0, 0.5, 0);
+                 carGroup.rotation.set(0,0,0);
+                 carGroup.up.set(0, 1, 0); 
+                 
+                 RoadManager.init();
+                 
+                 suspensionState.currentPitch = 0;
+                 suspensionState.currentRoll = 0;
+                 return;
+             } else {
+                 carState.altitude = Math.max(carState.altitude, 0);
+                 if(carState.altitude <= 0) carState.verticalSpeed = 0;
+             }
+        }
+
+        // --- UPDATE 3D OBJECT ---
+        carGroup.position.set(carState.xPos, carState.altitude, carState.yPos);
+        
+        // Rotation (Yaw + Slope)
+        // Order YXZ means we Yaw (turn) first, then Pitch (tilt)
+        carGroup.rotation.order = 'YXZ'; 
+        carGroup.rotation.y = THREE.MathUtils.degToRad(carState.angle + carState.driftAngle);
+        
+        // Explicitly safely reset Up vector
+        carGroup.up.set(0, 1, 0);
+
+        // Harita sınırları - DISABLE FOR ENDLESS RUNNER
+        // if (carState.xPos < mapBounds.minX) carState.xPos = mapBounds.maxX;
+        // if (carState.xPos > mapBounds.maxX) carState.xPos = mapBounds.minX;
+        // if (carState.yPos < mapBounds.minZ) carState.yPos = mapBounds.maxZ;
+        // if (carState.yPos > mapBounds.maxZ) carState.yPos = mapBounds.minZ;
+
+        // carGroup.position.set(carState.xPos, carState.altitude, carState.yPos);
+
+        // Wheel steering - wheels[2] and wheels[3] are FRONT wheel GROUPS
+        const wheelTurn = isLeft ? 0.5 : (isRight ? -0.5 : 0);
+        
+        // Steering happens on the GROUP level (preserves flip)
+        // Left front (index 2) already has Math.PI base rotation on group
+        if (useGLBWheels && wheelModelTemplate) {
+            // For GLB, groups already have base rotation, just add steering offset
+            wheels[2].rotation.y = Math.PI + wheelTurn; // Front Left group
+            wheels[3].rotation.y = wheelTurn;           // Front Right group
+            
+            // Spin happens on MESH level (inside the group)
+            const spinSpeed = carState.speed * 0.8;
+            wheelMeshes.forEach((mesh, i) => {
+                // Right wheels (1, 3) spin opposite direction
+                if (i === 1 || i === 3) {
+                    mesh.rotation.x -= spinSpeed;
+                } else {
+                    // Left wheels (0, 2) spin normal direction
+                    mesh.rotation.x += spinSpeed;
+                }
+            });
+        } else {
+            // Procedural wheels
+            wheels[2].rotation.y = wheelTurn;
+            wheels[3].rotation.y = wheelTurn;
+            
+            // Spin for procedural
+            const spinSpeed = carState.speed * 0.3;
+            wheels.forEach(wheel => {
+                wheel.rotation.x += spinSpeed;
+            });
+        }
+
+        // --- SUSPENSION (YAYLANMA) UPDATE ---
+        if (carBodyModel) {
+            // Hedef pitch hesapla (fren = öne, gaz = arkaya)
+            let targetPitch = 0;
+            if (isDown && carState.speed > 0.1) {
+                // Fren: öne eğil (negatif = öne)
+                targetPitch = -suspensionConfig.maxPitchAngle * suspensionConfig.brakeMultiplier * Math.min(carState.speed / carConstants.maxSpeed, 1);
+            } else if (isUp) {
+                // Gaz: arkaya eğil (pozitif = arkaya)
+                const accelIntensity = Math.min(carState.speed / carConstants.maxSpeed, 1);
+                targetPitch = suspensionConfig.maxPitchAngle * suspensionConfig.accelMultiplier * (1 - accelIntensity * 0.5);
+            }
+            
+            // Hedef roll hesapla (dönüşte dışa yat)
+            let targetRoll = 0;
+            if (Math.abs(carState.speed) > 0.1) {
+                if (isLeft) {
+                    // Sola dönüş: sağa yat (pozitif)
+                    targetRoll = suspensionConfig.maxRollAngle * suspensionConfig.turnMultiplier * Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1);
+                } else if (isRight) {
+                    // Sağa dönüş: sola yat (negatif)
+                    targetRoll = -suspensionConfig.maxRollAngle * suspensionConfig.turnMultiplier * Math.min(Math.abs(carState.speed) / carConstants.maxSpeed, 1);
+                }
+            }
+            
+            // Yumuşak geçiş (lerp)
+            const pitchLerp = 1 - Math.pow(1 - suspensionConfig.pitchLerpSpeed, deltaFactor);
+            const rollLerp = 1 - Math.pow(1 - suspensionConfig.rollLerpSpeed, deltaFactor);
+            
+            suspensionState.currentPitch += (targetPitch - suspensionState.currentPitch) * pitchLerp;
+            suspensionState.currentRoll += (targetRoll - suspensionState.currentRoll) * rollLerp;
+            
+            // Body'ye uygula (base rotation + suspension)
+            const baseRotY = parseFloat(document.getElementById('bodyRotY').value) * Math.PI / 180;
+            carBodyModel.rotation.set(
+                suspensionState.currentPitch,  // Pitch (X ekseni)
+                baseRotY,                       // Yaw (Y ekseni - slider'dan)
+                suspensionState.currentRoll    // Roll (Z ekseni)
+            );
+        }
+    }
+
+    // --- ANIMATION LOOP (FROM ORIGINAL) ---
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+        const deltaFactor = Math.min(delta, 0.033) * 60;
+
+        // Physics
+        updatePhysics(delta);
+
+        // Update Endless Road
+        const carPos = new THREE.Vector3(carState.xPos, carState.altitude, carState.yPos);
+        RoadManager.update(carPos);
+        // InfiniteGround.update(carPos); // REMOVED
+
+        // Speedometer (FROM ORIGINAL)
+        const displaySpeed = Math.floor(Math.abs(carState.speed) * 80);
+        speedometerEl.innerHTML = displaySpeed + " <span>KM/H</span>";
+
+        // --- CAMERA SYSTEM (UPDATED TO CHASE CAM) ---
+        const baseDist = ui.camDist;
+        const speedZoom = Math.abs(carState.speed) * 3.0; // Moderate zoom (Was 1.5)
+
+        // Calculate dynamic distance and height
+        const targetDist = baseDist + speedZoom; // Distance behind car
+        const targetHeight = ui.camHeight + (speedZoom * 0.2); // Height above car - Now uses slider
+
+        // RELATIVE OFFSET: Vector pointing "Back" relative to car
+        // Car forward is -Z (in Three.js usually), so Back is +Z.
+        // We start with the offset in local space: (0, height, dist)
+        _vec3_cam_offset.set(0, targetHeight, targetDist);
+
+        // Apply Car's FULL Rotation (Yaw + Pitch + Roll) to the offset
+        // This ensures camera stays behind the car even on slopes (hills)
+        _vec3_cam_offset.applyQuaternion(carGroup.quaternion);
+
+        // Calculate Target Camera Position (Car Pos + Rotated Offset)
+        _vec3_cam_target.copy(carGroup.position).add(_vec3_cam_offset);
+        
+        // Prevent camera from going under the road visually (rough check)
+        // Ideally we check road height but simple clamp works for now
+        // _vec3_cam_target.y = Math.max(_vec3_cam_target.y, carState.altitude + 1.0);
+
+        // LAG COMPENSATION (Velocity Projection)
+        // Lerp naturally trails behind moving objects. We compensate by pushing the target 
+        // forward, BUT we must clamp it so it never passes the car!
+        if (Math.abs(carState.speed) > 0.1) {
+            // Forward vector in world space (Car moves -Z)
+            const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(carGroup.quaternion);
+            
+            // Theoretical Lag ~ Speed / Lerp.
+            const lagCompFactor = 0.8; 
+            let lagDistance = (Math.abs(carState.speed) / ui.camLerp) * lagCompFactor;
+            
+            // CLAMP: Ensure we don't push the camera target PAST the car.
+            // Keep at least 5 units of distance behind the car.
+            lagDistance = Math.min(lagDistance, targetDist - 5.0);
+            
+            _vec3_cam_target.add(forwardVec.multiplyScalar(lagDistance));
+        }
+
+        // Smooth camera lerp (Constant smoothness, no stiffness change)
+        const camLerpFactor = 1 - Math.pow(1 - ui.camLerp, deltaFactor); 
+        camera.position.lerp(_vec3_cam_target, camLerpFactor);
+        
+        // Look slightly above the car (horizon) instead of directly at wheels
+        // Use local UP vector to tilt look target with the car
+        const lookOffset = new THREE.Vector3(0, ui.lookHeight, 0).applyQuaternion(carGroup.quaternion);
+        const lookTarget = _vec3_1.copy(carGroup.position).add(lookOffset); 
+        camera.lookAt(lookTarget);
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // --- RESIZE ---
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    console.log('🚗 Car Debug Mode Active');
+    console.log('📐 Using ORIGINAL game physics & camera system');
+</script>
+
+</body>
+
+</html>

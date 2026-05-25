@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boss Origin Shift Test - Debug Fixed</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        #log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            width: 350px;
+            border-left: 3px solid #00ffff;
+        }
+
+        .success {
+            color: #00ff00;
+        }
+
+        .error {
+            color: #ff0000;
+        }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <div id="ui">
+        <button id="triggerBtn">1. Trigger 'BossStairsJumping' (FAST)</button>
+        <button id="triggerWalkBtn">2. Trigger 'BossWalk' (FAST)</button>
+        <button id="resetBtn">Reset Boss to (0,0,0)</button>
+        <div id="status">Loading...</div>
+    </div>
+    <div id="log"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Helpers ---
+        function log(msg, className = '') {
+            const div = document.getElementById('log');
+            const span = document.createElement('div');
+            if (className) span.className = className;
+            span.innerHTML = `> ${msg}`;
+            div.appendChild(span);
+            div.scrollTop = div.scrollHeight;
+            console.log(msg);
+        }
+
+        function setTargetGlobalPosition(object, target) {
+            if (object.parent) object.parent.worldToLocal(target);
+            object.position.copy(target);
+            object.updateMatrixWorld();
+        }
+
+        // --- Scene Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(-15, 15, -5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 5, 0);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
+        light.position.set(10, 20, 10);
+        scene.add(light);
+        scene.add(new THREE.GridHelper(50, 50, 0x555555, 0x333333));
+
+        // --- Variables ---
+        let bossModel = null;
+        let bossMixer = null;
+        let bossBody = null;
+        let animationRegistry = {};
+        let debugBlue = null; // Armature Origin
+        let debugRed = null;  // Bone World Position
+        const worldPos = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+
+        // --- Load Assets ---
+        const loader = new GLTFLoader();
+        loader.load('assets.glb', (gltf) => {
+            const armature = gltf.scene.getObjectByName('FinalBossArmature');
+            if (armature) {
+                bossModel = armature;
+                scene.add(bossModel);
+                bossModel.position.set(0, 0, 0);
+                log("Boss added at origin", "success");
+
+                bossBody = bossModel.getObjectByName('Root_1');
+                bossMixer = new THREE.AnimationMixer(bossModel);
+                bossMixer.timeScale = 3.0; // ANIMASYON HIZLI OLACAK
+
+                // Blue Sphere: Armature Origin (ayağının altı)
+                debugBlue = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.3, 16, 16),
+                    new THREE.MeshBasicMaterial({ color: 0x00ffff, depthTest: false })
+                );
+                debugBlue.renderOrder = 1000;
+                scene.add(debugBlue);
+
+                // Red Sphere: Root_1 World Pos (kemiğin gittiği yer)
+                debugRed = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.3, 16, 16),
+                    new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false })
+                );
+                debugRed.renderOrder = 999;
+                scene.add(debugRed);
+
+                gltf.animations.forEach(clip => {
+                    animationRegistry[clip.name] = clip;
+                });
+
+                bossMixer.addEventListener('finished', (e) => {
+                    const action = e.action;
+                    log(`FINISHED: ${action.getClip().name}`);
+
+                    if (action._haveOriginShift && bossBody) {
+                        log("SHIFTING...", "success");
+                        bossModel.updateMatrixWorld(true);
+                        bossBody.updateMatrixWorld(true);
+
+                        bossBody.getWorldPosition(worldPos);
+                        bossBody.getWorldQuaternion(worldQuat);
+
+                        // Değerleri klonluyoruz çünkü worldPos globale ait, asenkronlukta ezilebilir
+                        const finalPos = worldPos.clone();
+                        const finalQuat = worldQuat.clone();
+
+                        log("DISABLE ACTION (action.stop())");
+                        action.enabled = false;
+                        action.stop(); // Animasyonu durdur, mixer offsetleri orjine resetleyecektir
+
+                        // Three.js AnimationMixer finished eventi kendi iç döngüsünde (update sırasında) fırlatır.
+                        // Biz bu event içinde manuel pozisyon verirsek, eventten hemen sonra çalışan mikserin 
+                        // kalan apply() evresi bizim verdiğimiz pozisyonu ezerek eski haline(origin) geri getirir.
+                        // Bu yüzden bir micro-task (Promise.resolve().then) kullanarak
+                        // mikserin kendi işini bitirmesini bekliyoruz, SONRASINDA (aynı frame'de)
+                        // yeni global pozisyonumuzu kalıcı hale getiriyoruz.
+                        // Promise.resolve().then(() => {
+                        // setTargetGlobalPosition(bossModel, finalPos);
+                        bossModel.position.copy(finalPos);
+
+                        const euler = new THREE.Euler().setFromQuaternion(finalQuat, 'YXZ');
+                        bossModel.rotation.z = euler.y;
+
+                        // Kemikte kalan lokal offseti de garantilemek için sıfırlıyoruz
+                        // bossBody.position.set(0, 0, 0);
+                        // bossBody.rotation.set(0, 0, 0);
+
+                        log(`Pos Shifted to: ${finalPos.x.toFixed(2)}, ${finalPos.z.toFixed(2)}`, "success");
+                        // });
+                    }
+                });
+
+                document.getElementById('status').innerText = "Ready";
+            }
+        });
+
+        function Trigger(name, options = {}) {
+            if (!bossMixer) return;
+            const clip = animationRegistry[name];
+            if (!clip) return;
+
+            const action = bossMixer.clipAction(clip);
+            action.reset();
+            action.setLoop(THREE.LoopOnce, 0);
+            action.clampWhenFinished = true;
+            action.enabled = true;
+            action._haveOriginShift = options.haveOriginShift || false;
+            action.play();
+            log(`Triggered: ${name}`);
+        }
+
+        document.getElementById('triggerBtn').addEventListener('click', () => {
+            Trigger('BossStairsJumping', { haveOriginShift: true });
+        });
+
+        document.getElementById('triggerWalkBtn').addEventListener('click', () => {
+            Trigger('BossWalk', { haveOriginShift: false });
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (bossModel) {
+                bossModel.position.set(0, 0, 0);
+                bossModel.rotation.set(0, 0, 0);
+                if (bossBody) {
+                    bossBody.position.set(0, 0, 0);
+                    bossBody.rotation.set(0, 0, 0);
+                }
+                log("Reset successful");
+            }
+        });
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            if (bossMixer) bossMixer.update(dt * bossMixer.timeScale);
+            if (controls) controls.update();
+
+            // DEBUG SPHERE TRACKING (EVERY FRAME)
+            if (bossModel && debugBlue) {
+                const tempPos = new THREE.Vector3();
+                bossModel.getWorldPosition(tempPos);
+                debugBlue.position.copy(tempPos);
+            }
+            if (bossBody && debugRed) {
+                const tempPos = new THREE.Vector3();
+                bossBody.getWorldPosition(tempPos);
+                debugRed.position.copy(tempPos);
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>

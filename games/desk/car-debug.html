@@ -666,7 +666,12 @@
     const loader = new GLTFLoader();
     loader.setDRACOLoader(dracoLoader);
 
-    loader.load('carOne.glb', (gltf) => {
+    // Determine which car to load
+    const savedCar = localStorage.getItem('selectedTestCar') || 'carOne';
+    const carModelName = savedCar + '.glb'; // 'carOne.glb' or 'carTwo.glb'
+    console.log('Loading car model:', carModelName);
+
+    loader.load(carModelName, (gltf) => {
         carBodyModel = gltf.scene;
         carBodyModel.traverse((child) => {
             if (child.isMesh) {

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Home - Garage Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Russo One', sans-serif;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* --- UI OVERLAY --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            /* Allow clicking through to 3D if needed, but buttons react */
+        }
+
+        /* Top Bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            /* Pin items to the very top */
+            justify-content: flex-end;
+            padding: 0;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .top-left-icons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .icon-btn {
+            width: 50px;
+            height: 50px;
+            background: #fff;
+            border-radius: 50%;
+            /* Make them slightly rounded or keep pure vector look */
+            clip-path: polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%);
+            /* Techy shape */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #000;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Settings, Badge, Crown, Steering */
+        .icon-btn.settings::after {
+            content: '⚙️';
+            font-size: 30px;
+        }
+
+        .icon-btn.badge::after {
+            content: '🎖️';
+            font-size: 30px;
+        }
+
+        .icon-btn.crown::after {
+            content: '👑';
+            font-size: 30px;
+        }
+
+        .icon-btn.test::after {
+            content: '🚘';
+            font-size: 30px;
+        }
+
+        /* Simple icon representation */
+
+        .top-right-stats {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding-top: 10px;
+        }
+
+        .stat-capsule {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 5px 12px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            font-size: clamp(12px, 2vh, 18px);
+            transform: skew(-15deg);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-icon {
+            color: #ffcc00;
+        }
+
+        .profile-badge {
+            background: #fff;
+            color: #000;
+            padding: 8px 35px 8px 25px;
+            clip-path: polygon(15% 0, 200% 0, 200% 100%, 0 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            transform: skew(-15deg);
+            margin-right: -25px;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .profile-name {
+            font-size: clamp(14px, 2.5vh, 20px);
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .profile-level {
+            font-size: 10px;
+            background: #000;
+            color: #fff;
+            padding: 1px 6px;
+            margin-top: 3px;
+        }
+
+
+
+        /* Bottom Start Button */
+        .bottom-bar {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: auto;
+            pointer-events: none;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            z-index: 100;
+        }
+
+        .start-btn {
+            background: #ffcc00;
+            color: #000;
+            font-size: clamp(24px, 6vh, 44px);
+            padding: 15px 35px 15px 45px;
+            clip-path: polygon(15% 0, 200% 0, 200% 100%, 0% 100%);
+            cursor: pointer;
+            border: none;
+            font-family: 'Russo One', sans-serif;
+            pointer-events: auto;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            margin-right: -30px;
+            box-shadow: -5px -5px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .start-btn:hover {
+            background: #fff;
+            transform: translateX(-10px);
+        }
+
+        .start-btn span {
+            display: inline-block;
+            transform: skew(-10deg);
+        }
+
+        /* Decorative Elements */
+        .sticky-note {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 120px;
+            background: #f0f0f0;
+            color: #333;
+            padding: 15px;
+            font-family: 'Segoe UI', cursive;
+            /* Handwritten feel if possible */
+            font-weight: bold;
+            font-size: 18px;
+            transform: rotate(-5deg);
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+            line-height: 1.2;
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%);
+            /* Folded corner */
+        }
+
+        .sticky-note::after {
+            content: 'AUTENTIK LICENCE';
+            font-size: 10px;
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .ticket-box {
+            position: absolute;
+            bottom: 20px;
+            left: 200px;
+            background: #fff;
+            color: #000;
+            padding: 5px 20px;
+            transform: skew(-10deg);
+            border-left: 5px solid #000;
+            font-weight: bold;
+        }
+
+        .ticket-box span {
+            font-size: 12px;
+            display: block;
+            color: #555;
+        }
+
+        .ticket-box b {
+            font-size: 20px;
+            text-transform: uppercase;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #ffcc00;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loader">LOADING GARAGE...</div>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-right-stats">
+                <div class="stat-capsule">
+                    <span class="stat-icon">💰</span>
+                    <span>11549</span>
+                </div>
+                <div class="stat-capsule">
+                    <span class="stat-icon">🎫</span>
+                    <span>34</span>
+                </div>
+                <div class="profile-badge">
+                    <div class="profile-name">ÖĞRENCİ</div>
+                    <div class="profile-level">LVL 2</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar">
+            <button class="start-btn" onclick="window.location.href='map-selection.html'">
+                <span>BAŞLA ▶</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Import Maps -->
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
+    <script type="importmap-shim">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module-shim">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+        // --- SCENE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x333333); // Dark Grey Background
+        scene.fog = new THREE.Fog(0x333333, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 3, 8); // Isometric-ish view
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // --- LIGHTS ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        // Spot light for the car (Theatre effect)
+        const spotLight = new THREE.SpotLight(0xffcc00, 10);
+        spotLight.position.set(0, 10, 0);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.5;
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+
+        // --- ENVIRONMENT (Simple Room) ---
+        const floorGeo = new THREE.PlaneGeometry(50, 50);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Back Wall
+        const wallGeo = new THREE.PlaneGeometry(50, 20);
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+        const backWall = new THREE.Mesh(wallGeo, wallMat);
+        backWall.position.set(0, 10, -10);
+        backWall.receiveShadow = true;
+        scene.add(backWall);
+        
+        // Right Wall
+        const rightWall = new THREE.Mesh(wallGeo, wallMat);
+        rightWall.rotation.y = -Math.PI / 2;
+        rightWall.position.set(15, 10, 0);
+        rightWall.receiveShadow = true;
+        scene.add(rightWall);
+
+        // --- CAR INIT LOGIC (Ported from garage.html) ---
+        
+        // Car configuration (Exact copy from garage.html)
+        const carConfig = {
+            bodyScale: 5.0,
+            bodyY: -0.30,
+            bodyRotY: 180, // degrees
+            wheelX: 0.80,
+            wheelY: 0.35,
+            wheelRearZ: 0.65,
+            wheelFrontZ: -1.00
+        };
+
+        const loader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+        loader.setDRACOLoader(dracoLoader);
+
+        let carBodyModel = null;
+        let wheelModel = null;
+        
+        const savedCar = localStorage.getItem('selectedCar') || 'carOne';
+        const carGlb = savedCar + '.glb';
+
+        const carGroupWrapper = new THREE.Group();
+        scene.add(carGroupWrapper);
+
+        // Load Assets
+        Promise.all([
+            new Promise(resolve => loader.load('./' + carGlb, gltf => resolve(gltf.scene))),
+            new Promise(resolve => loader.load('./steerOne.glb', gltf => resolve(gltf.scene)))
+        ]).then(([loadedCar, loadedWheel]) => {
+            carBodyModel = loadedCar;
+            wheelModel = loadedWheel;
+            initCarScene();
+            
+            // Hide Loader
+            document.getElementById('loader').style.opacity = 0;
+            setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+        }).catch(err => {
+            console.error("Error loading models:", err);
+            document.getElementById('loader').innerText = "ERROR LOADING";
+        });
+
+        // Function to create the car hierarchy exactly like garage.html
+        function createCarGroup(bodyModel, wheelModel) {
+            const group = new THREE.Group();
+
+            // Body
+            const body = bodyModel.clone();
+            body.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true; 
+                }
+            });
+            body.scale.set(carConfig.bodyScale, carConfig.bodyScale, carConfig.bodyScale);
+            body.position.y = carConfig.bodyY;
+            body.rotation.y = THREE.MathUtils.degToRad(carConfig.bodyRotY);
+            group.add(body);
+
+            // Wheels
+            const wheelPositions = [
+                { x: -carConfig.wheelX, y: carConfig.wheelY, z: carConfig.wheelRearZ, flip: true },   // Rear Left
+                { x: carConfig.wheelX, y: carConfig.wheelY, z: carConfig.wheelRearZ, flip: false },   // Rear Right
+                { x: -carConfig.wheelX, y: carConfig.wheelY, z: carConfig.wheelFrontZ, flip: true },  // Front Left
+                { x: carConfig.wheelX, y: carConfig.wheelY, z: carConfig.wheelFrontZ, flip: false }   // Front Right
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wheelGroup = new THREE.Group();
+                const wheelMesh = wheelModel.clone();
+                wheelMesh.scale.set(carConfig.bodyScale, carConfig.bodyScale, carConfig.bodyScale);
+                wheelMesh.traverse(child => { 
+                    if(child.isMesh) { child.castShadow = true; child.receiveShadow = true; } 
+                });
+                
+                if (pos.flip) wheelGroup.rotation.y = Math.PI;
+                
+                wheelGroup.add(wheelMesh);
+                wheelGroup.position.set(pos.x, pos.y, pos.z);
+                group.add(wheelGroup);
+            });
+
+            return group;
+        }
+
+        function initCarScene() {
+            const carGroup = createCarGroup(carBodyModel, wheelModel);
+            carGroupWrapper.add(carGroup);
+            
+            // Positioning for Menu View
+            carGroupWrapper.rotation.y = Math.PI * 1; // 45 degree angle
+            carGroupWrapper.position.set(1, 0, 1); 
+        }
+
+        // --- ANIMATION ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Gentle floating or rotation
+            //carGroupWrapper.rotation.y += 0.001; 
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- RESIZE ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+
+</html>

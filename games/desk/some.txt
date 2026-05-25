@@ -1,0 +1,1 @@
+@tps.html bizim ana oyunumuz. @cannonGame.html de araç oyunumuz. isteğim şu: araç ve third person oyuncum arasında geçiş yapabilmek istiyorum. yani cannonGame sayfasının SADECE ARACA DAİR olan bölümlerini

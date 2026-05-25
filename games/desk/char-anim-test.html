@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character World Space Animation - Debug</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        #log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 350px;
+            overflow-y: auto;
+            width: 500px;
+            border-left: 3px solid #00ffff;
+        }
+
+        .success {
+            color: #00ff00;
+        }
+
+        .error {
+            color: #ff0000;
+        }
+
+        .warn {
+            color: #ffaa00;
+        }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <div id="ui">
+        <button id="test1Btn">TEST 1: CharacterTableOpening (scene child, NO parent)</button>
+        <button id="test2Btn">TEST 2: CharacterTableOpening (Environment child)</button>
+        <button id="test3Btn">TEST 3: CharacterTableOpening (Original hierarchy, no detach)</button>
+        <button id="test4Btn" style="background: #533;">TEST 4: CharacterTableOpening (HALVE ROTATION 0.5x)</button>
+        <button id="resetBtn">Reset Character</button>
+        <div id="status">Loading...</div>
+        <div id="scaleInfo" style="font-size: 10px; color: #aaa;">Scale: ?</div>
+    </div>
+    <div id="log"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Helpers ---
+        function log(msg, className = '') {
+            const div = document.getElementById('log');
+            const span = document.createElement('div');
+            if (className) span.className = className;
+            span.innerHTML = `> ${msg}`;
+            div.appendChild(span);
+            div.scrollTop = div.scrollHeight;
+            console.log(msg);
+        }
+
+        function logTransform(label, obj) {
+            const wp = new THREE.Vector3();
+            const wq = new THREE.Quaternion();
+            obj.getWorldPosition(wp);
+            obj.getWorldQuaternion(wq);
+            const we = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
+            const lp = obj.position;
+            const lr = obj.rotation;
+            log(`[${label}] LOCAL pos(${lp.x.toFixed(2)}, ${lp.y.toFixed(2)}, ${lp.z.toFixed(2)}) rot(${(lr.x * 180 / Math.PI).toFixed(1)}°, ${(lr.y * 180 / Math.PI).toFixed(1)}°, ${(lr.z * 180 / Math.PI).toFixed(1)}°)`);
+            log(`[${label}] WORLD pos(${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}, ${wp.z.toFixed(2)}) rot(${(we.x * 180 / Math.PI).toFixed(1)}°, ${(we.y * 180 / Math.PI).toFixed(1)}°, ${(we.z * 180 / Math.PI).toFixed(1)}°)`, 'warn');
+        }
+
+        function logParentChain(obj) {
+            let chain = obj.name || '(unnamed)';
+            let current = obj.parent;
+            while (current) {
+                chain = (current.name || '(unnamed)') + ' → ' + chain;
+                current = current.parent;
+            }
+            log(`Parent chain: ${chain}`, 'warn');
+        }
+
+        // --- Scene Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(-10, 15, -10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setPixelRatio(.75);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 3, 0);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
+        light.position.set(10, 20, 10);
+        scene.add(light);
+        scene.add(new THREE.GridHelper(50, 50, 0x555555, 0x333333));
+
+        // Origin marker
+        const originMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xffff00 })
+        );
+        scene.add(originMarker);
+
+        // Axes helper at origin
+        scene.add(new THREE.AxesHelper(5));
+
+        // --- Variables ---
+        let characterModel = null;
+        let charMixer = null;
+        let envModel = null;
+        let allAnimations = [];
+        let originalParent = null; // character's original parent in GLB
+        let originalLocalPos = new THREE.Vector3();
+        let originalLocalRot = new THREE.Euler();
+
+        // Debug spheres
+        let debugGreen = null; // Character model world pos
+        let debugRed = null;   // Root bone world pos
+
+        // --- Load Assets ---
+        const loader = new GLTFLoader();
+        loader.load('assets.glb', (gltf) => {
+            allAnimations = gltf.animations;
+            log(`Loaded ${allAnimations.length} animations`);
+
+            // List animation names
+            allAnimations.forEach(clip => {
+                const tracks = clip.tracks.map(t => t.name.split('.')[0]).filter((v, i, a) => a.indexOf(v) === i);
+                log(`  Anim: "${clip.name}" (${clip.duration.toFixed(2)}s, ${clip.tracks.length} tracks, targets: ${tracks.slice(0, 5).join(', ')}${tracks.length > 5 ? '...' : ''})`);
+            });
+
+            // Find character
+            const characterArmature = gltf.scene.getObjectByName('FinalCharacterArmature');
+            if (!characterArmature) {
+                log("FinalCharacterArmature NOT FOUND!", "error");
+                return;
+            }
+
+            // Display Scale
+            const worldScale = new THREE.Vector3();
+            characterArmature.getWorldScale(worldScale);
+            const scaleText = `Armature World Scale: ${worldScale.x.toFixed(3)}, ${worldScale.y.toFixed(3)}, ${worldScale.z.toFixed(3)}`;
+            document.getElementById('scaleInfo').innerText = scaleText;
+            log(scaleText, 'warn');
+
+            // Log original hierarchy info
+            log("=== ORIGINAL HIERARCHY (before detach) ===", "success");
+            originalParent = characterArmature.parent;
+            log(`Original parent: ${originalParent ? originalParent.name : 'NONE'}`);
+            logParentChain(characterArmature);
+
+            // Log original transforms
+            characterArmature.updateWorldMatrix(true, false);
+            logTransform("CharArmature ORIGINAL", characterArmature);
+            if (originalParent) {
+                logTransform("Original Parent", originalParent);
+            }
+
+            // Save original local transform
+            originalLocalPos.copy(characterArmature.position);
+            originalLocalRot.copy(characterArmature.rotation);
+            log(`Original local pos: (${originalLocalPos.x.toFixed(2)}, ${originalLocalPos.y.toFixed(2)}, ${originalLocalPos.z.toFixed(2)})`);
+            log(`Original local rot: (${(originalLocalRot.x * 180 / Math.PI).toFixed(1)}°, ${(originalLocalRot.y * 180 / Math.PI).toFixed(1)}°, ${(originalLocalRot.z * 180 / Math.PI).toFixed(1)}°)`);
+
+            // Find Environment
+            envModel = gltf.scene.getObjectByName('Environment');
+            if (envModel) {
+                scene.add(envModel);
+                log("Environment added to scene", "success");
+                logTransform("Environment", envModel);
+            } else {
+                log("Environment NOT FOUND!", "error");
+            }
+
+            // Detach character (like tps.html does)
+            if (characterArmature.parent) {
+                characterArmature.parent.remove(characterArmature);
+            }
+            characterArmature.position.set(0, 0, 0);
+            characterArmature.rotation.set(0, 0, 0);
+
+            characterModel = characterArmature;
+            scene.add(characterModel); // Add directly to scene for now
+
+            log("=== AFTER DETACH & RESET ===", "success");
+            logTransform("CharArmature DETACHED", characterModel);
+
+            // Mixer
+            charMixer = new THREE.AnimationMixer(characterModel);
+
+            // Debug spheres
+            debugGreen = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false, transparent: true, opacity: 0.7 })
+            );
+            debugGreen.renderOrder = 1000;
+            scene.add(debugGreen);
+
+            debugRed = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false, transparent: true, opacity: 0.7 })
+            );
+            debugRed.renderOrder = 999;
+            scene.add(debugRed);
+
+            // Find CharacterTableOpening clip
+            const tableClip = allAnimations.find(c => c.name === 'CharacterTableOpening');
+            if (tableClip) {
+                log(`=== CharacterTableOpening ANALYSIS ===`, 'success');
+                log(`Duration: ${tableClip.duration.toFixed(2)}s, Tracks: ${tableClip.tracks.length}`);
+                tableClip.tracks.forEach(track => {
+                    const values = track.values;
+                    const times = track.times;
+                    const firstVal = values.slice(0, Math.min(4, values.length)).map(v => v.toFixed(3)).join(', ');
+                    const lastIdx = Math.max(0, times.length - 1);
+                    const lastValStart = lastIdx * (values.length / times.length);
+                    const lastVal = values.slice(lastValStart, lastValStart + Math.min(4, values.length / times.length)).map(v => v.toFixed(3)).join(', ');
+                    log(`  Track: "${track.name}" type=${track.ValueTypeName || '?'} keys=${times.length}`);
+                    log(`    first: [${firstVal}]  last: [${lastVal}]`);
+                });
+                // Check for double-rotation tracks
+                const quatTracks = tableClip.tracks.filter(t => t.name.includes('quaternion'));
+                const targetNodes = quatTracks.map(t => t.name.split('.')[0]);
+                const uniqueTargets = [...new Set(targetNodes)];
+
+                log(`Rotation Targets: [${uniqueTargets.join(', ')}]`, 'success');
+                if (uniqueTargets.length > 1) {
+                    log(`WARNING: Multiple rotation targets detected! This might cause "Double Rotation" (2x EFFECT) if nodes are hierarchical.`, 'error');
+                }
+            } else {
+                log("CharacterTableOpening NOT FOUND in animations!", "error");
+            }
+
+            charMixer.addEventListener('finished', (e) => {
+                const action = e.action;
+                log(`FINISHED: ${action.getClip().name}`, 'success');
+                characterModel.updateMatrixWorld(true);
+                logTransform("CharModel AT FINISH", characterModel);
+
+                const root = characterModel.getObjectByName('Root');
+                if (root) {
+                    root.updateMatrixWorld(true);
+                    logTransform("Root Bone AT FINISH", root);
+                }
+            });
+
+            document.getElementById('status').innerText = "Ready";
+            log("=== READY ===", "success");
+        });
+
+        function triggerAnim(parentMode) {
+            if (!charMixer || !characterModel) return;
+
+            let clip = allAnimations.find(c => c.name === 'CharacterTableOpening');
+            // let clip = allAnimations.find(c => c.name === 'Test');
+            if (!clip) { log("Clip not found!", "error"); return; }
+
+            // TEST 4: HALVE ROTATION
+            if (parentMode === 'halve') {
+                clip = clip.clone();
+                clip.name = "CharacterTableOpeningHalve";
+                clip.tracks.forEach(track => {
+                    if (track.name.includes('quaternion')) {
+                        const originalValues = track.values;
+                        const halvedValues = new Float32Array(originalValues.length);
+                        const qInitial = new THREE.Quaternion(0, 0, 0, 1);
+                        const qFrame = new THREE.Quaternion();
+                        const qResult = new THREE.Quaternion();
+
+                        for (let i = 0; i < originalValues.length; i += 4) {
+                            qFrame.set(originalValues[i], originalValues[i + 1], originalValues[i + 2], originalValues[i + 3]);
+                            qResult.copy(qInitial).slerp(qFrame, 0.5); // 0.5x rotation effect
+                            halvedValues[i] = qResult.x;
+                            halvedValues[i + 1] = qResult.y;
+                            halvedValues[i + 2] = qResult.z;
+                            halvedValues[i + 3] = qResult.w;
+                        }
+                        track.values = halvedValues;
+                        log(`Halved rotation values for: ${track.name}`, 'warn');
+                    }
+                });
+            }
+
+            // Stop all
+            charMixer.stopAllAction();
+
+            log(`\n=== TRIGGER (mode: ${parentMode}) ===`, 'success');
+
+            // Re-parent based on mode (TEST 4 behaves like TEST 1 for parenting)
+            if (parentMode === 'scene' || parentMode === 'halve') {
+                characterModel.position.set(0, 0, 0);
+                characterModel.rotation.set(0, 0, 0);
+                characterModel.quaternion.identity();
+                scene.add(characterModel);
+                log("Parented to: SCENE (identity transform)");
+            } else if (parentMode === 'env') {
+                characterModel.position.set(0, 0, 0);
+                characterModel.rotation.set(0, 0, 0);
+                characterModel.quaternion.identity();
+                if (envModel) {
+                    envModel.add(characterModel);
+                    log("Parented to: ENVIRONMENT");
+                    logTransform("Environment", envModel);
+                }
+            } else if (parentMode === 'original') {
+                // Restore original local transform
+                characterModel.position.copy(originalLocalPos);
+                characterModel.rotation.copy(originalLocalRot);
+                if (envModel) {
+                    envModel.add(characterModel);
+                    log("Parented to: ENVIRONMENT with ORIGINAL local transform");
+                }
+            }
+
+            const action = charMixer.clipAction(clip);
+            action.reset();
+            action.setLoop(THREE.LoopOnce, 0);
+            action.clampWhenFinished = true;
+            action.play();
+            charMixer.update(0);
+
+            characterModel.updateMatrixWorld(true);
+            logTransform("CharModel AFTER FIRST UPDATE", characterModel);
+        }
+
+        // Buttons
+        document.getElementById('test1Btn').addEventListener('click', () => triggerAnim('scene'));
+        document.getElementById('test2Btn').addEventListener('click', () => triggerAnim('env'));
+        document.getElementById('test3Btn').addEventListener('click', () => triggerAnim('original'));
+        document.getElementById('test4Btn').addEventListener('click', () => triggerAnim('halve'));
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (!characterModel) return;
+            if (charMixer) charMixer.stopAllAction();
+            characterModel.position.set(0, 0, 0);
+            characterModel.rotation.set(0, 0, 0);
+            characterModel.quaternion.identity();
+            scene.add(characterModel);
+            log("Reset: back to scene at origin");
+        });
+
+        // --- Render Loop ---
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            if (charMixer) charMixer.update(dt);
+            if (controls) controls.update();
+
+            // Debug tracking
+            if (characterModel && debugGreen) {
+                const tp = new THREE.Vector3();
+                characterModel.getWorldPosition(tp);
+                debugGreen.position.copy(tp);
+            }
+            if (characterModel && debugRed) {
+                const root = characterModel.getObjectByName('Root');
+                if (root) {
+                    const tp = new THREE.Vector3();
+                    root.getWorldPosition(tp);
+                    debugRed.position.copy(tp);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>

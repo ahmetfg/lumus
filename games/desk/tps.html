@@ -1,0 +1,3658 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Kombo Sistemi</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- ES Module Shims & Import Map -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+            "dat.gui": "https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.module.js"
+        }
+    }
+    </script>
+</head>
+
+<body>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { TPSVehicleSystem } from './tps-vehicle.js';
+        import dat from 'dat.gui';
+
+
+        // function that sets target global position in objects local space
+        function setTargetGlobalPosition(object, target) {
+            if (object.parent) {
+                object.parent.worldToLocal(target);
+            }
+            object.position.copy(target);
+            object.updateMatrixWorld();
+        }
+        // temps (GC yok)
+        const _parentWorldQuat = new THREE.Quaternion()
+        const _worldQuat = new THREE.Quaternion()
+        const _euler = new THREE.Euler(0, 0, 0, 'XYZ')
+
+        function setWorldRotationXYZ(object, x, y, z) {
+            _euler.set(x, y, z)
+            _worldQuat.setFromEuler(_euler)
+
+            if (!object.parent) {
+                object.quaternion.copy(_worldQuat)
+                return
+            }
+
+            object.parent.updateMatrixWorld(true)
+            object.parent.getWorldQuaternion(_parentWorldQuat)
+
+            // local = inverse(parent) * world
+            _parentWorldQuat.invert()
+            object.quaternion.copy(_parentWorldQuat).multiply(_worldQuat)
+        }
+
+        // =============================================================
+        //  DISCRETE SPRITE 3D CLASS
+        // =============================================================
+
+        class DiscreteSprite3D {
+            constructor(scene, camera, options = {}) {
+                this.scene = scene;
+                this.camera = camera;
+
+                // Ayarlar
+                this.hSteps = options.hSteps || 20; // Yatay adım sayısı (360/hSteps)
+                this.vSteps = options.vSteps || 20; // Dikey adım sayısı (180/vSteps)
+
+                // 1. Root Group (Billboard Container) - Sürekli kameraya bakar
+                this.root = new THREE.Group();
+                this.scene.add(this.root);
+
+                // 2. Content Group (Child) - Ters rotasyon ve ofsetleri yönetir
+                this.content = new THREE.Group();
+                this.root.add(this.content);
+
+                // Helper (Merkez Oku)
+                this.helperArrow = new THREE.ArrowHelper(
+                    new THREE.Vector3(0, 1, 0),
+                    new THREE.Vector3(0, 0, 0),
+                    1.5, 0xff0000
+                );
+                this.helperArrow.visible = false; // Varsayılan kapalı
+                this.scene.add(this.helperArrow);
+
+                // Hesaplama değişkenleri (Garbage collection'ı önlemek için)
+                this._spherical = new THREE.Spherical();
+                this._relativeVec = new THREE.Vector3();
+                this._lastH = 0;
+                this._lastV = 0;
+            }
+
+            /**
+             * İçerik modelini değiştirir (Küp, GLB vs.)
+             */
+            setModel(object3D) {
+                // Eski içeriği temizle
+                while (this.content.children.length > 0) {
+                    this.content.remove(this.content.children[0]);
+                }
+                this.content.add(object3D);
+            }
+
+            /**
+             * Sistemin dünyadaki konumunu ayarlar
+             */
+            setPosition(x, y, z) {
+                this.root.position.set(x, y, z);
+                // Helper oku da oraya taşı
+                this.helperArrow.position.copy(this.root.position);
+            }
+
+            /**
+             * İçerideki modelin ofsetini ve ölçeğini ayarlar
+             */
+            setTransform(scale, offsetY) {
+                this.content.scale.setScalar(scale);
+                this.content.position.y = offsetY;
+            }
+
+            /**
+             * Snap çözünürlüğünü değiştirir
+             */
+            setResolution(steps) {
+                this.hSteps = steps;
+                this.vSteps = steps; // Şimdilik kare oran koruyalım
+            }
+
+            /**
+             * Helper görünürlüğünü aç/kapa
+             */
+            toggleHelper(visible) {
+                this.helperArrow.visible = visible;
+            }
+
+            /**
+             * Ana Render döngüsünde çağrılmalı.
+             * Tüm matematik burada döner.
+             */
+            update() {
+                return
+                // A) Billboard Mantığı: Parent sürekli kameraya bakar
+                this.root.lookAt(this.camera.position);
+
+                // B) Açı Hesaplama: Kameranın sisteme göre bağıl vektörü
+                this._relativeVec.subVectors(this.camera.position, this.root.position);
+                this._spherical.setFromVector3(this._relativeVec);
+
+                // Radyan -> Derece
+                let degH = THREE.MathUtils.radToDeg(this._spherical.theta);
+                if (degH < 0) degH += 360;
+                let degV = THREE.MathUtils.radToDeg(this._spherical.phi);
+
+                // C) Quantize (Snap) İşlemi
+                // Hangi aralıkta olduğumuzu buluyoruz
+                const stepSizeH = 360 / this.hSteps;
+                const stepSizeV = 180 / this.vSteps; // Dikeyde 180 derece (0..PI)
+
+                // Yuvarla (Snap)
+                const snappedH = Math.round(degH / stepSizeH) * stepSizeH;
+                const snappedV = Math.round(degV / stepSizeV) * stepSizeV;
+
+                // D) Inverse Rotation (Tersine Çevirme)
+                // Parent kameraya döndü, biz child'ı o miktarın tersine çeviriyoruz ki
+                // dünya koordinatlarında "sabit" gibi dursun (snap noktaları hariç).
+
+                // Yatay: -Angle
+                this.content.rotation.y = THREE.MathUtils.degToRad(-snappedH);
+
+                // Dikey: 90 - Angle (Phi 0 tepedir, bizim Y eksenimiz yukarı bakar)
+                this.content.rotation.x = THREE.MathUtils.degToRad(90 - snappedV);
+
+                // UI için değerleri sakla
+                this._lastH = snappedH;
+                this._lastV = snappedV;
+            }
+
+            /**
+             * Anlık hesaplanan açıları döndürür (UI için)
+             */
+            getStats() {
+                return { h: this._lastH, v: this._lastV };
+            }
+
+            /**
+             * Kamera odağını (Target) güncellemek için sistemin pozisyonunu döndürür
+             */
+            getPosition() {
+                return this.root.position;
+            }
+        }
+
+        // =============================================================
+        //  CLIMB SYSTEM CLASS
+        // =============================================================
+        class ClimbSystem {
+            constructor(playerGroup, stopPhysicsCallback) {
+                this.player = playerGroup;
+                this.stopPhysics = stopPhysicsCallback;
+
+                this.isClimbing = false;
+                this.isVaulting = false;
+                this.faceNormal = new THREE.Vector3();
+                this.topY = 0;
+
+                // Vault Animation State
+                this.vaultTime = 0;
+                this.vaultDuration = 400;
+                this.vaultStartPos = new THREE.Vector3();
+                this.vaultTargetPos = new THREE.Vector3();
+                this.vaultStartY = 0;
+                this.vaultTargetY = 0;
+            }
+
+            tryClimb(isAuto = false) {
+                if (this.isVaulting) return true;
+
+                if (this.isClimbing) {
+                    if (isAuto) return false;
+                    this.startVault();
+                    return true;
+                }
+
+                if (collisionMeshes.length === 0) return false;
+
+                const p = this.player.position;
+                const forwardDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.rotation.y);
+
+                // Karın hizasında raycast
+                const waistRay = new THREE.Raycaster(new THREE.Vector3(p.x, p.y + 1.2, p.z), forwardDir, 0.1, 1.2);
+                const results = waistRay.intersectObjects(collisionMeshes);
+
+                if (results.length > 0) {
+                    const hit = results[0];
+                    const faceNormal = hit.face.normal.clone().applyQuaternion(hit.object.quaternion);
+
+                    if (Math.abs(faceNormal.y) < 0.3) {
+                        // Kenar kontrolü
+                        const checkUp = new THREE.Raycaster(new THREE.Vector3(hit.point.x - faceNormal.x * 0.1, hit.point.y + 1.5, hit.point.z - faceNormal.z * 0.1), new THREE.Vector3(0, -1, 0), 0, 2.0);
+                        const topResults = checkUp.intersectObjects(collisionMeshes);
+
+                        if (topResults.length > 0) {
+                            const topHit = topResults[0];
+                            this.initiateClimb({
+                                normal: faceNormal,
+                                topY: topHit.point.y,
+                                targetX: hit.point.x + faceNormal.x * 0.5,
+                                targetZ: hit.point.z + faceNormal.z * 0.5
+                            });
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+
+            initiateClimb(data) {
+                this.isClimbing = true;
+                this.faceNormal.copy(data.normal);
+                this.topY = data.topY;
+
+                this.stopPhysics();
+
+                const targetRotY = Math.atan2(-this.faceNormal.x, -this.faceNormal.z);
+                this.player.rotation.set(0, targetRotY, 0);
+
+                this.player.position.x = data.targetX;
+                this.player.position.z = data.targetZ;
+
+                const targetHangY = this.topY - 2.0;
+                let jumpProgress = 0;
+                const startY = this.player.position.y;
+                const climbInterval = setInterval(() => {
+                    if (!this.isClimbing || this.isVaulting) { clearInterval(climbInterval); return; }
+                    jumpProgress += 0.1;
+                    const t = Math.min(jumpProgress, 1);
+                    this.player.position.y = startY + (targetHangY - startY) * t;
+                    if (jumpProgress >= 1) {
+                        this.player.position.y = targetHangY;
+                        clearInterval(climbInterval);
+                    }
+                }, 16);
+            }
+
+            startVault() {
+                this.isVaulting = true;
+                this.isClimbing = false;
+                this.vaultTime = 0;
+                this.vaultStartY = this.player.position.y;
+                this.vaultTargetY = this.topY;
+
+                this.vaultStartPos.copy(this.player.position);
+                const forwardDir = this.faceNormal.clone().multiplyScalar(-1);
+                this.vaultTargetPos.copy(this.vaultStartPos).add(forwardDir.multiplyScalar(1.0));
+            }
+
+            update(dt) {
+                if (this.isVaulting) {
+                    this.vaultTime += dt;
+                    const progress = Math.min(this.vaultTime / this.vaultDuration, 1);
+                    const t = 1 - Math.pow(1 - progress, 3);
+
+                    this.player.position.y = this.vaultStartY + (this.vaultTargetY - this.vaultStartY) * t;
+                    this.player.position.x = this.vaultStartPos.x + (this.vaultTargetPos.x - this.vaultStartPos.x) * t;
+                    this.player.position.z = this.vaultStartPos.z + (this.vaultTargetPos.z - this.vaultStartPos.z) * t;
+
+                    updateCharacterTransform();
+
+                    if (progress >= 1) {
+                        this.isVaulting = false;
+                        this.stopPhysics();
+                    }
+                }
+            }
+        }
+
+        // =============================================================
+        //  PATH MANAGER CLASS (Isolated System)
+        // =============================================================
+        class PathManager {
+            constructor() {
+                this.paths = {}; // Stores { pathName: THREE.CatmullRomCurve3 }
+                this.volumes = []; // Stores camera volumes { box: Box3, target: Vector3, name: string }
+                this.activePathName = null; // Aktif takip edilen rota ismi
+            }
+
+            /**
+             * Aktif rotayı isimle ayarlar. Eğer null geçilirse veya isim bulunamazsa varsayılan ilk rotayı kullanır.
+             */
+            setActivePath(name) {
+                if (name && this.paths[name]) {
+                    this.activePathName = name;
+                    console.log(`PathManager: Active path set to '${name}'`);
+                } else {
+                    this.activePathName = null;
+                    console.log(`PathManager: Active path reset to default (first available)`);
+                }
+            }
+
+            // Hem görsel olarak gizle hem de PathManager mantığından çıkar
+            hideAllVolumes() {
+                this.volumes.forEach((volume) => {
+                    volume.visible = false;
+                });
+            }
+
+            /**
+             * Scans the given scene/object for meshes with userData.isPath = true
+             * Converts them to CatmullRomCurve3 and hides the original mesh.
+             */
+            scan(rootObject) {
+                const pathsFound = [];
+                const volumesFound = [];
+
+                rootObject.traverse((node) => {
+                    // 1. PATHS
+                    if (node.isMesh && node.userData.isPath === true) {
+                        this._registerPath(node);
+                        pathsFound.push(node.name);
+                    }
+                    else if (node.isMesh && node.name.startsWith('CamPath_')) {
+                        this._registerPath(node);
+                        pathsFound.push(node.name);
+                    }
+
+                    // 2. CAMERA & ANIMATION VOLUMES
+                    // Blender'dan 'isCameraPoint' veya 'isAnimationPoint' custom property ile gelen objeler.
+                    if (node.isMesh && (node.userData.isCameraPoint === true || node.userData.isAnimationPoint)) {
+                        this._registerVolume(node);
+                        volumesFound.push(node.name);
+                    }
+                });
+
+                if (pathsFound.length > 0) {
+                    console.log(`PathManager: ${pathsFound.length} paths loaded:`, pathsFound);
+                }
+                if (volumesFound.length > 0) {
+                    console.log(`PathManager: ${volumesFound.length} camera volumes loaded:`, volumesFound);
+                }
+            }
+
+            _registerPath(mesh) {
+                // 1. Extract vertices from global position
+                const positions = mesh.geometry.attributes.position;
+                const points = [];
+                const vector = new THREE.Vector3();
+
+                // Mesh might have transforms (position/rotation/scale) from Blender
+                mesh.updateWorldMatrix(true, false);
+
+                for (let i = 0; i < positions.count; i++) {
+                    vector.set(
+                        positions.getX(i),
+                        positions.getY(i),
+                        positions.getZ(i)
+                    );
+
+                    // Convert local vertex to world space
+                    vector.applyMatrix4(mesh.matrixWorld);
+
+                    points.push(vector.clone());
+                }
+
+                // --- POINT SORTING (GREEDY NEAREST NEIGHBOR) ---
+                const sortedPoints = [];
+                if (points.length > 0) {
+                    let current = points[0];
+                    sortedPoints.push(current);
+                    const remaining = points.slice(1);
+                    while (remaining.length > 0) {
+                        let nearestIdx = -1;
+                        let minDstSq = Infinity;
+                        for (let i = 0; i < remaining.length; i++) {
+                            const d = current.distanceToSquared(remaining[i]);
+                            // Skip duplicates
+                            if (d < 0.0001) continue;
+                            if (d < minDstSq) {
+                                minDstSq = d;
+                                nearestIdx = i;
+                            }
+                        }
+                        if (nearestIdx !== -1) {
+                            current = remaining[nearestIdx];
+                            sortedPoints.push(current);
+                            remaining.splice(nearestIdx, 1);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                // --- SIMPLIFICATION / DOWNSAMPING ---
+                // Mesh faces create adjacent vertices (zigzag). We skip points that are too close.
+                const simplifiedPoints = [];
+                if (sortedPoints.length > 0) {
+                    simplifiedPoints.push(sortedPoints[0]);
+                    let lastP = sortedPoints[0];
+                    const minSpacing = 0.1; // Reduced to prevent loss of detail
+
+                    for (let i = 1; i < sortedPoints.length; i++) {
+                        if (sortedPoints[i].distanceTo(lastP) > minSpacing) {
+                            simplifiedPoints.push(sortedPoints[i]);
+                            lastP = sortedPoints[i];
+                        }
+                    }
+                }
+
+                // 2. Create Curve
+                // curveType: 'centripetal' is safer for irregular points
+                const curve = new THREE.CatmullRomCurve3(simplifiedPoints, false, 'centripetal', 0.5);
+
+                // 3. Register
+                this.paths[mesh.name] = curve;
+
+                // 4. Hide original mesh
+                mesh.visible = false;
+            }
+
+            _registerVolume(mesh) {
+                // Mesh veya Object'in world matrix'ini güncelle ki bounding box doğru hesaplansın
+                mesh.updateWorldMatrix(true, false);
+
+                // Local bounding box (Geometri üzerinden)
+                if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+                const localBox = mesh.geometry.boundingBox.clone();
+
+                // Inverse world matrix (Noktaları local space'e çekmek için)
+                const invMatrix = mesh.matrixWorld.clone().invert();
+
+                // Child obje (hedef) var mı?
+                let target = null;
+                if (mesh.children.length > 0) {
+                    // İlk child'ı hedef al
+                    const child = mesh.children[0];
+                    target = new THREE.Vector3();
+                    child.getWorldPosition(target);
+                } else {
+                    console.warn(`PathManager: Volume '${mesh.name}' has no child target! Using center.`);
+                    target = new THREE.Vector3();
+                    mesh.getWorldPosition(target);
+                }
+
+                // Read custom 'cameraInfluence' property (if exists)
+                let influence = undefined;
+                if (mesh.userData.cameraInfluence !== undefined) {
+                    influence = parseFloat(mesh.userData.cameraInfluence);
+                }
+
+                this.volumes.push({
+                    localBox: localBox,
+                    invMatrix: invMatrix,
+                    mesh: mesh, // Debug ve güncellemeler için referans tut
+                    target: target,
+                    influence: influence,
+                    animationPoint: mesh.userData.isAnimationPoint,
+                    animationPointLoop: mesh.userData.isAnimationPointLoop === true || mesh.userData.isAnimationPointLoop === 'true',
+                    animationPointHaveOriginShift: mesh.userData.isAnimationPointHaveOriginShift === true || mesh.userData.isAnimationPointHaveOriginShift === 'true',
+                    animationPointUseWorldOrigin: mesh.userData.isAnimationPointUseWorldOrigin === true || mesh.userData.isAnimationPointUseWorldOrigin === 'true',
+                    pathName: mesh.userData.pathName || null, // Otomatik rota geçişi için
+                    hasTriggered: false,
+                    enabled: true, // Logic toggle
+                    name: mesh.name
+                });
+
+                // Görünmez yap (hacim sadece logic için var)
+                mesh.visible = false;
+            }
+
+            getPath(name) {
+                return this.paths[name];
+            }
+
+            /**
+             * Finds the closest point on the curve using recursive subdivision (divide & conquer).
+             * This provides high precision without needing thousands of linear samples.
+             */
+            getClosestPoint(pathName, targetPoint) {
+                // Öncelik Sırası: 
+                // 1. Fonksiyona geçilen pathName
+                // 2. PathManager.activePathName
+                // 3. Mevcut rotalardan ilki (Geriye dönük uyumluluk)
+
+                let name = pathName || this.activePathName;
+                let curve = name ? this.paths[name] : null;
+
+                if (!curve && !pathName) {
+                    const keys = Object.keys(this.paths);
+                    if (keys.length > 0) curve = this.paths[keys[0]];
+                }
+
+                if (!curve) return null;
+
+                // 1. Initial rough scan (low samples just to find the general segment)
+                // This avoids getting stuck in local minima of complex looping curves
+                let minDstSq = Infinity;
+                let bestT = 0;
+                const divisions = 20;
+
+                for (let i = 0; i <= divisions; i++) {
+                    const t = i / divisions;
+                    const pt = curve.getPoint(t);
+                    const d = pt.distanceToSquared(targetPoint);
+                    if (d < minDstSq) {
+                        minDstSq = d;
+                        bestT = t;
+                    }
+                }
+
+                // 2. Recursive Refinement (Golden Section Search / Trinary Search Logic)
+                // We adhere to the mathematical curve definition to find the local minimum distance.
+                let startT = Math.max(0, bestT - 0.1);
+                let endT = Math.min(1, bestT + 0.1);
+
+                const iterations = 10; // High precision with few steps
+
+                for (let i = 0; i < iterations; i++) {
+                    const t1 = startT + (endT - startT) * 0.333;
+                    const t2 = startT + (endT - startT) * 0.666;
+
+                    const p1 = curve.getPoint(t1);
+                    const p2 = curve.getPoint(t2);
+
+                    const d1 = p1.distanceToSquared(targetPoint);
+                    const d2 = p2.distanceToSquared(targetPoint);
+
+                    if (d1 < d2) {
+                        endT = t2;
+                    } else {
+                        startT = t1;
+                    }
+                }
+
+                // Final result is the midpoint of the converged range
+                const finalT = (startT + endT) / 2;
+                const closestPt = curve.getPoint(finalT);
+
+                return { point: closestPt, t: finalT };
+            }
+
+
+            // Stateful tracking for smooth movement (CONSTANT SPEED, not lerp)
+            getSmoothedClosestPoint(targetPoint, currentSpherePos, speed = 0.15, pathName = null) {
+                const result = this.getClosestPoint(pathName || this.activePathName, targetPoint);
+                if (!result) return null;
+
+                // Result.point is the target position on the curve
+                const targetPos = result.point;
+                const direction = new THREE.Vector3().subVectors(targetPos, currentSpherePos);
+                const distance = direction.length();
+
+                // If already very close, snap to target
+                if (distance < 0.01) {
+                    return targetPos.clone();
+                }
+
+                // Move at constant speed towards target (not lerp!)
+                // "speed" is units per frame. Adjust based on desired feel.
+                const moveDistance = Math.min(speed, distance);
+                direction.normalize().multiplyScalar(moveDistance);
+
+                const smoothedPos = new THREE.Vector3().copy(currentSpherePos).add(direction);
+                return smoothedPos;
+            }
+
+            getVolumesAt(point) {
+                const results = [];
+                const pointWaist = point.clone().add(new THREE.Vector3(0, 1.0, 0));
+                const tempLocalPoint = new THREE.Vector3();
+
+                for (let volume of this.volumes) {
+                    if (volume.enabled === false) continue;
+                    // Feet check
+                    tempLocalPoint.copy(point).applyMatrix4(volume.invMatrix);
+                    if (volume.localBox.containsPoint(tempLocalPoint)) {
+                        results.push(volume);
+                        continue;
+                    }
+                    // Waist check
+                    tempLocalPoint.copy(pointWaist).applyMatrix4(volume.invMatrix);
+                    if (volume.localBox.containsPoint(tempLocalPoint)) {
+                        results.push(volume);
+                    }
+                }
+                return results;
+            }
+
+            getActiveVolume(point) {
+                const pointWaist = point.clone().add(new THREE.Vector3(0, 1.0, 0));
+                const tempLocalPoint = new THREE.Vector3();
+
+                for (let volume of this.volumes) {
+                    if (volume.enabled === false) continue;
+                    // Feet
+                    tempLocalPoint.copy(point).applyMatrix4(volume.invMatrix);
+                    if (volume.localBox.containsPoint(tempLocalPoint)) return volume;
+
+                    // Waist
+                    tempLocalPoint.copy(pointWaist).applyMatrix4(volume.invMatrix);
+                    if (volume.localBox.containsPoint(tempLocalPoint)) return volume;
+                }
+                return null;
+            }
+
+            setVolumeEnabled(name, enabled) {
+                const vol = this.volumes.find(v => v.name === name);
+                if (vol) vol.enabled = enabled;
+            }
+
+            /**
+             * Helper for backward compatibility or simple target access
+             */
+            getActiveCameraTarget(cameraPosition) {
+                const vol = this.getActiveVolume(cameraPosition);
+                return vol ? vol.target : null;
+            }
+
+            /**
+             * Visualization for debug
+             */
+            debug(scene) {
+                Object.keys(this.paths).forEach(name => {
+                    const curve = this.paths[name];
+                    const points = curve.getPoints(20);
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+                    // Random bright color for each path
+                    const material = new THREE.LineBasicMaterial({
+                        color: 0x00ff00 + Math.random() * 0xff0000
+                    });
+
+                    const curveObject = new THREE.Line(geometry, material);
+                    curveObject.name = `DebugLine_${name}`;
+                    scene.add(curveObject);
+                });
+
+                // Volumes Debug
+                this.volumes.forEach(vol => {
+                    // Mesh'in kendi geometrisini wireframe olarak göster (Scale/Rotation dahil)
+                    const edges = new THREE.EdgesGeometry(vol.mesh.geometry);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffff00 }));
+
+                    // Mesh'in dünya transformasyonunu uygula
+                    line.matrixAutoUpdate = false;
+                    line.matrix.copy(vol.mesh.matrixWorld);
+
+                    scene.add(line);
+                });
+            }
+        }
+
+        // =============================================================
+        //  DRAG SYSTEM CLASS
+        // =============================================================
+        class DragSystem {
+            constructor(playerGroup, collisionMeshes) {
+                this.player = playerGroup;
+                this.collisionMeshes = collisionMeshes;
+                this.isDragging = false;
+                this.dragObject = null;
+                this.offset = new THREE.Vector3();
+            }
+
+            tryToggleDrag() {
+                if (this.isDragging) {
+                    this.isDragging = false;
+                    this.dragObject = null;
+                    console.log("Sürükleme bırakıldı.");
+                    return;
+                }
+
+                // Karakterin önünde sürüklenebilir bi şey var mı?
+                const forwardDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.rotation.y);
+                const ray = new THREE.Raycaster(new THREE.Vector3(this.player.position.x, this.player.position.y + 0.5, this.player.position.z), forwardDir, 0, 1.5);
+
+                const results = ray.intersectObjects(this.collisionMeshes);
+                if (results.length > 0) {
+                    const hit = results[0];
+                    if (hit.object.userData.draggable) {
+                        this.isDragging = true;
+                        this.dragObject = hit.object;
+
+                        // --- SNAPPING LOGIC ---
+                        // Karakteri kutunun merkezine göre en yakın eksene (X veya Z) hizala ve sabitle
+                        const dragDistance = 2.0; // Parametre: Karakter ile obje merkezi arasındaki mesafe
+
+                        const boxPos = this.dragObject.position;
+                        const playerPos = this.player.position;
+
+                        // Karakter kutunun hangi tarafında? (Fark vektörü)
+                        const diff = new THREE.Vector3().subVectors(playerPos, boxPos);
+
+                        // En baskın ekseni bul (X mi Z mi?)
+                        if (Math.abs(diff.x) > Math.abs(diff.z)) {
+                            // X ekseninde hizala
+                            // Eğer diff.x pozitifse (+X tarafındayız), negatifse (-X tarafındayız)
+                            const sign = Math.sign(diff.x) || 1;
+
+                            // Karakteri tam X eksenine oturt
+                            this.player.position.set(boxPos.x + sign * dragDistance, playerPos.y, boxPos.z);
+
+                            // Rotasyonu kutuya bakacak şekilde ayarla 
+                            // sign +1 (Sağdayız) -> Sola bakmalıyız (-PI/2)
+                            // sign -1 (Soldayız) -> Sağa bakmalıyız (+PI/2)
+                            this.player.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+                        } else {
+                            // Z ekseninde hizala
+                            const sign = Math.sign(diff.z) || 1;
+
+                            this.player.position.set(boxPos.x, playerPos.y, boxPos.z + sign * dragDistance);
+
+                            // sign +1 (Aşağıdayız/+Z) -> İleri bakmalıyız (PI)
+                            // sign -1 (Yukarıdayız/-Z) -> Geri bakmalıyız (0)
+                            this.player.rotation.y = sign > 0 ? Math.PI : 0;
+                        }
+
+                        // Yeni pozisyona göre offset'i hesapla (artık sabit ve düzgün)
+                        this.offset.copy(this.dragObject.position).sub(this.player.position);
+
+                        console.log("Sürükleme başladı ve hizalandı:", hit.object.name || "Küp");
+                    }
+                }
+            }
+
+            update() {
+                if (this.isDragging && this.dragObject) {
+                    // Objeyi karakterle birlikte taşı (Y ekseni hariç, yere basmalı)
+                    this.dragObject.position.x = this.player.position.x + this.offset.x;
+                    this.dragObject.position.z = this.player.position.z + this.offset.z;
+                }
+            }
+        }
+
+        // --- 1. Temel Kurulum ---
+        const scene = new THREE.Scene();
+
+        // --- CAMERA PIVOT SYSTEM ---
+        let activeCameraPivot = null;
+        let pivotParent = new THREE.Object3D();
+        scene.add(pivotParent);
+
+        function setCharacterCameraPivot(name) {
+            if (name == null) {
+                activeCameraPivot = null;
+            } else {
+                activeCameraPivot = name;
+            }
+            console.log("Active Camera Pivot set to:", activeCameraPivot || "Character");
+        }
+        scene.background = new THREE.Color(0x101015);
+        // scene.fog = new THREE.Fog(0x101015, 10, 100);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(.75);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. Işıklandırma ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(5, 20, 10);
+        // dirLight.castShadow = true;
+        // make shadow map area larger 
+        dirLight.shadow.mapSize.width = 2048 * 2;
+        dirLight.shadow.mapSize.height = 2048 * 2;
+        scene.add(dirLight);
+
+        // --- 3. Zemin ---
+        const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        const planeGeometry = new THREE.PlaneGeometry(100, 100);
+        const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        // scene.add(plane);
+
+        // --- 4. Oyuncu Karakteri ---
+        const playerGroup = new THREE.Group();
+        const playerBodyWorldPos = new THREE.Vector3();
+
+        // add debug cube
+        // const debugCube = new THREE.Mesh(new THREE.BoxGeometry(.5, .5, .5), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+        // playerGroup.add(debugCube);
+        scene.add(playerGroup);
+
+        let playerModel = null;
+        let mixer = null;
+        let walkAction = null;
+        let attackAction = null;
+        let idleAction = null; // Idle animasyonu
+        let jumpAction = null; // Zıplama animasyonu
+        let colliderAttackAction = null; // Collider için ayrı animasyon
+        let currentAction = null; // Aktif animasyon takibi
+        let activeTriggerAction = null; // Volume trigger ile başlatılan animasyon
+        let playerBody = null; // Animasyonlarda kayabilen ana gövde (FinalCharacterBody)
+        let colliderObject = null; // Yumruk hitbox'ı için Collider küpü
+        let colliderMixer = null; // Collider için ayrı mixer
+        let rightHandBone = null; // Trail efekti için sağ el bone'u
+        let envMixer = null; // Environment animasyonları için mixer
+        let bossMixer = null; // Boss için özel mixer
+        let bossBody = null; // Boss'un kök kemiği (Root_1)
+
+        // === CUTSCENE CAMERA SYSTEM ===
+        let cutsceneCamera = null; // Blender'dan gelen "Camera" objesi
+        let cutsceneMixer = null; // Cutscene camera için mixer
+        let cutsceneActive = false; // Cutscene modu aktif mi?
+        let cutsceneBlend = 0; // 0 = gameplay camera, 1 = cutscene camera
+        let cutsceneBlendSpeed = 0.03; // Geçiş yumuşaklığı
+        let cutsceneAction = null; // Aktif cutscene animasyonu
+        let cutsceneReturning = false; // Cutscene bitip geri dönüş modunda mı?
+
+        // Global Animation Registry - Tüm animasyonları isimle erişilebilir yapar
+        // Format: { animationName: { clip: AnimationClip, mixer: AnimationMixer, model: Object3D, isCamera: bool } }
+        const animationRegistry = {};
+
+        // playerSprite initialized later
+        let playerSprite = null;
+
+        // --- GAME ENTRY POINTS ---
+        OnGameAwake();
+
+        const loader = new GLTFLoader();
+        loader.load('assets.glb', function (gltf) {
+            // === COMBINED ASSET LOADING ===
+            // assets.glb contains both character (FinalCharacterArmature) and environment (Environment)
+
+            // --- 1. CHARACTER SETUP ---
+            const characterArmature = gltf.scene.getObjectByName('FinalCharacterArmature');
+            if (!characterArmature) {
+                console.error("'FinalCharacterArmature' not found in assets.glb!");
+                return;
+            }
+
+            // 1. Karakterin Blender'daki DÜNYA pozisyonunu al (parent'tan kopmadan önce!)
+            characterArmature.updateWorldMatrix(true, false);
+            const spawnPosition = new THREE.Vector3();
+            characterArmature.getWorldPosition(spawnPosition);
+            console.log("Karakter spawn pozisyonu:", spawnPosition);
+
+            // 2. playerGroup'u bu pozisyona taşı
+            playerGroup.position.copy(spawnPosition);
+
+            // 3. Karakteri parent'tan ayır
+            if (characterArmature.parent) {
+                characterArmature.parent.remove(characterArmature);
+            }
+
+            // 4. Karakterin LOKAL pozisyonunu sıfırla (artık playerGroup'un merkezinde)
+            characterArmature.position.set(0, 0, 0);
+            characterArmature.rotation.set(0, 0, 0);
+
+            // DEBUG: Scale kontrolü
+            console.log("Karakter LOCAL scale:", characterArmature.scale);
+            const worldScale = new THREE.Vector3();
+            characterArmature.getWorldScale(worldScale);
+            console.log("Karakter WORLD scale:", worldScale);
+
+            playerModel = characterArmature;
+            playerModel.animations = gltf.animations; // Animasyonları erişilebilir kılalım
+
+            // Animasyon Mixer Kurulumu
+            mixer = new THREE.AnimationMixer(playerModel);
+
+            // NOT: Animasyonları burada kaydetMİYORUZ!
+            // Environment yüklendikten sonra, tüm animasyonları doğru mixer'a atayacağız.
+            // Böylece track'lerdeki hedef objelerin hangi modelde olduğunu doğru tespit edebiliriz.
+
+            // ANIMATION FINISHED EVENT (Origin Shift Logic)
+            mixer.addEventListener('finished', function (e) {
+                const action = e.action;
+
+                // Hangi animasyon biterse bitsin, eğer trigger ise temizle
+                if (activeTriggerAction === action) {
+                    activeTriggerAction = null;
+                }
+
+                if (action._triggerKey) {
+                    OnAnimationEnd(action._triggerKey, action);
+                }
+
+                if (action._haveOriginShift) {
+                    if (playerBody && playerModel) {
+                        // 1. Matrisleri Zorla Güncelle
+                        playerGroup.updateMatrixWorld(true);
+                        playerModel.updateMatrixWorld(true);
+                        playerBody.updateMatrixWorld(true);
+
+                        // --- POSIZYON SHIFT ---
+                        const currentWorldPos = new THREE.Vector3();
+                        playerBody.getWorldPosition(currentWorldPos);
+                        playerGroup.position.copy(currentWorldPos);
+
+                        // Hem bone hem model pozisyonunu sıfırla (direct object anim desteği için)
+                        playerBody.position.set(0, 0, 0);
+                        playerModel.position.set(0, 0, 0);
+
+                        // --- ROTASYON SHIFT (Yeni Eklenen) ---
+                        const currentWorldQuat = new THREE.Quaternion();
+                        playerBody.getWorldQuaternion(currentWorldQuat);
+
+                        // Dünya rotasyonundan Y açısını (Euler) ayıkla
+                        const euler = new THREE.Euler().setFromQuaternion(currentWorldQuat, 'YXZ');
+                        playerGroup.rotation.y = euler.y;
+
+                        // Kemiği ve modeli sıfırla ki root'un rotasyonuna boyun eğsinler
+                        playerBody.rotation.set(0, 0, 0);
+                        playerModel.rotation.set(0, 0, 0);
+
+                        // 5. Animasyonu durdur ve mixer'ı serbest bırak
+                        action.enabled = false;
+                        action.stop();
+
+                        console.log("Origin & Rotation Shift executed. New Y Rotation:", euler.y);
+
+                        // 6. Sprite'ı hemen güncelle
+                        if (window.playerSprite) {
+                            playerSprite.setPosition(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z);
+                            playerSprite.update();
+                        }
+                    }
+                }
+            });
+            const walkClip = gltf.animations.find(clip => clip.name === 'Walk');
+            if (walkClip) {
+                walkAction = mixer.clipAction(walkClip);
+            } else if (gltf.animations.length > 0) {
+                walkAction = mixer.clipAction(gltf.animations[0]);
+            }
+
+            const actionClip = gltf.animations.find(clip => clip.name === 'Attack');
+            if (actionClip) {
+                attackAction = mixer.clipAction(actionClip);
+                attackAction.loop = THREE.LoopRepeat;
+            }
+
+            // Idle animasyonu
+            const idleClip = gltf.animations.find(clip => clip.name === 'Idle');
+            if (idleClip) {
+                idleAction = mixer.clipAction(idleClip);
+                idleAction.loop = THREE.LoopRepeat;
+                console.log("'Idle' animasyonu bulundu ve hazırlandı.");
+            } else {
+                console.warn("GLB içinde 'Idle' animasyonu bulunamadı.");
+            }
+
+            // Jump animasyonu
+            const jumpClip = gltf.animations.find(clip => clip.name === 'Jump');
+            if (jumpClip) {
+                jumpAction = mixer.clipAction(jumpClip);
+                jumpAction.loop = THREE.LoopOnce;
+                jumpAction.clampWhenFinished = true;
+                console.log("'Jump' animasyonu bulundu.");
+            }
+
+            // Collider Küpü Arama ve Entegrasyon (Yumruk hitbox'ı)
+            // NOT: Artık playerModel (characterArmature) içinde arıyoruz
+            const foundCollider = playerModel.getObjectByName('Collider');
+            if (foundCollider) {
+                console.log("GLB içinde 'Collider' objesi bulundu, prosedürel kılıç devre dışı bırakılıyor.");
+                colliderObject = foundCollider;
+                swordGroup.visible = false; // Prosedürel kılıcı gizle
+                colliderObject.visible = false; // Collider'ı da gizle (sadece hitbox olarak kullan)
+
+                // Trail noktalarını Collider'a taşı
+                colliderObject.add(basePoint);
+                colliderObject.add(tipPoint);
+
+                // Panele göre güncelle
+                updateSwordPoints();
+
+                // Collider için ayrı mixer oluştur (ColliderAttack animasyonu için)
+                colliderMixer = new THREE.AnimationMixer(colliderObject);
+                const colliderAttackClip = gltf.animations.find(clip => clip.name === 'ColliderAttack');
+                if (colliderAttackClip) {
+                    colliderAttackAction = colliderMixer.clipAction(colliderAttackClip);
+                    colliderAttackAction.loop = THREE.LoopRepeat;
+                    console.log("ColliderAttack animasyonu bulundu ve hazırlandı.");
+                } else {
+                    console.warn("GLB içinde 'ColliderAttack' animasyonu bulunamadı.");
+                }
+
+            } else {
+                console.warn("GLB içinde 'Collider' bulunamadı, prosedürel kılıç kullanılıyor.");
+            }
+
+            // 'Root' objesini bul (Kamera ve takip için)
+            // NOT: Artık playerModel içinde arıyoruz
+            playerBody = playerModel.getObjectByName('Root');
+            if (playerBody) {
+                console.log("'Root' bulundu, takip bu obje üzerinden yapılacak.");
+            } else {
+                console.warn("'Root' bulunamadı, root model baz alınıyor.");
+                playerBody = playerModel;
+            }
+
+            // RightHand bone'unu bul (Trail efekti için)
+            // NOT: Artık playerModel içinde arıyoruz
+            const foundRightHand = playerModel.getObjectByName('RightHand');
+            if (foundRightHand) {
+                rightHandBone = foundRightHand;
+                console.log("'RightHand' bone'u bulundu, trail efekti bu bone'u takip edecek.");
+            } else {
+                console.warn("GLB içinde 'RightHand' bone'u bulunamadı.");
+            }
+
+            // İlk ayarları uygula
+            updateCharacterTransform();
+
+            playerModel.traverse(function (node) {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.frustumCulled = false; // Yakınken kaybolma sorununu çözer
+                    // Orijinal renkleri sakla (Hasar alınca yanıp sönme için)
+                    if (node.material) {
+                        // Material'i klonla ki ortak kullanılan materyaller etkilenmesin
+                        node.material = node.material.clone();
+                        node.userData.originalColor = node.material.color.clone();
+                    }
+                }
+            });
+
+            const addDebugPivot = (name, x, y, z) => {
+                const pivot = new THREE.Object3D();
+                pivot.name = name;
+                pivot.position.set(x, y, z);
+                pivot.add(new THREE.AxesHelper(0.5));
+                pivotParent.add(pivot);
+            };
+
+            addDebugPivot('Back', 0, 0, -5);
+            addDebugPivot('Front', 0, 0, 5);
+            addDebugPivot('Right', 5, 0, 0);
+            addDebugPivot('Left', -5, 0, 0);
+
+            addDebugPivot('FarBack', 0, 0, -10);
+            addDebugPivot('FarFront', 0, 0, 10);
+            addDebugPivot('FarRight', 10, 0, 0);
+            addDebugPivot('FarLeft', -10, 0, 0);
+            setInterval(() => {
+                setTargetGlobalPosition(pivotParent, playerBodyWorldPos);
+            }, 0);
+
+            // playerGroup.add(playerModel); // ARTIK GRUBA DEĞİL SPRITE'A EKLİYORUZ
+            playerSprite.setModel(playerModel);
+
+            // Sprite pozisyonunu playerGroup ile senkronize et
+            playerSprite.setPosition(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z);
+
+            console.log("Karakter yüklendi. Pozisyon:", playerGroup.position);
+
+            // --- 2. ENVIRONMENT SETUP (from same assets.glb) ---
+            const envModel = gltf.scene.getObjectByName('Environment');
+            if (envModel) {
+                scene.add(envModel);
+
+                // Environment için AnimationMixer oluştur
+                envMixer = new THREE.AnimationMixer(envModel);
+                envMixer.addEventListener('finished', function (e) {
+                    const action = e.action;
+                    if (action._triggerKey) {
+                        OnAnimationEnd(action._triggerKey, action);
+                    }
+                });
+
+                // --- BOSS MIXER SETUP ---
+                const bossModel = envModel.getObjectByName('FinalBossArmature');
+                if (bossModel) {
+                    bossState.mesh = bossModel; // OTOMATİK REFERANS ATAMASI
+                    bossBody = bossModel.getObjectByName('Root_1'); // KÖK KEMİK (SHIFT İÇİN)
+
+                    bossMixer = new THREE.AnimationMixer(bossModel);
+                    bossMixer.addEventListener('finished', function (e) {
+                        const action = e.action;
+
+                        // --- BOSS ORIGIN SHIFT ---
+                        if (action._haveOriginShift && bossBody && bossState.mesh) {
+                            // Matrisleri zorla güncelle
+                            bossModel.updateMatrixWorld(true);
+                            bossBody.updateMatrixWorld(true);
+
+                            // Dunyaa koordinatlarını al
+                            const worldPos = new THREE.Vector3();
+                            const worldQuat = new THREE.Quaternion();
+
+                            bossBody.getWorldPosition(worldPos);
+                            bossBody.getWorldQuaternion(worldQuat);
+
+                            // Değerleri klonluyoruz çünkü worldPos globale ait, asenkronlukta ezilebilir
+                            const finalPos = worldPos.clone();
+                            const finalQuat = worldQuat.clone();
+
+                            action.enabled = false;
+                            action.stop(); // Animasyonu durdur, mixer offsetleri orjine resetleyecektir
+
+                            bossModel.position.copy(finalPos);
+
+                            // Rotasyon (Y-yaw)
+                            const euler = new THREE.Euler().setFromQuaternion(worldQuat, 'YXZ');
+                            bossModel.rotation.z = euler.y; // Boss modelinde Z "yaw" kabul edildiği için
+
+                            console.log("Boss Origin Shift executed. New Z Rotation:", euler.y);
+                        }
+
+                        if (action._triggerKey) {
+                            OnAnimationEnd(action._triggerKey, action);
+                        }
+                    });
+                    console.log("Boss Mixer initialized for FinalBossArmature");
+                }
+
+                // === CUTSCENE CAMERA SETUP ===
+                // Blender'daki "Camera" objesi cutscene'ler için kullanılıyor
+                cutsceneCamera = gltf.scene.getObjectByName('Camera');
+                if (cutsceneCamera) {
+                    // Kameranın world transform'unu doğru hesaplayabilmek için sahneye ekliyoruz
+                    scene.add(cutsceneCamera);
+
+                    // Kameranın görünmez olmasına gerek yok, sadece referans alıyoruz
+                    cutsceneMixer = new THREE.AnimationMixer(cutsceneCamera);
+                    console.log("Cutscene Camera loaded:", cutsceneCamera.name);
+
+                    // Cutscene mixer için 'finished' event
+                    cutsceneMixer.addEventListener('finished', function (e) {
+                        const action = e.action;
+                        console.log("Cutscene animation finished, returning to gameplay camera...");
+                        cutsceneReturning = true;
+                        cutsceneAction = null;
+
+                        if (action._triggerKey) {
+                            OnAnimationEnd(action._triggerKey, action);
+                        }
+                    });
+                } else {
+                    console.warn("'Camera' object not found in assets.glb - cutscenes disabled");
+                }
+
+                // === TÜM ANİMASYONLARI KAYDET ===
+                // Şimdi hem playerModel hem envModel yüklü, track hedeflerine bakabiliriz
+                gltf.animations.forEach(clip => {
+                    let targetMixer = null;
+                    let targetModel = null;
+                    let targetType = 'Unknown';
+                    let isCamera = false;
+
+                    // Track'lerdeki hedef objeleri kontrol et
+                    if (clip.tracks.length > 0) {
+                        for (const track of clip.tracks) {
+                            // Track name format: "ObjectName.property" (örn: "Root.position" veya "Door.rotation")
+                            const targetName = track.name.split('.')[0];
+
+                            // Camera mı?
+                            if (cutsceneCamera && (targetName === 'Camera' || cutsceneCamera.getObjectByName(targetName))) {
+                                targetMixer = cutsceneMixer;
+                                targetModel = cutsceneCamera;
+                                targetType = 'Camera (Cutscene)';
+                                isCamera = true;
+                                break;
+                            }
+
+                            // Player model altında mı?
+                            const foundInPlayer = playerModel.getObjectByName(targetName);
+                            if (foundInPlayer) {
+                                targetMixer = mixer;
+                                targetModel = playerModel;
+                                targetType = 'Player';
+                                break;
+                            }
+
+                            // Boss modeli altında mı?
+                            const bossModel = envModel.getObjectByName('FinalBossArmature');
+                            if (bossModel && bossModel.getObjectByName(targetName)) {
+                                targetMixer = bossMixer;
+                                targetModel = bossModel;
+                                targetType = 'Boss';
+                                break;
+                            }
+
+                            // Environment model altında mı?
+                            const foundInEnv = envModel.getObjectByName(targetName);
+                            if (foundInEnv) {
+                                targetMixer = envMixer;
+                                targetModel = envModel;
+                                targetType = 'Environment';
+                                break;
+                            }
+                        }
+                    }
+
+                    // Eğer hiçbir yerde bulunamadıysa, varsayılan olarak player'a ata
+                    if (!targetMixer) {
+                        targetMixer = mixer;
+                        targetModel = playerModel;
+                        targetType = 'Player (default)';
+                    }
+
+                    animationRegistry[clip.name] = { clip: clip, mixer: targetMixer, model: targetModel, isCamera: isCamera };
+                    console.log(`Animation registered: ${clip.name} (${targetType})`);
+                });
+
+                // Scan for cinematic paths (Logic isolated in class)
+                pathManager.scan(envModel);
+
+                // Uncomment to see the paths visually
+                pathManager.debug(scene);
+
+                envModel.traverse(node => {
+                    // initPoint artık gerekli değil - karakter assets.glb'de doğru konumda
+
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+
+                        // Blender'daki Custom Properties: col ve draggable
+                        // Veya ismi 'Desk' ise
+                        if (node.userData.col === true || node.userData.draggable === true || node.name === 'Desk') {
+                            collisionMeshes.push(node);
+                            console.log("Fizik/Sürükleme objesi eklendi:", node.name);
+                        }
+                    }
+                });
+            } else {
+                console.warn("'Environment' not found in assets.glb!");
+            }
+
+            // Oyunun her şeyi yüklendiğinde ve hazır olduğunda tetiklenir
+            OnGameStart();
+
+        }, undefined, function (error) {
+            console.error("assets.glb yüklenirken hata oluştu:", error);
+        });
+
+
+
+        // Eski küp kodları kaldırıldı
+        /*
+        const bodyGeo = new THREE.BoxGeometry(1, 1, 1);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        bodyMesh.position.y = 0.5;
+        bodyMesh.castShadow = true;
+        playerGroup.add(bodyMesh);
+
+        const noseGeo = new THREE.BoxGeometry(0.6, 0.3, 0.4);
+        const noseMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0xaa0000, emissiveIntensity: 0.5 });
+        const noseMesh = new THREE.Mesh(noseGeo, noseMat);
+        noseMesh.position.set(0, 0.6, 0.5);
+        noseMesh.castShadow = true;
+        playerGroup.add(noseMesh);
+        */
+
+        // --- KAMERA ---
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // --- Discrete Sprite Setup (After Camera Init) ---
+        playerSprite = new DiscreteSprite3D(scene, camera, { hSteps: 24, vSteps: 12 });
+
+        // ORBIT CONTROLS
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enabled = true; // Default enabled as requested
+
+        // --- KILIÇ SİSTEMİ ---
+        const swordContainer = new THREE.Group();
+        playerGroup.add(swordContainer);
+
+        const swordGroup = new THREE.Group();
+        swordContainer.add(swordGroup);
+
+        const bladeGeo = new THREE.BoxGeometry(0.1, 0.05, 1.2);
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.position.z = 0.6;
+        blade.castShadow = true;
+        swordGroup.add(blade);
+
+        const guardGeo = new THREE.BoxGeometry(0.4, 0.05, 0.1);
+        const guardMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        const guard = new THREE.Mesh(guardGeo, guardMat);
+        guard.position.z = 0;
+        guard.castShadow = true;
+        swordGroup.add(guard);
+
+        const handleGeo = new THREE.BoxGeometry(0.1, 0.05, 0.3);
+        const handle = new THREE.Mesh(handleGeo, guardMat);
+        handle.position.z = -0.2;
+        handle.castShadow = true;
+        swordGroup.add(handle);
+
+        // --- 5. OVAL YUMRUK EFEKTİ SİSTEMİ ---
+        // Collider merkez noktası takibi için
+        const punchPoint = new THREE.Object3D();
+        punchPoint.position.set(0, 0, 0);
+        swordGroup.add(punchPoint);
+
+        // Eski tip/base noktaları (GLB'den Collider bulunursa oraya taşınacak)
+        const tipPoint = new THREE.Object3D();
+        tipPoint.position.set(0, 0, 0.5);
+        swordGroup.add(tipPoint);
+
+        const basePoint = new THREE.Object3D();
+        basePoint.position.set(0, 0, 0);
+        swordGroup.add(basePoint);
+
+        const MAX_TRAIL_POINTS = 100;
+        const trailPositions = [];
+        const OVAL_RADIUS = 0.3; // Oval efekt yarıçapı
+
+        // Oval efekt için ring (halka) geometry kullanıyoruz
+        const RING_SEGMENTS = 16; // Oval kenar sayısı
+        const trailGeometry = new THREE.BufferGeometry();
+        // Her trail noktası için bir halka (ring) çiziyoruz
+        // Halka vertex sayısı: RING_SEGMENTS * 2 (iç ve dış kenar)
+        const positionAttribute = new THREE.BufferAttribute(new Float32Array(MAX_TRAIL_POINTS * RING_SEGMENTS * 2 * 3), 3);
+        const colorAttribute = new THREE.BufferAttribute(new Float32Array(MAX_TRAIL_POINTS * RING_SEGMENTS * 2 * 3), 3);
+
+        positionAttribute.setUsage(THREE.DynamicDrawUsage);
+        colorAttribute.setUsage(THREE.DynamicDrawUsage);
+
+        trailGeometry.setAttribute('position', positionAttribute);
+        trailGeometry.setAttribute('color', colorAttribute);
+
+        // Oval halkalar arası üçgen indeksleri
+        const indices = [];
+        for (let ring = 0; ring < MAX_TRAIL_POINTS - 1; ring++) {
+            for (let seg = 0; seg < RING_SEGMENTS; seg++) {
+                const nextSeg = (seg + 1) % RING_SEGMENTS;
+                const baseIdx = ring * RING_SEGMENTS;
+                const nextBaseIdx = (ring + 1) * RING_SEGMENTS;
+
+                // İki üçgen ile bir quad
+                indices.push(baseIdx + seg, nextBaseIdx + seg, baseIdx + nextSeg);
+                indices.push(baseIdx + nextSeg, nextBaseIdx + seg, nextBaseIdx + nextSeg);
+            }
+        }
+        trailGeometry.setIndex(indices);
+
+        const trailMaterial = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const trailMesh = new THREE.Mesh(trailGeometry, trailMaterial);
+        trailMesh.frustumCulled = false;
+        playerGroup.add(trailMesh);
+
+        // --- SHOCKWAVE (GÜÇ DALGASI) SİSTEMİ ---
+        // Ring geometry ile genişleyen halka efekti
+        const shockwaveGeometry = new THREE.RingGeometry(0.1, 0.5, 64);
+        const shockwaveMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff6600,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const shockwaveMesh = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
+        shockwaveMesh.rotation.x = -Math.PI / 2; // Yatay (zemine paralel)
+        shockwaveMesh.position.y = 0.05; // Zeminin hemen üstü
+        shockwaveMesh.visible = false;
+        scene.add(shockwaveMesh);
+
+        // Shockwave state
+        let shockwaveActive = false;
+        let shockwaveStartTime = 0;
+        let shockwavePosition = new THREE.Vector3();
+        let shockwaveTriggered = false; // Bu saldırıda tetiklendi mi?
+        let shockwaveLockUntil = 0; // Karakter kilit bitiş zamanı
+
+        // --- DEBUG PATH SPHERE ---
+        const debugPathSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        debugPathSphere.visible = false;
+        scene.add(debugPathSphere);
+
+        // --- 6. PLATFORM SİSTEMİ (Dinamik) ---
+        // Eski platform dizisi ve fonksiyonu kaldırıldı, artık collisionMeshes kullanılıyor.
+
+        // --- ENVIRONMENT LOADER artık assets.glb içinde birleştirildi ---
+        const collisionMeshes = []; // Raycast yapacağımız fizik objeleri listesi
+        const pathManager = new PathManager(); // Initialize Path Manager
+
+        // --- DÜŞMAN SİSTEMİ ---
+        const enemies = [];
+        const enemyGeo = new THREE.BoxGeometry(1, 1, 1);
+        const baseEnemyMat = new THREE.MeshStandardMaterial({ color: 0xff2222 });
+
+        // --- BOSS STATE ---
+        const bossState = {
+            isFollowing: false,
+            speed: 0.04, // Boss yürüme hızı
+            mesh: null
+        };
+
+        // Debug panel ayarları
+        const swordSettings = {
+            offsetX: 0.7,
+            offsetY: 0.5,
+            offsetZ: 0.3,
+            rotationY: 0,
+
+            // Karakter Model Ayarları
+            charScale: 1,// 2.1
+            charRotationY: 0,
+            charOffsetY: 0,
+            charRotationY: 0,
+            charOffsetY: 0,
+            animSpeed: 1.6,
+            attackAnimSpeed: 1.418938480096502,
+            moveSpeed: 0.08,
+
+            // Kılıç Entegrasyon
+            swordAxis: '-Y',
+            swordLengthScale: 0.1,
+            swordHitboxLengthScale: 0.15, // Trail/Efekt boyu (Tip position)
+            swordDamageHitboxScale: 1.5, // Hasar Çapı/Menzili Çarpanı
+            turnSpeed: 0.3, // Karakter dönüş yumuşaklığı
+
+            // Kamera
+            enableOrbit: false,
+
+            // GÜNCELLENEN DEĞERLER
+            swordScale: 1.72,
+            attackDuration: 300,
+            trailLife: 96.16,
+            throwForce: 0.8, // Fırlatma gücü
+            throwDamageRadius: 2.0, // Fırlatılan düşman çarpışma yarıçapı
+            throwImpactForce: 0.6, // Çarpışma sırasında savrulma gücü
+            throwArcFactor: 0.3, // Fırlatma eğrisi: 0=düz, 1=tam parabolik
+            retroFps: 12, // Yürüme/Idle animasyon FPS değeri
+            attackFps: 24, // Saldırı animasyon FPS değeri
+
+            // Kombo 1 (Normal Sağdan Sola)
+            c1_StartY: -150, c1_EndY: 140,
+            c1_StartX: 33, c1_EndX: -35,
+
+            // Kombo 2 (Ters Soldan Sağa)
+            c2_StartY: 140, c2_EndY: -150,
+            c2_StartX: -35, c2_EndX: 33,
+
+            // Kombo 3 (Spin Attack - GÜNCELLENDİ)
+            c3_StartY: 175.58049807085234,
+            c3_EndY: -180,
+            c3_StartX: 0.9154682567520069,
+            c3_EndX: -1.1048754822869142,
+
+            comboResetTime: 537.1355588831145,
+
+            trailColorBase: '#ff0000',
+            trailColorTip: '#ffffff',
+
+            shakeIntensity: 0.05,
+            shakeDuration: 15.856236786469344,
+
+            enemySpawnRate: 1000,
+            enemySpeed: 0.05,
+            enemyMaxHP: 3,
+
+            knockbackForce: 0.77,
+            knockbackDrag: 0.90,
+            knockbackLift: 0.45,
+
+            slowMoFactor: 0.14,
+            slowMoDuration: 151,
+
+            slowMoFactor: 0.14,
+            slowMoDuration: 151,
+
+            camOffsetX: 0,
+            camOffsetY: 13.93199436222692,
+            camOffsetZ: 15.362931642001406,
+            camLerp: 0.04,
+            camLookLerp: 0.08,
+            debugCameraSnap: true, // Debug için anında takip (true = zınk, false = smooth)
+
+            // Shockwave (Güç Dalgası) Ayarları
+            shockwaveEnabled: true,
+            shockwaveFrame: 53, // Tetikleme frame'i
+            shockwaveTotalFrames: 60, // Attack animasyonu toplam frame (yaklaşık)
+            shockwaveMaxRadius: 8, // Maksimum genişleme yarıçapı
+            shockwaveSpeed: 12, // Genişleme hızı
+            shockwaveDuration: 400, // Efekt süresi (ms)
+            shockwaveDamage: 2, // Uygulanan hasar
+            shockwaveKnockback: 1.2, // Savrulma gücü
+            shockwaveColor: '#ffffff', // Dalga rengi
+            shockwaveLockDuration: 300, // Karakter kilit süresi (ms) - 1.5 saniye
+
+            // ZIPLAMA AYARLARI
+            jumpForce: 0.3,
+            jumpForwardSpeed: 0.1,
+            airFriction: 0.98,
+            groundFriction: 0.8,
+
+            // Whoosh Ses Keyframe'leri (birden fazla ses noktası)
+            whooshEnabled: true,
+            whooshKeyframes: [
+                { startPercent: 32.14, endPercent: 48.21, volume: 0.41, startFreq: 600, endFreq: 150 },
+                { startPercent: 10, endPercent: 30, volume: 0.46, startFreq: 500, endFreq: 150 },
+                { startPercent: 58.54, endPercent: 92.98, volume: 0.34, startFreq: 679, endFreq: 324 }
+            ],
+
+            printConfig: function () {
+                const exportData = { ...this };
+                delete exportData.printConfig;
+                console.log(JSON.stringify(exportData, null, 2));
+                alert("Konfigürasyon konsola (F12) yazdırıldı!");
+            }
+        };
+
+        const enemyPool = [];
+
+        function spawnEnemy() {
+            let enemy;
+            if (enemyPool.length > 0) {
+                enemy = enemyPool.pop();
+                enemy.visible = true;
+                enemy.scale.set(1, 1, 1);
+                if (enemy.material) enemy.material.color.setHex(0xff2222);
+            } else {
+                const mat = baseEnemyMat.clone();
+                enemy = new THREE.Mesh(enemyGeo, mat);
+                enemy.castShadow = true;
+                enemy.receiveShadow = true;
+                scene.add(enemy);
+            }
+
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 20 + Math.random() * 10;
+
+            enemy.position.x = playerGroup.position.x + Math.cos(angle) * distance;
+            enemy.position.z = playerGroup.position.z + Math.sin(angle) * distance;
+            enemy.position.y = 0.5;
+
+            enemy.userData = {
+                maxHp: swordSettings.enemyMaxHP,
+                currentHp: swordSettings.enemyMaxHP,
+                isDead: false,
+                lastHitTime: 0,
+                velocity: new THREE.Vector3(0, 0, 0),
+                rotationSpeed: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.2)
+            };
+
+            enemy.userData.isHeld = false; // Tutuluyor mu?
+
+            enemies.push(enemy);
+        }
+
+        // --- Debug Panel ---
+        const gui = new dat.GUI();
+
+        function fadeToAction(action, duration) {
+            if (currentAction === action) return;
+
+            if (currentAction) {
+                currentAction.fadeOut(duration);
+            }
+
+            if (action) {
+                action.reset();
+                action.fadeIn(duration);
+                action.play();
+            }
+
+            currentAction = action;
+        }
+
+        function updateSwordPoints() {
+            if (!colliderObject) return;
+
+            // Collider'ın boyutlarını al
+            const box = new THREE.Box3().setFromObject(colliderObject);
+            const size = box.getSize(new THREE.Vector3());
+
+            // Eğer box size çok küçükse (örn: Bone ise), varsayılan bir uzunluk ata
+            if (size.lengthSq() < 0.01) {
+                size.set(0.1, 1.0, 0.1); // Varsayılan uzunluk (Y ekseni baskın)
+            }
+
+            // Base her zaman origin (sap kısmı)
+            basePoint.position.set(0, 0, 0);
+
+            // Tip pozisyonunu seçilen eksene göre ayarla (HITBOX LENGTH SCALE kullanılarak)
+            const s = swordSettings.swordHitboxLengthScale;
+
+            // Eğer modelin kendi kılıç boyutu (size) 0'a yakınsa manuel bir boy verelim
+            let lenX = size.x; let lenY = size.y; let lenZ = size.z;
+            if (lenX < 0.1) lenX = 1.0;
+            if (lenY < 0.1) lenY = 1.0;
+            if (lenZ < 0.1) lenZ = 1.0;
+
+            switch (swordSettings.swordAxis) {
+                case 'X': tipPoint.position.set(lenX * s, 0, 0); break;
+                case 'Y': tipPoint.position.set(0, lenY * s, 0); break;
+                case 'Z': tipPoint.position.set(0, 0, lenZ * s); break;
+                case '-X': tipPoint.position.set(-lenX * s, 0, 0); break;
+                case '-Y': tipPoint.position.set(0, -lenY * s, 0); break;
+                case '-Z': tipPoint.position.set(0, 0, -lenZ * s); break;
+            }
+        }
+
+        function updateSwordPosition() {
+            swordGroup.position.set(swordSettings.offsetX, swordSettings.offsetY, swordSettings.offsetZ);
+            swordGroup.rotation.y = swordSettings.rotationY * (Math.PI / 180);
+            swordGroup.scale.set(swordSettings.swordScale, swordSettings.swordScale, swordSettings.swordScale);
+        }
+
+        function updateCharacterTransform() {
+            if (playerModel) {
+                // playerModel.scale.set(swordSettings.charScale, swordSettings.charScale, swordSettings.charScale);
+                // NOT: RotationY artık animate loop içinde sürekli sync ediliyor
+                // playerModel.rotation.y = THREE.MathUtils.degToRad(swordSettings.charRotationY);
+                playerModel.position.y = swordSettings.charOffsetY;
+
+                // Sprite sisteminde offset update gerekebilir mi?
+                // playerSprite.setTransform(scale, offsetY) benzeri bir şey gerekebilir
+                // Ama şimdilik modelin kendi lokal transformu ile oynuyoruz, bu da child olduğu için işe yarar.
+            }
+        }
+
+        function updateCameraRotation() {
+            camera.position.set(swordSettings.camOffsetX, swordSettings.camOffsetY, swordSettings.camOffsetZ);
+            camera.lookAt(0, 0, 0);
+        }
+
+        updateSwordPosition();
+        updateCameraRotation();
+
+        const posFolder = gui.addFolder('Kılıç Konumu ve Boyutu');
+        posFolder.add(swordSettings, 'swordScale', 0.5, 3.0).name('Boyut').onChange(updateSwordPosition);
+        posFolder.add(swordSettings, 'offsetX', -2, 2).name('Sağ/Sol').onChange(updateSwordPosition);
+        posFolder.add(swordSettings, 'offsetY', 0, 2).name('Yükseklik').onChange(updateSwordPosition);
+        posFolder.add(swordSettings, 'offsetZ', -2, 2).name('İleri/Geri').onChange(updateSwordPosition);
+        posFolder.add(swordSettings, 'rotationY', -180, 180).name('Dönüş').onChange(updateSwordPosition);
+
+        const charFolder = gui.addFolder('Karakter Model Ayarları');
+        charFolder.add(swordSettings, 'charScale', 0.1, 3.0).name('Scale').onChange(updateCharacterTransform);
+        charFolder.add(swordSettings, 'charRotationY', -180, 180).name('Rotasyon Y').onChange(updateCharacterTransform);
+        charFolder.add(swordSettings, 'charOffsetY', -2, 2).name('Yükseklik Offset').onChange(updateCharacterTransform);
+        charFolder.add(swordSettings, 'animSpeed', 0.1, 5.0).name('Anim Hızı');
+        charFolder.add(swordSettings, 'attackAnimSpeed', 0.1, 5.0).name('Atak Anim Hızı');
+        charFolder.add(swordSettings, 'moveSpeed', 0.01, 0.5).name('Koşu Hızı');
+        charFolder.add(swordSettings, 'swordAxis', ['X', 'Y', 'Z', '-X', '-Y', '-Z']).name('Kılıç Uç Yönü').onChange(updateSwordPoints);
+        // charFolder.add(swordSettings, 'swordLengthScale', 0.1, 2.0).name('Kılıç Ofset Çarp').onChange(updateSwordPoints);
+        charFolder.add(swordSettings, 'swordHitboxLengthScale', 0.1, 5.0).name('Kılıç Efekt Boyu').onChange(updateSwordPoints);
+        charFolder.add(swordSettings, 'swordDamageHitboxScale', 0.1, 5.0).name('Kılıç Hasar Menzili');
+        charFolder.add(swordSettings, 'turnSpeed', 0.01, 1.0).name('Dönüş Hızı');
+        charFolder.open();
+
+        // KOMBO AYARLARI KLASÖRÜ
+        const comboFolder = gui.addFolder('Kombo Ayarları');
+        comboFolder.add(swordSettings, 'comboResetTime', 100, 2000).name('Kombo Süresi (ms)');
+
+        const c1 = comboFolder.addFolder('Vuruş 1 (Sağ->Sol)');
+        c1.add(swordSettings, 'c1_StartY', -180, 180).name('Yatay Başlangıç');
+        c1.add(swordSettings, 'c1_EndY', -180, 180).name('Yatay Bitiş');
+        c1.add(swordSettings, 'c1_StartX', -90, 90).name('Dikey Başlangıç');
+        c1.add(swordSettings, 'c1_EndX', -90, 90).name('Dikey Bitiş');
+        c1.open();
+
+        const c2 = comboFolder.addFolder('Vuruş 2 (Ters Soldan Sağa)');
+        c2.add(swordSettings, 'c2_StartY', -180, 180).name('Yatay Başlangıç');
+        c2.add(swordSettings, 'c2_EndY', -180, 180).name('Yatay Bitiş');
+        c2.add(swordSettings, 'c2_StartX', -90, 90).name('Dikey Başlangıç');
+        c2.add(swordSettings, 'c2_EndX', -90, 90).name('Dikey Bitiş');
+
+        const c3 = comboFolder.addFolder('Vuruş 3 (Bitirici)');
+        c3.add(swordSettings, 'c3_StartY', -180, 180).name('Yatay Başlangıç');
+        c3.add(swordSettings, 'c3_EndY', -180, 180).name('Yatay Bitiş');
+        c3.add(swordSettings, 'c3_StartX', -90, 90).name('Dikey Başlangıç');
+        c3.add(swordSettings, 'c3_EndX', -90, 90).name('Dikey Bitiş');
+
+        comboFolder.open();
+
+        const effectFolder = gui.addFolder('Animasyon ve Efekt');
+        effectFolder.add(swordSettings, 'retroFps', 1, 60).name('Yürüme FPS');
+        effectFolder.add(swordSettings, 'attackFps', 1, 60).name('Saldırı FPS');
+        effectFolder.add(swordSettings, 'attackDuration', 50, 1000).name('Atak Hızı (ms)');
+        effectFolder.add(swordSettings, 'trailLife', 50, 1000).name('İz Ömrü (ms)');
+        effectFolder.add(swordSettings, 'slowMoFactor', 0.01, 1.0).name('Slow Mo Oranı');
+        effectFolder.add(swordSettings, 'slowMoDuration', 0, 1000).name('Slow Mo Süresi (ms)');
+        effectFolder.add(swordSettings, 'shakeIntensity', 0, 2).name('Shake Şiddet');
+        effectFolder.add(swordSettings, 'shakeDuration', 0, 1000).name('Shake Süre');
+        effectFolder.addColor(swordSettings, 'trailColorBase').name('İz Rengi (Dip)');
+        effectFolder.addColor(swordSettings, 'trailColorTip').name('İz Rengi (Uç)');
+
+        // Shockwave (Güç Dalgası) Ayarları
+        const shockwaveFolder = gui.addFolder('Güç Dalgası (Shockwave)');
+        shockwaveFolder.add(swordSettings, 'shockwaveEnabled').name('Aktif');
+        shockwaveFolder.add(swordSettings, 'shockwaveFrame', 1, 120).name('Tetikleme Frame');
+        shockwaveFolder.add(swordSettings, 'shockwaveTotalFrames', 1, 120).name('Toplam Frame');
+        shockwaveFolder.add(swordSettings, 'shockwaveMaxRadius', 1, 20).name('Max Yarıçap');
+        shockwaveFolder.add(swordSettings, 'shockwaveSpeed', 1, 30).name('Genişleme Hızı');
+        shockwaveFolder.add(swordSettings, 'shockwaveDuration', 100, 2000).name('Süre (ms)');
+        shockwaveFolder.add(swordSettings, 'shockwaveDamage', 0, 10).name('Hasar');
+        shockwaveFolder.add(swordSettings, 'shockwaveKnockback', 0.1, 5.0).name('Savrulma Gücü');
+        shockwaveFolder.addColor(swordSettings, 'shockwaveColor').name('Renk').onChange(() => {
+            shockwaveMaterial.color.set(swordSettings.shockwaveColor);
+        });
+        shockwaveFolder.add(swordSettings, 'shockwaveLockDuration', 0, 2000).name('Kilit Süresi (ms)');
+        shockwaveFolder.open();
+        // effectFolder.open();
+
+        const enemyFolder = gui.addFolder('Düşman ve Fizik');
+        enemyFolder.add(swordSettings, 'enemySpawnRate', 100, 3000).name('Doğma Hızı (ms)');
+        enemyFolder.add(swordSettings, 'enemySpeed', 0.01, 0.5).name('Yürüme Hızı');
+        enemyFolder.add(swordSettings, 'knockbackForce', 0.1, 5.0).name('Savrulma Gücü');
+        enemyFolder.add(swordSettings, 'knockbackDrag', 0.80, 0.99).name('Sürtünme');
+        enemyFolder.add(swordSettings, 'throwForce', 0.1, 5.0).name('Fırlatma Gücü');
+
+        // CAMERA VOLUME SETTINGS
+        swordSettings.volumeInfluence = 0.5;
+        swordSettings.volumeBlendSpeed = 0.05;
+        enemyFolder.add(swordSettings, 'throwDamageRadius', 0.5, 5.0).name('Hasar Yarıçapı');
+        enemyFolder.add(swordSettings, 'throwImpactForce', 0.1, 3.0).name('Sekme Gücü');
+        enemyFolder.add(swordSettings, 'throwArcFactor', 0.0, 1.0).name('Fırlatma Eğrisi');
+        // enemyFolder.open();
+
+        const camFolder = gui.addFolder('Kamera Açısı (Top-Down)');
+        camFolder.add(swordSettings, 'enableOrbit').name('Orbit Kontrol');
+        camFolder.add(swordSettings, 'camLerp', 0.001, 0.2).name('Takip Yumuşaklığı');
+        camFolder.add(swordSettings, 'camLookLerp', 0.001, 0.2).name('Bakış Yumuşaklığı');
+        camFolder.add(swordSettings, 'camOffsetX', -20, 20).name('Sağ/Sol').onChange(updateCameraRotation);
+        camFolder.add(swordSettings, 'camOffsetY', 1, 50).name('Yükseklik').onChange(updateCameraRotation);
+        camFolder.add(swordSettings, 'camOffsetZ', -20, 20).name('İleri/Geri').onChange(updateCameraRotation);
+        camFolder.add(swordSettings, 'debugCameraSnap').name('⚡ Debug: Zınk Kamera');
+
+        const volumeFolder = camFolder.addFolder('Cinematic Volumes');
+        volumeFolder.add(swordSettings, 'volumeInfluence', 0, 1).name('Target Etkisi').step(0.01);
+        volumeFolder.add(swordSettings, 'volumeBlendSpeed', 0.001, 0.2).name('Geçiş Hızı').step(0.001);
+        volumeFolder.open();
+        // camFolder.open();
+
+        const jumpFolder = gui.addFolder('Zıplama & Fizik');
+        jumpFolder.add(swordSettings, 'jumpForce', 0.1, 1.0).name('Zıplama Gücü');
+        jumpFolder.add(swordSettings, 'jumpForwardSpeed', 0.0, 1.0).name('İleri İtme');
+        jumpFolder.add(swordSettings, 'airFriction', 0.8, 1.0).name('Hava Sürtünmesi');
+        jumpFolder.add(swordSettings, 'groundFriction', 0.5, 1.0).name('Zemin Sürtünmesi');
+        jumpFolder.open();
+
+        // === WHOOSH SES EDİTÖRÜ (Keyframe Tabanlı) ===
+        const whooshFolder = gui.addFolder('Whoosh Ses Editörü');
+        whooshFolder.add(swordSettings, 'whooshEnabled').name('Aktif');
+
+        // Keyframe alt klasörlerini tutacak array
+        let keyframeFolders = [];
+
+        // Yeni keyframe ekleme fonksiyonu
+        const whooshActions = {
+            addKeyframe: function () {
+                const newKf = { startPercent: 10, endPercent: 30, volume: 0.5, startFreq: 500, endFreq: 150 };
+                swordSettings.whooshKeyframes.push(newKf);
+                rebuildKeyframeFolders();
+            }
+        };
+
+        function rebuildKeyframeFolders() {
+            // Önce eski klasörleri kaldır
+            keyframeFolders.forEach(folder => {
+                try { whooshFolder.removeFolder(folder); } catch (e) { }
+            });
+            keyframeFolders = [];
+
+            // Her keyframe için yeni klasör oluştur
+            swordSettings.whooshKeyframes.forEach((kf, index) => {
+                const kfFolder = whooshFolder.addFolder(`Ses #${index + 1}`);
+                kfFolder.add(kf, 'startPercent', 0, 100).name('Başlangıç %');
+                kfFolder.add(kf, 'endPercent', 0, 100).name('Bitiş %');
+                kfFolder.add(kf, 'volume', 0, 1).name('Volume');
+                kfFolder.add(kf, 'startFreq', 100, 1000).name('Start Freq');
+                kfFolder.add(kf, 'endFreq', 50, 500).name('End Freq');
+
+                // Silme butonu
+                const deleteAction = {
+                    delete: function () {
+                        swordSettings.whooshKeyframes.splice(index, 1);
+                        rebuildKeyframeFolders();
+                    }
+                };
+                kfFolder.add(deleteAction, 'delete').name('❌ Sil');
+
+                kfFolder.open();
+                keyframeFolders.push(kfFolder);
+            });
+        }
+
+        whooshFolder.add(whooshActions, 'addKeyframe').name('➕ Yeni Ses Ekle');
+        rebuildKeyframeFolders();
+        whooshFolder.open();
+
+        gui.add(swordSettings, 'printConfig').name('Print Config (Log)');
+
+        // --- Kontroller ---
+        // --- Kontroller ---
+        // --- Kontroller ---
+        const keys = { w: false, a: false, s: false, d: false, space: false, j: false, up: false, down: false, left: false, right: false };
+        // const speed = 0.15; // Settings'den alacağız
+        // const turnSpeed = 0.15; // ARTRIK SETTINGS'DEN GELİYOR (swordSettings.turnSpeed)
+
+        // State
+
+        // --- SES SİSTEMİ (SoundManager) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let whooshTriggeredFlags = [];
+        let activeWhooshNodes = []; // Aktif oscillator ve gain node'ları takip et
+
+        // Tüm aktif whoosh seslerini durdur
+        function stopAllWhooshSounds() {
+            const now = audioCtx.currentTime;
+            activeWhooshNodes.forEach(nodes => {
+                try {
+                    // Hızlı fade out
+                    nodes.gain.gain.cancelScheduledValues(now);
+                    nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, now);
+                    nodes.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                    // Oscillator'ları durdur
+                    setTimeout(() => {
+                        try { nodes.osc1.stop(); } catch (e) { }
+                        try { nodes.osc2.stop(); } catch (e) { }
+                    }, 50);
+                } catch (e) { }
+            });
+            activeWhooshNodes = [];
+        }
+
+        // Keyframe bazlı Whoosh sesi çal
+        function playWhooshSound(keyframe, realAnimDuration) {
+            if (!swordSettings.whooshEnabled) return;
+
+            const now = audioCtx.currentTime;
+            const percentDiff = Math.abs(keyframe.endPercent - keyframe.startPercent);
+            const duration = (percentDiff / 100) * (realAnimDuration / 1000);
+            const startFreq = keyframe.startFreq;
+            const endFreq = keyframe.endFreq;
+            const volume = keyframe.volume;
+
+            // Oscillator 1: Ana ton
+            const osc1 = audioCtx.createOscillator();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(startFreq, now);
+            osc1.frequency.exponentialRampToValueAtTime(Math.max(endFreq, 20), now + duration);
+
+            // Oscillator 2: Harmonik
+            const osc2 = audioCtx.createOscillator();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(startFreq * 0.5, now);
+            osc2.frequency.exponentialRampToValueAtTime(Math.max(endFreq * 0.5, 20), now + duration);
+
+            // Gain envelope
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(volume, now + 0.015);
+            gain.gain.linearRampToValueAtTime(volume * 0.6, now + duration * 0.4);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + Math.max(duration, 0.05));
+
+            // Lowpass filter
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(startFreq * 3, now);
+            filter.frequency.linearRampToValueAtTime(endFreq * 2, now + duration);
+            filter.Q.value = 0.7;
+
+            // Bağlantılar
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + duration + 0.05);
+            osc2.stop(now + duration + 0.05);
+
+            // Aktif node'ları takip et (erken durdurma için)
+            const nodeRef = { osc1, osc2, gain };
+            activeWhooshNodes.push(nodeRef);
+
+            // Süre dolunca listeden kaldır
+            setTimeout(() => {
+                const idx = activeWhooshNodes.indexOf(nodeRef);
+                if (idx > -1) activeWhooshNodes.splice(idx, 1);
+            }, (duration + 0.1) * 1000);
+        }
+
+        function playSound(type) {
+            const now = audioCtx.currentTime;
+
+            if (type === 'hit') {
+                // Darbe Sesi (Oscillator)
+                const osc = audioCtx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+        }
+
+        // Shockwave (Güç Dalgası) Ses Efekti
+        function playShockwaveSound() {
+            const now = audioCtx.currentTime;
+            const duration = 0.4;
+
+            // Derin bas oscillator
+            const bassOsc = audioCtx.createOscillator();
+            bassOsc.type = 'sine';
+            bassOsc.frequency.setValueAtTime(80, now);
+            bassOsc.frequency.exponentialRampToValueAtTime(30, now + duration);
+
+            // Sub-bass layer
+            const subOsc = audioCtx.createOscillator();
+            subOsc.type = 'sine';
+            subOsc.frequency.setValueAtTime(40, now);
+            subOsc.frequency.exponentialRampToValueAtTime(20, now + duration);
+
+            // Noise burst (impact texture)
+            const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+            const noiseData = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < noiseData.length; i++) {
+                noiseData[i] = (Math.random() * 2 - 1) * 0.3;
+            }
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+
+            // Gain envelopes
+            const bassGain = audioCtx.createGain();
+            bassGain.gain.setValueAtTime(0.5, now);
+            bassGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+            const subGain = audioCtx.createGain();
+            subGain.gain.setValueAtTime(0.4, now);
+            subGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.3, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+            // Lowpass filter for noise
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(500, now);
+            noiseFilter.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+
+            // Connections
+            bassOsc.connect(bassGain);
+            subOsc.connect(subGain);
+            noiseSource.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+
+            bassGain.connect(audioCtx.destination);
+            subGain.connect(audioCtx.destination);
+            noiseGain.connect(audioCtx.destination);
+
+            // Start/Stop
+            bassOsc.start(now);
+            subOsc.start(now);
+            noiseSource.start(now);
+            bassOsc.stop(now + duration + 0.05);
+            subOsc.stop(now + duration + 0.05);
+            noiseSource.stop(now + 0.15);
+        }
+
+        let isAttacking = false;
+        let attackStartTime = 0;
+        let currentShakeTime = 0;
+        let shakeMultiplier = 1.0; // Normal: 1, Hit: 2
+        let hasTriggeredSlowMo = false;
+        let frameHitCount = 0; // Bu frame'de kaç düşmana vuruldu
+        const maxShakeMultiplier = 2.5; // Shake üst limiti
+
+        // Kombo State
+        let comboStep = 0; // 0, 1, 2
+        let lastAttackEndTime = 0;
+
+        // Aktif animasyon açıları (Her vuruşta set edilir)
+        let activeStartY, activeEndY, activeStartX, activeEndX;
+
+        let lastTipPos = new THREE.Vector3();
+        let lastBasePos = new THREE.Vector3();
+        let hasLastPos = false;
+
+        let lastFrameTime = Date.now();
+        let lastSpawnTime = 0;
+        let lastAttackPressTime = 0;
+        let gameTime = 0;
+        let slowMoTimer = 0;
+        let currentTimeScale = 1.0;
+        let animAccumulator = 0; // Animasyon FPS kontrolü için biriken süre
+
+        // Cinematic Camera State
+        let smoothedCamPos = new THREE.Vector3(0, 15, 10);
+        let smoothedFocusPos = new THREE.Vector3(0, 0, 0);
+        let currentVolumeWeight = 0; // 0: Player focus, 1: Mixed focus
+        let isCamInit = false;
+
+        let height = 0; // Temp variable
+        // DRAG SYSTEM INSTANCE
+        const dragSystem = new DragSystem(playerGroup, collisionMeshes);
+
+        // GROUND SYSTEM STATE
+        let playerVerticalVelocity = 0; // Oyuncu dikey hızı (Gravity için)
+        // Yatay Momentum (Zıplama vb. için)
+        let jumpVelocity = new THREE.Vector3(0, 0, 0);
+
+        // CLIMB SYSTEM INSTANCE
+        const climbSystem = new ClimbSystem(playerGroup, () => {
+            playerVerticalVelocity = 0;
+            jumpVelocity.set(0, 0, 0);
+        });
+
+        // DİNAMİK Zemin Kontrolü (Raycast Versiyonu)
+        const groundRaycaster = new THREE.Raycaster();
+        const downward = new THREE.Vector3(0, -1, 0);
+
+        function getGroundY(x, z, currentY) {
+            if (collisionMeshes.length === 0) return 0;
+
+            // Karakterin biraz üzerinden aşağı doğru ışın gönder
+            const origin = new THREE.Vector3(x, currentY + 1.0, z);
+            groundRaycaster.set(origin, downward);
+            groundRaycaster.far = 100;
+
+            const intersects = groundRaycaster.intersectObjects(collisionMeshes);
+            if (intersects.length > 0) {
+                // En üstteki yüzeyi bul (aslında Raycaster mesafeye göre sıralı döner, 
+                // ilk çarpan en yakın/üsttekidir)
+                return intersects[0].point.y;
+            }
+            return 0;
+        }
+
+        function tryGrabOrThrow() {
+            if (heldEnemy) {
+                // FIRLATMA (THROW)
+                heldEnemy.userData.isHeld = false;
+                heldEnemy.userData.isThrown = true; // Fırlatıldı flag'i
+                heldEnemy.userData.throwTime = gameTime; // Fırlatma zamanı
+
+                // Baktığımız yöndeki en yakın düşmanı bul (hedef olarak)
+                const pPos = playerGroup.position;
+                const pForward = new THREE.Vector3(Math.sin(playerGroup.rotation.y), 0, Math.cos(playerGroup.rotation.y));
+
+                let throwTarget = null;
+                let closestThrowDist = 30.0; // Max hedefleme mesafesi
+                const minThrowDist = 3.0; // Minimum fırlatma mesafesi (çok yakınları atla)
+
+                for (let enemy of enemies) {
+                    if (enemy === heldEnemy) continue; // Tutulan düşman değil
+                    if (enemy.userData.isDead) continue;
+                    if (enemy.userData.isHeld) continue;
+
+                    const dist = enemy.position.distanceTo(pPos);
+
+                    // Çok yakın değilse ve daha yakınsa
+                    if (dist > minThrowDist && dist < closestThrowDist) {
+                        const dirToEnemy = new THREE.Vector3().subVectors(enemy.position, pPos).normalize();
+                        const dot = pForward.dot(dirToEnemy);
+
+                        // Önümüzde mi? (90 derece koni içinde)
+                        if (dot > 0.0) {
+                            closestThrowDist = dist;
+                            throwTarget = enemy;
+                        }
+                    }
+                }
+
+                let throwDir;
+                if (throwTarget) {
+                    // Hedefe doğru fırlat (player'dan hedefe, yatay düzlem)
+                    throwDir = new THREE.Vector3().subVectors(throwTarget.position, pPos);
+                    throwDir.y = 0; // Yatay düzlemde tut
+                    throwDir.normalize();
+                } else {
+                    // Hedef yok, baktığımız yöne fırlat
+                    throwDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y);
+                }
+
+                // Hız vektörünü ayarla (yatay hız sabit)
+                heldEnemy.userData.velocity.copy(throwDir).multiplyScalar(swordSettings.throwForce);
+                heldEnemy.userData.velocity.y = 0.5 * swordSettings.throwArcFactor; // Eğri faktörüne göre yukarı hız
+
+                heldEnemy = null;
+            } else {
+                // TUTMA (GRAB)
+                // En yakın düşmanı bul (açı fark etmez, sadece mesafe)
+                let closestDist = 2.0; // Max tutma mesafesi
+                let target = null;
+
+                const pPos = playerGroup.position;
+
+                for (let enemy of enemies) {
+                    if (enemy.userData.isDead) continue;
+                    if (enemy.userData.isHeld) continue;
+
+                    const dist = enemy.position.distanceTo(pPos);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        target = enemy;
+                    }
+                }
+
+                if (target) {
+                    heldEnemy = target;
+                    target.userData.isHeld = true;
+                    target.userData.velocity.set(0, 0, 0); // Mevcut hızını sıfırla
+                }
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!playerInputEnabled && e.key.toLowerCase() !== 'q') return; // Aracın kendi inputu var, ama Q global toggle
+
+            if (audioCtx.state === 'suspended') audioCtx.resume(); // İlk tuşta sesi aç
+            const k = e.key.toLowerCase();
+
+            if (k === 'f') {
+                dragSystem.tryToggleDrag(); // F tuşu ile sürüklemeyi aç/kapat
+            }
+            if (k === 'j') {
+                // Önce tırmanmayı dene, eğer tırmanma olmadıysa zıpla
+                if (!climbSystem.tryClimb(false)) {
+                    jump();
+                }
+            }
+
+            if (e.code === 'ArrowUp') keys.up = true;
+            if (e.code === 'ArrowDown') keys.down = true;
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+
+            if (keys.hasOwnProperty(k) || e.code === 'Space') keys[k === ' ' ? 'space' : k] = true;
+        });
+        document.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        });
+        document.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+
+            if (e.code === 'ArrowUp') keys.up = false;
+            if (e.code === 'ArrowDown') keys.down = false;
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+
+            if (keys.hasOwnProperty(k) || e.code === 'Space') keys[k === ' ' ? 'space' : k] = false;
+        });
+
+        // Prosedürel Zıplama
+        function jump() {
+            // Eğer tırmanıyorsak veya vault yapıyorsak zıplama
+            if (climbSystem.isClimbing || climbSystem.isVaulting) return;
+            // Sürükleme yapıyorsak zıplama
+            if (dragSystem.isDragging) return;
+
+            // Zemin kontrolü
+            const groundY = getGroundY(playerGroup.position.x, playerGroup.position.z, playerGroup.position.y);
+            const isGrounded = (playerGroup.position.y <= groundY + 0.1);
+
+            if (isGrounded) {
+                // Dikey Kuvvet
+                playerVerticalVelocity = swordSettings.jumpForce;
+
+                // İleri Kuvvet (Karakterin baktığı yöne)
+                const forwardDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y);
+                forwardDir.normalize().multiplyScalar(swordSettings.jumpForwardSpeed);
+
+                jumpVelocity.x = forwardDir.x;
+                jumpVelocity.z = forwardDir.z;
+
+                // Animasyon Süresini Hesapla
+                if (jumpAction) {
+                    const gravity = 0.015;
+                    const v0 = swordSettings.jumpForce;
+                    const totalFrames = (2 * v0) / gravity; // Toplam havada kalış frame'i (60fps bazlı)
+                    const physicsDurationSec = totalFrames / 60;
+                    const animDurationSec = jumpAction.getClip().duration;
+
+                    // Animasyonun tam fizik süresinde bitmesi için timeScale
+                    jumpAction.timeScale = animDurationSec / physicsDurationSec;
+
+                    jumpAction.reset();
+                    jumpAction.play();
+                }
+            }
+        }
+
+        const colorBaseObj = new THREE.Color();
+        const colorTipObj = new THREE.Color();
+
+        setTimeout(() => {
+            // HideVolume("CameraInfluenceToDoor");
+            // HideVolume("CameraInfluenceToStairs");
+            // ShowVolume("CameraInfluenceToStairs");
+            //find and hide FinalBossArmature object
+
+        }, 3000);
+
+        // --- GAME LIFECYCLE HOOKS ---
+        function OnGameAwake() {
+            console.log("OnGameAwake: Oyun yüklenmeye hazırlanıyor.");
+        }
+
+        function OnGameStart() {
+            console.log("OnGameStart: Oyun başladı ve her şey hazır.");
+            // pathManager.setActivePath("StairsToTable");
+            // const FinalBossArmature = scene.getObjectByName("FinalBossArmature");
+            // if (FinalBossArmature) {
+            //     FinalBossArmature.visible = false;
+            // }
+            if (bossState.mesh) {
+                bossState.mesh.visible = false;
+            }
+            // pathManager.setActivePath("StairsToTable");
+
+            // pathManager.setActivePath("TableToMatch");
+            pathManager.setActivePath("SpawnToHole");
+
+            setTimeout(() => {
+                // TriggerAnimation("CharacterTableOpening", {
+                //     loop: false,
+                //     haveOriginShift: true,
+                //     useWorldOrigin: true
+                // });
+                // swordSettings.enableOrbit = true
+                // bossmixer.stopAllAction();
+                // bossState.isFollowing = true;
+                // TriggerAnimation("BossWalk", { loop: true }); // Boss yürüme animasyonuna geç
+            }, 3000);
+        }
+
+        // --- ANIMATION HOOKS ---
+        function OnAnimationBegin(triggerKey, action) {
+            console.log("OnAnimationBegin", triggerKey);
+            // Bu fonksiyon volume trigger ile bir animasyon başladığında tetiklenir.
+            // triggerKey: vol.animationPoint değeri (string)
+            if (triggerKey == "CharacterDoorOpening") {
+                TriggerAnimation("ParentsDoorOpening", {
+                    loop: false,
+                    haveOriginShift: true
+                });
+                // hide object with name "CameraInfluenceToDoor" 
+                // HideVolume("CameraInfluenceToDoor");
+                // ShowVolume("CameraInfluenceToStairs");
+                // setCharacterCameraPivot("FarBack");
+            }
+            if (triggerKey == "CharacterStairsJumping") {
+                // Boss'u görünür yap (Referans ataması artık loader'da otomatik yapılıyor)
+                if (bossState.mesh) {
+                    bossState.mesh.visible = true;
+                }
+
+                TriggerAnimation("CameraStairsJumping", {
+                    loop: false,
+                    haveOriginShift: true
+                });
+                TriggerAnimation("BossStairsJumping", {
+                    loop: false,
+                    haveOriginShift: true
+                });
+
+                setTimeout(() => {
+                    HideVolume("CameraInfluenceToStairs");
+                    pathManager.setActivePath("StairsToTable");
+                }, 1000);
+            }
+        }
+
+        function OnAnimationEnd(triggerKey, action) {
+            console.log("OnAnimationEnd", triggerKey);
+
+            // Bu fonksiyon volume trigger ile başlayan bir animasyon bittiğinde tetiklenir.
+            if (triggerKey == "CharacterDoorOpening") {
+                HideVolume("CameraInfluenceToDoor");
+                ShowVolume("CameraInfluenceToStairs");
+                setCharacterCameraPivot("FarBack");
+            }
+            if (triggerKey == "CharacterStairsJumping") {
+            }
+            if (triggerKey == "BossStairsJumping") {
+                TriggerAnimation("BossWalk", { loop: true }); // Boss yürüme animasyonuna geç
+                bossState.isFollowing = true;
+            }
+        }
+
+        function OnEnterVolume(volumeName) {
+            console.log("OnEnterVolume", volumeName);
+            // Bir volume hacmine girildiğinde tetiklenir.
+            if (volumeName == "CameraInfluenceToDoor") {
+                setCharacterCameraPivot("Front");
+            }
+        }
+
+        function OnExitVolume(volumeName) {
+            console.log("OnExitVolume", volumeName);
+            // Bir volume hacminden çıkıldığında tetiklenir.
+            if (volumeName == "CameraInfluenceToDoor") {
+                // setCharacterCameraPivot();
+            }
+        }
+
+        /*
+        All options:
+        options = {
+            loop: false,
+            haveOriginShift: false,
+            fadeIn: 0.2,
+            fadeOut: 0.2,
+        }
+        */
+
+        function TriggerAnimation(animationName, options = {}) {
+            const registered = animationRegistry[animationName];
+            if (!registered) {
+                console.warn(`TriggerAnimation: '${animationName}' not found in registry!`);
+                return null;
+            }
+
+            const { clip, mixer: targetMixer, model, isCamera } = registered;
+            const action = targetMixer.clipAction(clip);
+
+            const isPlayerAnim = (model === playerModel);
+
+            // Loop Ayarları
+            const isLoop = (options.loop === true || options.loop === 'true');
+            if (isLoop) {
+                action.loop = THREE.LoopRepeat;
+            } else {
+                action.loop = THREE.LoopOnce;
+                action.clampWhenFinished = options.haveOriginShift ? true : false;
+            }
+
+            // === CUTSCENE CAMERA HANDLING ===
+            if (isCamera) {
+                console.log(`Cutscene camera activated: ${animationName}`);
+                // Önceki kamera animasyonunu tamamen durdur
+                // (clampWhenFinished ile kilitlenmiş eski action'ı temizle)
+                cutsceneMixer.stopAllAction();
+
+                // CRITICAL FIX 1: Kamera animasyonları için 'fadeIn' KULLANILMAZ.
+                // Çünkü biz zaten render döngüsünde 'cutsceneBlend' ile yumuşatıyoruz.
+                // Three.js'in fadeIn'i, kamerayı blender'daki bind pose'undan (0,0,0) başlatıyor,
+                // bu da "jump glitch" denilen o zıplamaya sebep oluyor.
+                options.fadeIn = 0;
+                cutsceneBlend = 0;
+
+                cutsceneActive = true;
+                cutsceneReturning = false;
+                cutsceneAction = action;
+            }
+            // === BOSS HANDLING ===
+            if (targetMixer === bossMixer) {
+                console.log(`Boss animation activated: ${animationName}`);
+                // bossMixer.stopAllAction();
+                // bossMixer.clampWhenFinished = true;
+                bossState.isFollowing = false;
+            }
+
+            // Player/Boss Animasyon Kilidi ve Origin Shift
+            if (isPlayerAnim || targetMixer === bossMixer) {
+                action._haveOriginShift = options.haveOriginShift || false;
+                action._useWorldOrigin = options.useWorldOrigin || false;
+                // CRITICAL FIX: World Origin bazlı animasyonlarda parent pos/rot sıfırlanır
+                if (options.useWorldOrigin) {
+                    if (isPlayerAnim) {
+                        playerGroup.position.set(0, 0, 0);
+                        playerGroup.rotation.set(0, 0, 0);
+                        if (window.playerSprite) {
+                            playerSprite.setPosition(0, 0, 0);
+                            playerSprite.update();
+                        }
+                    } else if (targetMixer === bossMixer && bossState.mesh) {
+                        // Boss zaten envModel (0,0,0) altında olduğu için genelde gerekmez
+                        // ama yine de consistency için model pos/rot sıfırlanabilir
+                        bossState.mesh.position.set(0, 0, 0);
+                        bossState.mesh.rotation.set(0, 0, 0);
+                    }
+                }
+
+                if (isPlayerAnim) {
+                    playerModel.rotation.set(0, 0, 0);
+                    activeTriggerAction = action;
+                }
+            }
+
+            // Trigger bilgisini sakla ve hook'u çağır
+            action._triggerKey = animationName;
+            OnAnimationBegin(animationName, action);
+
+            // WORLD ORIGIN GLITCH FIX: 
+            // Eğer absült (world) bir animasyon ise, karakterin parent grubunu 
+            // sıfır (0,0,0) noktasına çekeriz ve aradaki her türlü yumuşatmayı (fade) 
+            // öldürerek anında ilk kareye kitleniriz.
+            const fadeIn = options.fadeIn !== undefined ? options.fadeIn : 0.2;
+
+            if (options.useWorldOrigin && isPlayerAnim) {
+                // 1. Grubu Sıfırla
+                playerGroup.position.set(0, 0, 0);
+                playerGroup.quaternion.set(0, 0, 0, 1);
+                playerGroup.updateMatrixWorld(true);
+
+                // 2. Önceki tüm harmanlamaları durdur (kaymayı önlemek için)
+                if (typeof currentAction !== 'undefined' && currentAction && currentAction !== action) {
+                    currentAction.stop();
+                }
+                action.reset();
+                action.setEffectiveWeight(1);
+                action.play();
+
+                currentAction = action;
+                window.forceCameraSnap = true;
+            } else {
+                action.reset();
+                if (fadeIn > 0) action.fadeIn(fadeIn);
+                action.play();
+            }
+
+            // CRITICAL FIX 2: Animasyonu başlatır başlatmaz mixer'ı 0 saniye güncelle.
+            // Bu, objelerin (özellikle kameranın) ilk frame'e anında oturmasını sağlar, 
+            // accumulator gecikmesinden kaynaklanan 1 framelik zıplamayı önler.
+            targetMixer.update(0.001); // 0 yerine küçük bir adım, iskeleti kesin hareket ettirir
+
+            // MATRİS GÜNCELLEME: İskelet hareket ettikten sonra dünya koordinatlarını zorla hesaplat
+            if (isPlayerAnim) playerModel.updateMatrixWorld(true);
+            if (targetMixer === bossMixer && bossState.mesh) bossState.mesh.updateMatrixWorld(true);
+
+            return action;
+        }
+
+        // hides volume and disable trigger
+        function HideVolume(name) {
+            // Hem görsel olarak gizle hem de PathManager mantığından çıkar
+            if (pathManager) pathManager.setVolumeEnabled(name, false);
+
+            scene.traverse(function (object) {
+                if (object.name === name) {
+                    object.visible = false;
+                }
+            });
+        }
+
+        // hides volume and disable trigger
+        function HideAllVolumes() {
+            // Hem görsel olarak gizle hem de PathManager mantığından çıkar
+            if (pathManager) pathManager.hideAllVolumes();
+        }
+
+        // hides volume and disable trigger
+        function ShowVolume(name) {
+            // Hem görsel olarak gizle hem de PathManager mantığından çıkar
+            if (pathManager) pathManager.setVolumeEnabled(name, true);
+
+            scene.traverse(function (object) {
+                if (object.name === name) {
+                    object.visible = false;
+                }
+            });
+        }
+
+        // --- VEHICLE SYSTEM INTEGRATION ---
+        let playerInputEnabled = true;
+
+        const tpsVehicleSystem = new TPSVehicleSystem(scene, camera, playerGroup, (enabled) => {
+            playerInputEnabled = enabled;
+            // Also reset keys if disabled to prevent stuck inputs
+            if (!enabled) {
+                Object.keys(keys).forEach(k => keys[k] = false);
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update Vehicle System
+            // Use fixed delta for physics if possible, but for now match game loop
+            const dt = 1 / 60;
+            tpsVehicleSystem.update(dt);
+
+            const wallClockNow = Date.now();
+            const wallClockDelta = wallClockNow - lastFrameTime;
+            lastFrameTime = wallClockNow;
+
+            // Slow Motion
+            if (slowMoTimer > 0) {
+                slowMoTimer -= wallClockDelta;
+                currentTimeScale = swordSettings.slowMoFactor;
+            } else {
+                currentTimeScale = 1.0;
+            }
+
+            const gameDelta = wallClockDelta * currentTimeScale;
+            gameTime += gameDelta;
+            const now = gameTime;
+
+            // Her frame başında hit sayacını sıfırla
+            frameHitCount = 0;
+
+            // 0. Karakterin Dünyadaki Gerçek Pozisyonunu Hesapla
+            // (FinalCharacterBody varsa onu baz alıyoruz, in-place olmayan animasyonlarda kaymayı yakalamak için)
+            if (playerBody) {
+                playerBody.getWorldPosition(playerBodyWorldPos);
+            } else {
+                playerBodyWorldPos.copy(playerGroup.position);
+            }
+
+            // 0. Odak ve Takip Noktaları
+            const vehicleTarget = tpsVehicleSystem ? tpsVehicleSystem.getCameraTarget() : null;
+            let lookAtPos = vehicleTarget || playerBodyWorldPos; // Kameranın baktığı ana hedef
+            let railFollowPos = lookAtPos.clone();             // Ray'in takip ettiği nokta
+
+            // Pivot sistemi sadece rayın pozisyonunu etkiler, bakış hedefini bozmaz
+            // ANCAK: Araç modundaysak pivot sistemini bypass et, çünkü pivot karakterin içinde olabilir
+            if (!vehicleTarget && activeCameraPivot && pivotParent) {
+                const pivot = pivotParent.getObjectByName(activeCameraPivot);
+                if (pivot) {
+                    railFollowPos = new THREE.Vector3();
+                    pivot.getWorldPosition(railFollowPos);
+                }
+            }
+
+            // 1. Hacim (Volume) Kontrolü ve Trigger Sistemi
+            // Diğer her şeyden önce bu kontrolü yapalım ki hem hareketi hem animasyonu etkileyebilsin.
+            const activeVolumes = pathManager ? pathManager.getVolumesAt(playerBodyWorldPos) : [];
+            const activeVolume = activeVolumes.length > 0 ? activeVolumes[0] : null;
+
+            if (!window.prevVolumes) window.prevVolumes = [];
+
+            // --- VOLUME ENTER/EXIT HOOKS ---
+            // Enter Logic
+            for (let vol of activeVolumes) {
+                if (!window.prevVolumes.includes(vol)) {
+                    OnEnterVolume(vol.name);
+                    // Otomatik rota geçişi (Blender'da volume'a pathName custom property verilmişse)
+                    if (vol.pathName) {
+                        pathManager.setActivePath(vol.pathName);
+                    }
+                }
+            }
+
+            // Exit Logic (and Existing Reset Logic)
+            for (let prevVol of window.prevVolumes) {
+                if (!activeVolumes.includes(prevVol)) {
+                    OnExitVolume(prevVol.name);
+
+                    // Rotadan çıkış kontrolü
+                    if (prevVol.pathName && pathManager.activePathName === prevVol.pathName) {
+                        pathManager.setActivePath(null);
+                    }
+
+                    if (prevVol.animationPointLoop) {
+                        prevVol.hasTriggered = false;
+                    }
+                }
+            }
+            window.prevVolumes = activeVolumes;
+
+            // --- ANIMATION TRIGGER LOGIC (ALL VOLUMES) ---
+            // Global animationRegistry'den arama yapar - Player, Environment veya Camera fark etmez
+            for (let vol of activeVolumes) {
+                if (vol.animationPoint && !vol.hasTriggered) {
+                    TriggerAnimation(vol.animationPoint, {
+                        loop: vol.animationPointLoop,
+                        haveOriginShift: vol.animationPointHaveOriginShift,
+                        useWorldOrigin: vol.animationPointUseWorldOrigin
+                    });
+                    vol.hasTriggered = true;
+                }
+            }
+
+            // Shake
+            let shakeX = 0, shakeY = 0;
+            if (currentShakeTime > 0) {
+                currentShakeTime -= wallClockDelta;
+                const shakePower = swordSettings.shakeIntensity * shakeMultiplier * (currentShakeTime / swordSettings.shakeDuration);
+                shakeX = (Math.random() - 0.5) * 2 * shakePower;
+                shakeY = (Math.random() - 0.5) * 2 * shakePower;
+            }
+
+            // 1. Oyuncu Hareketi (Shockwave kilidi kontrolü)
+            let moveX = 0;
+            let moveZ = 0;
+            const isShockwaveLocked = (now < shockwaveLockUntil);
+
+            // CLIMBING UPDATE
+            climbSystem.update(wallClockDelta);
+
+            // GRAVITY (Yerçekimi) MANTIĞI
+            if (!climbSystem.isClimbing && !climbSystem.isVaulting) {
+                const gravity = 0.015;
+                playerVerticalVelocity -= gravity * currentTimeScale;
+                const nextY = playerGroup.position.y + playerVerticalVelocity * currentTimeScale;
+
+                const groundY = getGroundY(playerGroup.position.x, playerGroup.position.z, playerGroup.position.y);
+
+                if (nextY <= groundY) {
+                    playerGroup.position.y = groundY;
+                    playerVerticalVelocity = 0;
+                } else {
+                    playerGroup.position.y = nextY;
+                }
+            } else {
+                playerVerticalVelocity = 0; // Asılıyken düşme
+            }
+
+            // Kamera-bağımlı hareket vektörlerini hesapla
+            const camForward = new THREE.Vector3();
+            camera.getWorldDirection(camForward);
+            camForward.y = 0;
+            camForward.normalize();
+
+            const camRight = new THREE.Vector3().crossVectors(camera.up, camForward).normalize();
+
+            if (!isShockwaveLocked && !climbSystem.isClimbing && !climbSystem.isVaulting && playerInputEnabled) {
+                let inputX = 0;
+                let inputZ = 0;
+                if (keys.w || keys.up) inputZ += 1;
+                if (keys.s || keys.down) inputZ -= 1;
+                if (keys.a || keys.left) inputX += 1;
+                if (keys.d || keys.right) inputX -= 1;
+
+                if (inputX !== 0 || inputZ !== 0) {
+                    const moveVector = new THREE.Vector3();
+                    moveVector.addScaledVector(camForward, inputZ);
+                    moveVector.addScaledVector(camRight, inputX);
+                    // Normalize etme, scaledSpeed ile çarpılacak zaten ama yönü belirlemiş olduk
+                    moveX = moveVector.x;
+                    moveZ = moveVector.z;
+                }
+            }
+
+            // Sürükleme durumunda hareket kısıtlamaları
+            // Sürükleme modunda kamera-bağımlı hareketi kullanmak için özel override mantığı kaldırıldı.
+            // moveX ve moveZ zaten yukarıda kamera açısına göre hesaplanıyor.
+            // dragSystem.isDragging kontrolü sadece rotasyonu kilitlemek için kullanılacak.
+
+            if (moveX !== 0 || moveZ !== 0 || jumpVelocity.lengthSq() > 0.001) {
+                const scaledSpeed = swordSettings.moveSpeed * currentTimeScale;
+
+                // Input Hareketi + Jump Momentum
+                let deltaX = (moveX * scaledSpeed) + (jumpVelocity.x * currentTimeScale);
+                let deltaZ = (moveZ * scaledSpeed) + (jumpVelocity.z * currentTimeScale);
+
+                // Sürtünme Uygula
+                const groundY = getGroundY(playerGroup.position.x, playerGroup.position.z, playerGroup.position.y);
+                const isGrounded = (playerGroup.position.y <= groundY + 0.1);
+
+                if (isGrounded) {
+                    jumpVelocity.multiplyScalar(swordSettings.groundFriction);
+                } else {
+                    jumpVelocity.multiplyScalar(swordSettings.airFriction);
+                }
+
+                // Hedef pozisyonlar
+                const targetX = playerGroup.position.x + deltaX;
+                const targetZ = playerGroup.position.z + deltaZ;
+                let finalX = targetX;
+                let finalZ = targetZ;
+
+                // -- DİNAMİK ÇARPIŞMA KONTROLÜ (Raycast) --
+                if (collisionMeshes.length > 0) {
+                    const margin = 0.4;
+                    const wallRaycaster = new THREE.Raycaster();
+
+                    // Sürüklenen objeyi çarpışma kontrolünden muaf tut (karakterin içindeymiş gibi davranmasın)
+                    const filteredMeshes = collisionMeshes.filter(m => m !== dragSystem.dragObject);
+
+                    // X Yönü Kontrolü
+                    if (moveX !== 0 || jumpVelocity.x !== 0) {
+                        const xDir = new THREE.Vector3(deltaX, 0, 0).normalize();
+                        const xOrigin = new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z);
+                        wallRaycaster.set(xOrigin, xDir);
+                        wallRaycaster.far = margin;
+
+                        let hit = wallRaycaster.intersectObjects(filteredMeshes).length > 0;
+
+                        // Sürükleme varsa kutunun da çarpışmasını kontrol et
+                        if (dragSystem.isDragging && !hit) {
+                            const boxOrigin = new THREE.Vector3(dragSystem.dragObject.position.x, dragSystem.dragObject.position.y, dragSystem.dragObject.position.z);
+                            wallRaycaster.set(boxOrigin, xDir);
+                            wallRaycaster.far = 1.0; // Kutunun kendi boyutu kadar margin
+                            hit = wallRaycaster.intersectObjects(filteredMeshes).length > 0;
+                        }
+
+                        if (hit) {
+                            finalX = playerGroup.position.x;
+                            jumpVelocity.x = 0;
+                        }
+                    }
+
+                    // Z Yönü Kontrolü
+                    if (moveZ !== 0 || jumpVelocity.z !== 0) {
+                        const zDir = new THREE.Vector3(0, 0, deltaZ).normalize();
+                        const zOrigin = new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z);
+                        wallRaycaster.set(zOrigin, zDir);
+                        wallRaycaster.far = margin;
+
+                        let hit = wallRaycaster.intersectObjects(filteredMeshes).length > 0;
+
+                        // Sürükleme varsa kutunun da çarpışmasını kontrol et
+                        if (dragSystem.isDragging && !hit) {
+                            const boxOrigin = new THREE.Vector3(dragSystem.dragObject.position.x, dragSystem.dragObject.position.y, dragSystem.dragObject.position.z);
+                            wallRaycaster.set(boxOrigin, zDir);
+                            wallRaycaster.far = 1.0;
+                            hit = wallRaycaster.intersectObjects(filteredMeshes).length > 0;
+                        }
+
+                        if (hit) {
+                            finalZ = playerGroup.position.z;
+                            jumpVelocity.z = 0;
+                        }
+                    }
+                }
+
+                playerGroup.position.x = finalX;
+                playerGroup.position.z = finalZ;
+
+                // DragSystem Update (Karakter hareketinden hemen sonra objeyi yanına çek)
+                dragSystem.update();
+
+                // Rotasyon (Sadece INPUT varsa dön, zıplama momentumunda dönme, sürükleme yapmıyorsak)
+                if ((moveX !== 0 || moveZ !== 0) && !dragSystem.isDragging) {
+                    // Hareket vektörüne göre dön (input yönüne göre, çarpışma olsa bile karakter input yönüne bakmalı)
+                    const targetRotation = Math.atan2(moveX, moveZ);
+                    let rotationDiff = targetRotation - playerGroup.rotation.y;
+                    while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2;
+                    while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2;
+                    playerGroup.rotation.y += rotationDiff * swordSettings.turnSpeed;
+                }
+            }
+
+            // --- AUTO LEDGE GRAB (Otomatik Tutunma) ---
+            // Havada ve düşüyorsak (veya zıplamanın sonundaysak) otomatik tutunmayı dene
+            const currentGroundY = getGroundY(playerGroup.position.x, playerGroup.position.z, playerGroup.position.y);
+            const isGroundedNow = (playerGroup.position.y <= currentGroundY + 0.1);
+
+            if (!isGroundedNow && !climbSystem.isClimbing && !climbSystem.isVaulting && playerVerticalVelocity <= 0) {
+                climbSystem.tryClimb(true); // Otomatik mod
+            }
+
+            // --- BOSS FOLLOW LOGIC ---
+            if (bossState.isFollowing && bossState.mesh) {
+                const boss = bossState.mesh;
+                const pPos = playerGroup.position;
+
+                // Karakterimize doğru yönel (Yatay düzlemde)
+                const dx = pPos.x - boss.position.x;
+                const dz = pPos.z - boss.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                if (dist > 1.5) { // Çok yaklaşınca dur (opsiyonel)
+                    const angle = Math.atan2(dx, dz);
+                    const speed = bossState.speed * currentTimeScale;
+
+                    boss.position.x += Math.sin(angle) * speed;
+                    boss.position.z += Math.cos(angle) * speed;
+
+                    // Yumuşak dönüş (Boss modelinde Z ekseni "yukarı" kabul edildiği için ve yön ters olduğu için)
+                    let targetRotation = -angle;
+                    let rotationDiff = targetRotation - boss.rotation.z;
+                    while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2;
+                    while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2;
+                    boss.rotation.z += rotationDiff * 0.1;
+                }
+
+                // Zemine oturt
+                const bossGroundY = getGroundY(boss.position.x, boss.position.z, boss.position.y);
+                boss.position.y = bossGroundY;
+            }
+
+            // (Sprite update moved after mixer update to prevent lag during origin shifts)
+
+            // --- ANIMASYON YÖNETİMİ ---
+            const minFramesMs = 160;
+
+            // KİLİT AKTİFKEN SPACE INPUT'UNU YOK SAY
+            if (!isShockwaveLocked && keys.space) {
+                lastAttackPressTime = now;
+            }
+
+            // Kilit aktifken saldırı state'ini zorla false yap
+            const isAttackingState = !isShockwaveLocked && (keys.space || (now - lastAttackPressTime < minFramesMs));
+            const isMovingState = (moveX !== 0 || moveZ !== 0);
+
+            // Hedef animasyonu belirle
+            let targetAction = null;
+
+            const currentGroundY_anim = getGroundY(playerGroup.position.x, playerGroup.position.z, playerGroup.position.y);
+            const isGroundedNow_anim = (playerGroup.position.y <= currentGroundY_anim + 0.1);
+
+            if (attackAction && isAttackingState) {
+                targetAction = attackAction;
+                targetAction.timeScale = swordSettings.attackAnimSpeed;
+                activeTriggerAction = null; // Manuel saldırı trigger'ı bozar
+
+                // ColliderAttack animasyonunu da senkronize başlat
+                if (colliderAttackAction && !colliderAttackAction.isRunning()) {
+                    colliderAttackAction.reset();
+                    colliderAttackAction.timeScale = swordSettings.attackAnimSpeed;
+                    colliderAttackAction.play();
+                }
+            } else if (activeTriggerAction) {
+                // Volume tarafından tetiklenen özel bir animasyon varsa ona geç (EN ÖNCELİKLİ)
+                targetAction = activeTriggerAction;
+                // Eğer animasyon bittiyse (LoopOnce ise ve bittiyse) targetAction sıfırlanacak
+                if (targetAction.loop === THREE.LoopOnce && targetAction.paused && targetAction.time > 0) {
+                    activeTriggerAction = null;
+                    targetAction = idleAction;
+                }
+            } else if (climbSystem.isClimbing || climbSystem.isVaulting) {
+                // Tırmanma/Vault durumunda Idle oynat
+                if (idleAction) {
+                    targetAction = idleAction;
+                    targetAction.timeScale = 1.0;
+                }
+            } else if (dragSystem.isDragging) {
+                // Sürükleme durumunda Walk iptal, Idle (veya ileride Push pozisyonu)
+                if (idleAction) {
+                    targetAction = idleAction;
+                    targetAction.timeScale = 1.0;
+                }
+            } else if (!isGroundedNow_anim && jumpAction) {
+                // Havadaysak Jump animasyonu
+                targetAction = jumpAction;
+            } else if (walkAction && isMovingState) {
+                targetAction = walkAction;
+                targetAction.timeScale = swordSettings.animSpeed;
+
+                // Saldırı bitti, ColliderAttack'ı durdur
+                if (colliderAttackAction && colliderAttackAction.isRunning()) {
+                    colliderAttackAction.stop();
+                }
+
+                // Space bırakıldı - whoosh seslerini ve saldırı state'ini durdur
+                if (isAttacking) {
+                    isAttacking = false;
+                    stopAllWhooshSounds();
+                    whooshTriggeredFlags = [];
+                }
+            } else {
+                // Idle durumu - Idle animasyonunu oynat
+                if (idleAction) {
+                    targetAction = idleAction;
+                    targetAction.timeScale = 1;
+                }
+
+                // Idle durumunda da ColliderAttack'ı durdur
+                if (colliderAttackAction && colliderAttackAction.isRunning()) {
+                    colliderAttackAction.stop();
+                }
+
+                // Idle'da da whoosh'u durdur
+                if (isAttacking) {
+                    isAttacking = false;
+                    stopAllWhooshSounds();
+                    whooshTriggeredFlags = [];
+                }
+            }
+
+            // Geçiş Yap (Trigger animasyonları için daha hızlı/direkt geçiş)
+            // World origin animasyonlarında yumuşatma (fade) yapılamaz, saniyeler içinde zıplamaya neden olur
+            let fadeTime = (targetAction === activeTriggerAction) ? 0.05 : 0.2;
+            if (targetAction && targetAction._useWorldOrigin) fadeTime = 0;
+
+            fadeToAction(targetAction, fadeTime);
+
+            // --- Retro Animation FPS Logic ---
+            if (mixer) {
+                const animDelta = gameDelta / 1000;
+                animAccumulator += animDelta;
+
+                // Aktif aksiyona göre hedef FPS seç
+                let targetFps = swordSettings.retroFps;
+                if (currentAction === attackAction && attackAction && attackAction.isRunning()) {
+                    targetFps = swordSettings.attackFps;
+                }
+
+                const frameInterval = 1 / targetFps;
+
+                if (animAccumulator >= frameInterval) {
+                    // Biriken süreyi kullan fakat tam katları kadar update et
+                    // mixer.update(frameInterval); // Sabit adım
+                    mixer.update(animAccumulator); // Hepsini birden uygula
+
+                    // ColliderMixer'ı da aynı anda güncelle (senkronizasyon için)
+                    if (colliderMixer) {
+                        colliderMixer.update(animAccumulator);
+                    }
+
+                    // Environment animasyonlarını güncelle
+                    if (envMixer) {
+                        envMixer.update(animAccumulator);
+                    }
+
+                    // Cutscene kamera animasyonlarını güncelle
+                    if (cutsceneMixer) {
+                        cutsceneMixer.update(animAccumulator);
+                    }
+
+                    // Boss animasyonlarını güncelle
+                    if (bossMixer) {
+                        bossMixer.update(animAccumulator);
+                    }
+
+                    animAccumulator = 0;
+                }
+
+
+                // --- Discrete Sprite Update (Moved outside for smooth 60fps movement) ---
+                if (playerModel && playerSprite) {
+                    // Pozisyon senkronizasyonu
+                    playerSprite.setPosition(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z);
+
+                    // ÖZEL DURUM: Eğer hacim tarafından tetiklenen bir animasyon oynuyorsa,
+                    // rotasyonu animasyonun kendisine bırakıyoruz.
+                    const isTriggerPlaying = activeTriggerAction && activeTriggerAction.isRunning();
+                    if (!isTriggerPlaying) {
+                        playerModel.rotation.y = playerGroup.rotation.y;
+                    }
+
+                    // Sprite update (Yine her frame çağırıyoruz ki kamera billboard sync düzgün olsun)
+                    playerSprite.update();
+                }
+            }
+
+            // 2. Saldırı Başlatma (Kombo Logic)
+            if (playerInputEnabled && keys.space && !isAttacking) {
+                isAttacking = true;
+
+                // Attack animation handled by loop above
+
+                attackStartTime = now;
+                currentShakeTime = swordSettings.shakeDuration;
+                hasLastPos = false;
+                hasTriggeredSlowMo = false;
+                // Her keyframe için triggered flag'ini sıfırla
+                whooshTriggeredFlags = swordSettings.whooshKeyframes.map(() => false);
+                // Shockwave flag'ini sıfırla (yeni saldırıda tekrar tetiklenebilsin)
+                shockwaveTriggered = false;
+
+                // KOMBO HESAPLAMA (Gerçek Zaman Kullanılır)
+                const timeSinceLastAttack = wallClockNow - lastAttackEndTime;
+
+                if (timeSinceLastAttack < swordSettings.comboResetTime) {
+                    comboStep = (comboStep + 1) % 3; // 0 -> 1 -> 2 -> 0
+                } else {
+                    comboStep = 0; // Çok bekledi, resetle
+                }
+
+                // Açıları Belirle
+                if (comboStep === 0) { // Vuruş 1
+                    activeStartY = swordSettings.c1_StartY; activeEndY = swordSettings.c1_EndY;
+                    activeStartX = swordSettings.c1_StartX; activeEndX = swordSettings.c1_EndX;
+                } else if (comboStep === 1) { // Vuruş 2
+                    activeStartY = swordSettings.c2_StartY; activeEndY = swordSettings.c2_EndY;
+                    activeStartX = swordSettings.c2_StartX; activeEndX = swordSettings.c2_EndX;
+                } else { // Vuruş 3
+                    activeStartY = swordSettings.c3_StartY; activeEndY = swordSettings.c3_EndY;
+                    activeStartX = swordSettings.c3_StartX; activeEndX = swordSettings.c3_EndX;
+                }
+            }
+
+            // --- SALDIRI MANTIĞI ---
+            if (isAttacking) {
+                const elapsed = now - attackStartTime;
+
+                // Animasyonun GERÇEK süresini kullan (timeScale dahil)
+                let realAnimDuration = swordSettings.attackDuration; // Fallback
+                if (attackAction && attackAction.getClip()) {
+                    // Gerçek animasyon süresi / timeScale = efektif süre (ms cinsinden)
+                    const clipDuration = attackAction.getClip().duration; // saniye
+                    const timeScale = swordSettings.attackAnimSpeed || 1;
+                    realAnimDuration = (clipDuration / timeScale) * 1000; // ms
+                }
+
+                const progress = Math.min(elapsed / realAnimDuration, 1);
+
+                // Vuruş bitti mi?
+                if (progress >= 1) {
+                    isAttacking = false;
+                    lastAttackEndTime = wallClockNow;
+                    whooshTriggeredFlags = [];
+                    stopAllWhooshSounds(); // Aktif sesleri durdur
+                } else {
+                    // Saldırı başı (ilk frame) - Shake Tetikle
+                    if (elapsed < 20 && currentShakeTime <= 0) {
+                        shakeMultiplier = 1.0;
+                        currentShakeTime = swordSettings.shakeDuration;
+                    }
+
+                    // WHOOSH SESLERİ: Her keyframe için kontrol et (animasyon % ilerlemesine göre)
+                    const progressPercent = progress * 100;
+                    swordSettings.whooshKeyframes.forEach((kf, index) => {
+                        if (!whooshTriggeredFlags[index] && progressPercent >= kf.startPercent) {
+                            playWhooshSound(kf, realAnimDuration);
+                            whooshTriggeredFlags[index] = true;
+                        }
+                    });
+
+                    // SHOCKWAVE TETİKLEME: Belirtilen frame'e ulaşınca
+                    if (swordSettings.shockwaveEnabled && !shockwaveTriggered) {
+                        const currentFrame = (swordSettings.shockwaveFrame / swordSettings.shockwaveTotalFrames) * 100;
+                        if (progressPercent >= currentFrame) {
+                            shockwaveTriggered = true;
+                            shockwaveActive = true;
+                            shockwaveStartTime = now;
+                            shockwavePosition.copy(playerGroup.position);
+                            shockwaveMesh.position.x = shockwavePosition.x;
+                            shockwaveMesh.position.z = shockwavePosition.z;
+                            shockwaveMesh.visible = true;
+
+                            // KARAKTERİ KİLİTLE - shockwave süresince input yok
+                            shockwaveLockUntil = now + swordSettings.shockwaveLockDuration;
+
+                            // Büyük etki için shake tetikle
+                            shakeMultiplier = 2.0;
+                            currentShakeTime = swordSettings.shakeDuration * 2;
+
+                            // Shockwave sesi (düşük frekanslı boom)
+                            playShockwaveSound();
+                        }
+                    }
+                }
+
+                // Animasyon Easing
+                const ease = 1 - Math.pow(1 - progress, 3);
+
+                // Dinamik Açıları Kullan
+                const startAngleY = THREE.MathUtils.degToRad(activeStartY);
+                const endAngleY = THREE.MathUtils.degToRad(activeEndY);
+                swordContainer.rotation.y = startAngleY + (endAngleY - startAngleY) * ease;
+
+                const startAngleX = THREE.MathUtils.degToRad(activeStartX);
+                const endAngleX = THREE.MathUtils.degToRad(activeEndX);
+                swordContainer.rotation.x = startAngleX + (endAngleX - startAngleX) * ease;
+
+                // Hitbox
+                const currentTip = new THREE.Vector3();
+                const currentBase = new THREE.Vector3();
+                tipPoint.getWorldPosition(currentTip);
+                basePoint.getWorldPosition(currentBase);
+                const swordLine = new THREE.Line3(currentBase, currentTip);
+                const closestPointOnBlade = new THREE.Vector3();
+
+                for (let i = 0; i < enemies.length; i++) {
+                    const enemy = enemies[i];
+                    if (enemy.userData.isDead) continue;
+                    if (now - enemy.userData.lastHitTime < 500) continue;
+
+                    swordLine.closestPointToPoint(enemy.position, true, closestPointOnBlade);
+                    const distToBlade = enemy.position.distanceTo(closestPointOnBlade);
+                    // Hit Threshold: Temel yarıçap + (scale * customDamageScale)
+                    const hitThreshold = (0.55 + (0.1 * swordSettings.swordScale)) * swordSettings.swordDamageHitboxScale;
+
+                    if (distToBlade < hitThreshold) {
+                        // Hit logic
+                        enemy.userData.lastHitTime = now;
+                        enemy.userData.currentHp--;
+
+                        // Efektler
+                        playSound('hit');
+
+                        // Çoklu vuruşta shake birikimini sınırla
+                        frameHitCount++;
+                        if (frameHitCount === 1) {
+                            // İlk vuruşta shake başlat
+                            shakeMultiplier = 1.5;
+                            currentShakeTime = swordSettings.shakeDuration;
+                        } else {
+                            // Ek vuruşlarda sadece multiplier'ı biraz artır (max limite kadar)
+                            shakeMultiplier = Math.min(shakeMultiplier + 0.2, maxShakeMultiplier);
+                        }
+
+                        // Slow Mo yok (istek üzerine kaldırıldı)
+                        // if (!hasTriggeredSlowMo) {
+                        //     slowMoTimer = swordSettings.slowMoDuration;
+                        //     hasTriggeredSlowMo = true;
+                        // }
+
+                        const knockbackDir = new THREE.Vector3().subVectors(enemy.position, playerGroup.position).normalize();
+                        enemy.userData.velocity.copy(knockbackDir).multiplyScalar(swordSettings.knockbackForce);
+                        enemy.userData.velocity.y = swordSettings.knockbackLift;
+                        enemy.material.color.setHex(0xffffff);
+                        setTimeout(() => { if (!enemy.userData.isDead) enemy.material.color.setHex(0xff2222); }, 100);
+                        if (enemy.userData.currentHp <= 0) enemy.userData.isDead = true;
+                        if (currentShakeTime < 100) currentShakeTime = 100;
+                    }
+                }
+
+                // Trail - RightHand bone'u takibi
+                const punchCenter = new THREE.Vector3();
+                if (rightHandBone) {
+                    rightHandBone.getWorldPosition(punchCenter);
+                } else {
+                    tipPoint.getWorldPosition(punchCenter); // Fallback
+                }
+
+                // Local koordinatlara çevir (trail render için)
+                playerGroup.worldToLocal(punchCenter);
+
+                if (hasLastPos) {
+                    const steps = 3;
+                    for (let i = 1; i <= steps; i++) {
+                        const t = i / steps;
+                        const lerpPos = new THREE.Vector3().copy(lastTipPos).lerp(punchCenter, t);
+                        trailPositions.unshift({ center: lerpPos, time: now });
+                    }
+                } else {
+                    trailPositions.unshift({ center: punchCenter.clone(), time: now });
+                }
+                lastTipPos.copy(punchCenter);
+                hasLastPos = true;
+            } else {
+                const returnSpeed = 0.1 * currentTimeScale;
+
+                // Kılıcı nötr pozisyona yumuşakça döndür
+                swordContainer.rotation.y += (0 - swordContainer.rotation.y) * returnSpeed;
+                swordContainer.rotation.x += (0 - swordContainer.rotation.x) * returnSpeed;
+
+                hasLastPos = false;
+
+                // Saldırı bitti - aktif whoosh seslerini durdur
+                if (activeWhooshNodes.length > 0) {
+                    stopAllWhooshSounds();
+                }
+
+                // Saldırı bitti - trail'i anında temizle
+                trailPositions.length = 0;
+            }
+
+            // Trail Logic
+            while (trailPositions.length > 0) {
+                const oldestPoint = trailPositions[trailPositions.length - 1];
+                if (now - oldestPoint.time > swordSettings.trailLife) {
+                    trailPositions.pop();
+                } else {
+                    break;
+                }
+            }
+            if (trailPositions.length > MAX_TRAIL_POINTS) trailPositions.length = MAX_TRAIL_POINTS;
+
+            // Trail Render - Oval halka efekti
+            if (trailPositions.length < 2) {
+                trailMesh.visible = false;
+            } else {
+                trailMesh.visible = true;
+                const positions = trailGeometry.attributes.position.array;
+                const colors = trailGeometry.attributes.color.array;
+                colorBaseObj.set(swordSettings.trailColorBase);
+
+                for (let i = 0; i < trailPositions.length; i++) {
+                    const point = trailPositions[i];
+                    const age = now - point.time;
+                    const lifeRatio = 1 - (age / swordSettings.trailLife);
+                    const alpha = Math.max(0, lifeRatio);
+
+                    // Radius küçülen efekt (eski noktalar daha küçük)
+                    const currentRadius = OVAL_RADIUS * lifeRatio;
+
+                    // Halka segmentlerini çiz (X-Z düzleminde, yere paralel 3D görünüm)
+                    for (let seg = 0; seg < RING_SEGMENTS; seg++) {
+                        const angle = (seg / RING_SEGMENTS) * Math.PI * 2;
+                        const offsetX = Math.cos(angle) * currentRadius;
+                        const offsetZ = Math.sin(angle) * currentRadius;
+
+                        const vertexIdx = (i * RING_SEGMENTS + seg) * 3;
+                        positions[vertexIdx] = point.center.x + offsetX;
+                        positions[vertexIdx + 1] = point.center.y; // Y sabit (yükseklik)
+                        positions[vertexIdx + 2] = point.center.z + offsetZ;
+
+                        colors[vertexIdx] = colorBaseObj.r * alpha;
+                        colors[vertexIdx + 1] = colorBaseObj.g * alpha;
+                        colors[vertexIdx + 2] = colorBaseObj.b * alpha;
+                    }
+                }
+                trailGeometry.attributes.position.needsUpdate = true;
+                trailGeometry.attributes.color.needsUpdate = true;
+
+                // Draw range: üçgen sayısı = (ring sayısı - 1) * segment sayısı * 2 üçgen * 3 vertex
+                const triangleCount = Math.max(0, trailPositions.length - 1) * RING_SEGMENTS * 2;
+                trailGeometry.setDrawRange(0, triangleCount * 3);
+            }
+
+            // --- SHOCKWAVE UPDATE ---
+            if (shockwaveActive) {
+                const shockwaveElapsed = now - shockwaveStartTime;
+                const shockwaveProgress = Math.min(shockwaveElapsed / swordSettings.shockwaveDuration, 1);
+
+                if (shockwaveProgress >= 1) {
+                    // Shockwave bitti
+                    shockwaveActive = false;
+                    shockwaveMesh.visible = false;
+
+                    // BİTİŞ SHAKE'İ - son darbe hissi
+                    shakeMultiplier = 1.5;
+                    currentShakeTime = swordSettings.shakeDuration * 1.5;
+                } else {
+                    // Genişleyen halka - dinamik geometry güncellemesi
+                    const currentRadius = shockwaveProgress * swordSettings.shockwaveMaxRadius;
+                    const ringWidth = 0.5 + (1 - shockwaveProgress) * 1.5; // Başta kalın, sona doğru incelen
+                    const innerRadius = Math.max(0.01, currentRadius - ringWidth);
+                    const outerRadius = currentRadius;
+
+                    // Geometry'yi güncelle (yeniden oluştur)
+                    shockwaveMesh.geometry.dispose();
+                    shockwaveMesh.geometry = new THREE.RingGeometry(innerRadius, outerRadius, 64);
+
+                    // Fade out opacity
+                    const fadeProgress = 1 - shockwaveProgress;
+                    shockwaveMaterial.opacity = fadeProgress * 0.8;
+
+                    // Renk güncellemesi (panelden)
+                    shockwaveMaterial.color.set(swordSettings.shockwaveColor);
+
+                    // DÜŞMAN HASAR VE KNOCKBACK
+                    // Sadece dalganın genişleyen kenarına yakın düşmanlara hasar ver
+                    for (let i = 0; i < enemies.length; i++) {
+                        const enemy = enemies[i];
+                        if (enemy.userData.isDead) continue;
+                        if (enemy.userData.isHeld) continue;
+                        // Bu shockwave'den zaten hasar aldı mı?
+                        if (enemy.userData.lastShockwaveHit === shockwaveStartTime) continue;
+
+                        // Mesafe hesapla (2D, yatay düzlem)
+                        const dx = enemy.position.x - shockwavePosition.x;
+                        const dz = enemy.position.z - shockwavePosition.z;
+                        const distToCenter = Math.sqrt(dx * dx + dz * dz);
+
+                        // Dalganın kenarına yakınlık (halkadan geçtiğinde hasar al)
+                        if (distToCenter >= innerRadius && distToCenter <= outerRadius + 1.0) {
+                            // HASAR UYGULA
+                            enemy.userData.lastShockwaveHit = shockwaveStartTime;
+                            enemy.userData.currentHp -= swordSettings.shockwaveDamage;
+
+                            // Mesafeye ters oranlı knockback (yakın = daha güçlü)
+                            const distanceFactor = 1 - (distToCenter / swordSettings.shockwaveMaxRadius);
+                            const knockbackPower = swordSettings.shockwaveKnockback * (0.5 + distanceFactor * 0.5);
+
+                            // Yön: Merkezden dışarı
+                            const knockDir = new THREE.Vector3(dx, 0, dz).normalize();
+                            enemy.userData.velocity.copy(knockDir).multiplyScalar(knockbackPower);
+                            enemy.userData.velocity.y = swordSettings.knockbackLift * distanceFactor;
+
+                            // Görsel feedback
+                            enemy.material.color.setHex(0xffff00); // Sarı flash
+                            setTimeout(() => {
+                                if (!enemy.userData.isDead) enemy.material.color.setHex(0xff2222);
+                            }, 150);
+
+                            // Ölü mü?
+                            if (enemy.userData.currentHp <= 0) {
+                                enemy.userData.isDead = true;
+                            }
+
+                            playSound('hit');
+                        }
+                    }
+                }
+            }
+
+
+            // --- DÜŞMAN YÖNETİMİ ---
+            // --- DÜŞMAN YÖNETİMİ ---
+            /*
+            if (now - lastSpawnTime > swordSettings.enemySpawnRate) {
+                spawnEnemy();
+                lastSpawnTime = now;
+            }
+            */
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+
+                // Eğer tutuluyorsa, fizik uygulama, sadece pozisyonu güncelle
+                if (enemy.userData.isHeld) {
+                    // Karakterin kafasının üzerinde
+                    const holdPos = playerGroup.position.clone();
+                    holdPos.y += 2.5;
+                    // Lerp ile taşı
+                    enemy.position.lerp(holdPos, 0.2);
+                    enemy.rotation.x += 0.1; // Eğlence için döndür
+                    enemy.rotation.z += 0.05;
+                    continue; // Döngünün geri kalanını atla
+                }
+
+                if (enemy.userData.velocity.lengthSq() > 0.0001) {
+                    const frameDisplacement = enemy.userData.velocity.clone().multiplyScalar(currentTimeScale);
+                    enemy.position.add(frameDisplacement);
+                    const adjustedDrag = Math.pow(swordSettings.knockbackDrag, currentTimeScale);
+                    enemy.userData.velocity.multiplyScalar(adjustedDrag);
+                    // Yerçekimi uygula (hep tam)
+                    if (enemy.position.y > 0.5) enemy.userData.velocity.y -= 0.05 * currentTimeScale;
+                    else if (enemy.position.y < 0.5) { enemy.position.y = 0.5; enemy.userData.velocity.y = 0; }
+
+                    // Fırlatılan düşman çarpışma kontrolü
+                    if (enemy.userData.isThrown && !enemy.userData.isDead) {
+                        const throwSpeed = enemy.userData.velocity.length();
+                        // Yeterince hızlıysa çarpışma kontrolü yap
+                        if (throwSpeed > 0.1) {
+                            for (let j = 0; j < enemies.length; j++) {
+                                const otherEnemy = enemies[j];
+                                if (otherEnemy === enemy) continue; // Kendisi değil
+                                if (otherEnemy.userData.isDead) continue;
+                                if (otherEnemy.userData.isHeld) continue; // Tutulan düşman değil
+
+                                const dist = enemy.position.distanceTo(otherEnemy.position);
+                                if (dist < swordSettings.throwDamageRadius) {
+                                    // ÇARPIŞMA! Her iki düşmana da hasar ver
+                                    playSound('hit');
+
+                                    // Fırlatılan düşmana hasar
+                                    enemy.userData.currentHp--;
+                                    enemy.material.color.setHex(0xffffff);
+                                    setTimeout(() => { if (!enemy.userData.isDead) enemy.material.color.setHex(0xff2222); }, 100);
+                                    if (enemy.userData.currentHp <= 0) enemy.userData.isDead = true;
+
+                                    // Çarpılan düşmana hasar
+                                    otherEnemy.userData.currentHp--;
+                                    otherEnemy.material.color.setHex(0xffffff);
+                                    setTimeout(() => { if (!otherEnemy.userData.isDead) otherEnemy.material.color.setHex(0xff2222); }, 100);
+                                    if (otherEnemy.userData.currentHp <= 0) otherEnemy.userData.isDead = true;
+
+                                    // Her iki düşmanı da etrafa savur
+                                    const impactDir = new THREE.Vector3().subVectors(otherEnemy.position, enemy.position).normalize();
+                                    otherEnemy.userData.velocity.copy(impactDir).multiplyScalar(swordSettings.throwImpactForce);
+                                    otherEnemy.userData.velocity.y = swordSettings.knockbackLift * 0.8;
+
+                                    // Fırlatılan düşman ters yöne savrulsun
+                                    enemy.userData.velocity.copy(impactDir).multiplyScalar(-swordSettings.throwImpactForce * 0.5);
+                                    enemy.userData.velocity.y = swordSettings.knockbackLift * 0.5;
+
+                                    // Shake efekti (birden fazla vuruşta biriksin)
+                                    shakeMultiplier = Math.min(shakeMultiplier + 0.5, maxShakeMultiplier);
+                                    currentShakeTime = swordSettings.shakeDuration;
+                                }
+                            }
+                        } else {
+                            // Hız çok düştü, artık fırlatma modunda değil
+                            enemy.userData.isThrown = false;
+                        }
+                    }
+                } else {
+                    enemy.userData.velocity.set(0, 0, 0);
+                    enemy.userData.isThrown = false; // Durduğunda fırlatma bitsin
+                }
+
+                if (enemy.userData.isDead) {
+                    enemy.rotation.x += enemy.userData.rotationSpeed.x * currentTimeScale;
+                    enemy.rotation.y += enemy.userData.rotationSpeed.y * currentTimeScale;
+                    const shrinkFactor = Math.pow(0.95, currentTimeScale);
+                    enemy.scale.multiplyScalar(shrinkFactor);
+                    if (enemy.scale.x < 0.1) {
+                        enemy.visible = false;
+                        enemies.splice(i, 1);
+                        enemyPool.push(enemy);
+                    }
+                } else {
+                    if (enemy.userData.velocity.length() < 0.05) {
+                        const direction = new THREE.Vector3().subVectors(playerGroup.position, enemy.position);
+                        direction.y = 0; direction.normalize();
+                        const scaledEnemySpeed = swordSettings.enemySpeed * currentTimeScale;
+                        enemy.position.add(direction.multiplyScalar(scaledEnemySpeed));
+                        const lookTarget = playerGroup.position.clone(); lookTarget.y = enemy.position.y; enemy.lookAt(lookTarget);
+                        if (enemy.position.distanceTo(playerGroup.position) < 1.0) {
+                            if (playerModel) {
+                                playerModel.traverse((node) => {
+                                    if (node.isMesh && node.material) {
+                                        node.material.color.setHex(0xff0000);
+                                        setTimeout(() => {
+                                            if (node.userData.originalColor) node.material.color.copy(node.userData.originalColor);
+                                            else node.material.color.setHex(0xffffff);
+                                        }, 100);
+                                    }
+                                });
+                            }
+                            enemy.position.add(direction.multiplyScalar(-2.0));
+                        }
+                    }
+                }
+            }
+
+            // --- KAMERA UPDATE ---
+            if (swordSettings.enableOrbit) {
+                if (!controls.enabled) controls.enabled = true;
+                controls.target.copy(playerGroup.position);
+                controls.target.x += shakeX;
+                controls.target.y += shakeY;
+                controls.update();
+            } else {
+                if (controls.enabled) controls.enabled = false;
+
+                // ==========================================
+                // JUMP GLITCH FIX: POST-ANIMATION UPDATE
+                // mixer.update ve triggerAnimation çağrılarının ardından, karakter pozisyonutu
+                // değişmiş olabilir. Kameranın gecikmeli zıplamasını önlemek için
+                // matrisleri ve dünyadaki gerçek pozisyonu GÜNCELLEYELİM:
+                if (playerGroup) playerGroup.updateMatrixWorld(true);
+                if (playerBody) {
+                    playerBody.getWorldPosition(playerBodyWorldPos);
+                } else if (playerGroup) {
+                    playerBodyWorldPos.copy(playerGroup.position);
+                }
+
+                lookAtPos = vehicleTarget || playerBodyWorldPos;
+                railFollowPos = lookAtPos.clone();
+
+                if (!vehicleTarget && activeCameraPivot && pivotParent) {
+                    const pivot = pivotParent.getObjectByName(activeCameraPivot);
+                    if (pivot) {
+                        railFollowPos = new THREE.Vector3();
+                        pivot.getWorldPosition(railFollowPos);
+                    }
+                }
+                // ==========================================
+
+                // --- DEBUG PATH SPHERE UPDATE ---
+                let isOnPath = false;
+                if (debugPathSphere) {
+                    const sphereSpeed = swordSettings.debugCameraSnap ? 999.0 : 0.35;
+                    const smoothedSpherePos = pathManager.getSmoothedClosestPoint(railFollowPos, debugPathSphere.position, sphereSpeed);
+                    if (smoothedSpherePos) {
+                        debugPathSphere.position.copy(smoothedSpherePos);
+                        debugPathSphere.visible = false; // Mesh hidden, only used for camera tracking
+                        isOnPath = true;
+                    }
+                }
+
+                // Cinematic "Little Nightmares" Style Camera
+                // 1. Hedef Pozisyon (Varsayılan: Offset'li takip)
+                let targetCamX = lookAtPos.x + swordSettings.camOffsetX;
+                let targetCamY = lookAtPos.y + swordSettings.camOffsetY;
+                let targetCamZ = lookAtPos.z + swordSettings.camOffsetZ;
+
+                // ROTA VARSA: Kamerayı sphere'e kilitle
+                if (isOnPath) {
+                    targetCamX = debugPathSphere.position.x;
+                    targetCamY = debugPathSphere.position.y;
+                    targetCamZ = debugPathSphere.position.z;
+                }
+
+                // İlk frame'de direkt ışınlan ki kayma olmasın
+                if (!isCamInit) {
+                    smoothedCamPos.set(targetCamX, targetCamY, targetCamZ);
+                    smoothedFocusPos.copy(lookAtPos);
+                    isCamInit = true;
+                }
+
+                // JUMP GLITCH FIX: Kamerayı hedefe anında kilitler (lerp sönümlemesini atlar)
+                if (window.forceCameraSnap) {
+                    smoothedCamPos.set(targetCamX, targetCamY, targetCamZ);
+                }
+
+                // 2. Smooth Takip (Lerp)
+                const currentCamLerp = swordSettings.debugCameraSnap ? swordSettings.camLerp : swordSettings.camLerp;
+                smoothedCamPos.x += (targetCamX - smoothedCamPos.x) * currentCamLerp;
+                smoothedCamPos.y += (targetCamY - smoothedCamPos.y) * currentCamLerp;
+                smoothedCamPos.z += (targetCamZ - smoothedCamPos.z) * currentCamLerp;
+
+
+                // 3. Smooth Bakış (LookAt)
+                const volumeTarget = activeVolume ? activeVolume.target : null;
+                const targetWeight = volumeTarget ? 1.0 : 0.0;
+
+                const currentBlendSpeed = swordSettings.debugCameraSnap ? 1.0 : swordSettings.volumeBlendSpeed;
+                currentVolumeWeight += (targetWeight - currentVolumeWeight) * currentBlendSpeed;
+
+                if (!window.lastVolumeTarget) window.lastVolumeTarget = new THREE.Vector3();
+                if (activeVolume) {
+                    window.lastVolumeTarget.copy(volumeTarget);
+                }
+
+                let targetFocusX = lookAtPos.x;
+                let targetFocusY = lookAtPos.y;
+                let targetFocusZ = lookAtPos.z;
+
+
+                // Weight etkili mi? (Küçük epsilon sıfır kabul edilebilir)
+                if (currentVolumeWeight > 0.001) {
+                    // Determine current influence cap
+                    let currentTargetInf;
+                    if (activeVolume) {
+                        if (activeVolume.influence !== undefined) {
+                            currentTargetInf = activeVolume.influence;
+                        } else {
+                            currentTargetInf = swordSettings.volumeInfluence;
+                        }
+                        // Cache for exit transition
+                        window.cachedExitInfluence = currentTargetInf;
+                    } else {
+                        // Exiting... use cached or default
+                        currentTargetInf = window.cachedExitInfluence !== undefined ? window.cachedExitInfluence : swordSettings.volumeInfluence;
+                    }
+
+                    const inf = currentTargetInf * currentVolumeWeight;
+
+                    // Son bilinen target'ı kullan (çıkışta da smooth olsun diye)
+                    targetFocusX = THREE.MathUtils.lerp(lookAtPos.x, window.lastVolumeTarget.x, inf);
+                    targetFocusY = THREE.MathUtils.lerp(lookAtPos.y, window.lastVolumeTarget.y, inf);
+                    targetFocusZ = THREE.MathUtils.lerp(lookAtPos.z, window.lastVolumeTarget.z, inf);
+                }
+
+                // JUMP GLITCH FIX: Odak noktasını (LookAt) hedefe anında kilitler
+                if (window.forceCameraSnap) {
+                    smoothedFocusPos.x = targetFocusX;
+                    smoothedFocusPos.y = targetFocusY;
+                    smoothedFocusPos.z = targetFocusZ;
+                    window.forceCameraSnap = false; // Temizle
+                }
+
+                const currentLookLerp = swordSettings.debugCameraSnap ? swordSettings.camLookLerp : swordSettings.camLookLerp;
+                smoothedFocusPos.x += (targetFocusX - smoothedFocusPos.x) * currentLookLerp;
+                smoothedFocusPos.y += (targetFocusY - smoothedFocusPos.y) * currentLookLerp;
+                smoothedFocusPos.z += (targetFocusZ - smoothedFocusPos.z) * currentLookLerp;
+
+                // === CUTSCENE CAMERA BLEND ===
+                // Cutscene aktifken blend değerini 1'e doğru artır, returning modunda 0'a düşür
+                if (cutsceneActive && !cutsceneReturning) {
+                    cutsceneBlend += (1.0 - cutsceneBlend) * cutsceneBlendSpeed;
+                } else if (cutsceneReturning) {
+                    cutsceneBlend += (0.0 - cutsceneBlend) * cutsceneBlendSpeed;
+                    // Blend neredeyse 0 olduğunda cutscene modunu tamamen kapat
+                    if (cutsceneBlend < 0.01) {
+                        cutsceneBlend = 0;
+                        cutsceneActive = false;
+                        cutsceneReturning = false;
+                        console.log("Cutscene transition complete - back to gameplay camera");
+                    }
+                }
+
+                // 4. Uygula + Shake (Önce temel pozisyon ve LookAt, sonra shake)
+                // Eğer cutscene aktifse, gameplay ve cutscene kameraları arasında blend yap
+                if (cutsceneBlend > 0.001 && cutsceneCamera) {
+                    // Cutscene kamerasının dünya pozisyon ve rotasyonunu al
+                    cutsceneCamera.updateMatrixWorld(true);
+                    const cutscenePos = new THREE.Vector3();
+                    const cutsceneQuat = new THREE.Quaternion();
+                    cutsceneCamera.getWorldPosition(cutscenePos);
+                    cutsceneCamera.getWorldQuaternion(cutsceneQuat);
+
+                    // Gameplay kamera pozisyonu
+                    const gameplayPos = new THREE.Vector3(smoothedCamPos.x, smoothedCamPos.y, smoothedCamPos.z);
+
+                    // Gameplay kamera rotasyonunu hesapla (lookAt'ten)
+                    // Geçici matris ile hesapla (clone() yerine daha güvenli)
+                    const lookAtMatrix = new THREE.Matrix4();
+                    lookAtMatrix.lookAt(gameplayPos, smoothedFocusPos, new THREE.Vector3(0, 1, 0));
+                    const gameplayQuat = new THREE.Quaternion().setFromRotationMatrix(lookAtMatrix);
+
+                    // Blend pozisyon ve rotasyon
+                    const finalPos = new THREE.Vector3().lerpVectors(gameplayPos, cutscenePos, cutsceneBlend);
+                    const finalQuat = gameplayQuat.clone().slerp(cutsceneQuat, cutsceneBlend);
+
+                    camera.position.copy(finalPos);
+                    camera.quaternion.copy(finalQuat);
+                } else {
+                    // Normal gameplay kamerası
+                    camera.position.set(smoothedCamPos.x, smoothedCamPos.y, smoothedCamPos.z);
+                    camera.lookAt(smoothedFocusPos);
+                }
+
+                // LookAt sonrası shake ekle ki LookAt sönümlemesin (sadece cutscene değilken)
+                if (cutsceneBlend < 0.5) {
+                    camera.position.x += shakeX * (1 - cutsceneBlend);
+                    camera.position.y += shakeY * (1 - cutsceneBlend);
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+</body>
+
+</html>

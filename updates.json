@@ -1,4 +1,14 @@
 {
-  "version": "2026-01-20T13:18:41.734Z",
-  "updates": []
+  "version": "2026-05-25T23:53:44.321Z",
+  "updates": [
+    {
+      "gameId": "Survivors",
+      "date": "2026-05-26",
+      "notes": [
+        "Pixel Knight Quest is now live on the App Store.",
+        "Tap the game card to jump straight to the App Store page.",
+        "The Lumus lineup now includes our first fully published mobile release."
+      ]
+    }
+  ]
 }

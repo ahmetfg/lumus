@@ -169,7 +169,7 @@ export class VehicleController {
     }
 
     setupGUI() {
-        if (typeof dat === 'undefined') return;
+        if (typeof dat === 'undefined' || window.DESK_DEBUG_UI_ENABLED === false) return;
 
         const gui = new dat.GUI({ width: 300 });
         gui.domElement.parentNode.style.zIndex = '9999';

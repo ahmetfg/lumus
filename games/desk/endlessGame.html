@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Car Debug - Wheel Editor</title>
+    <script src="./debug-runtime.js"></script>
     <style>
         * {
             margin: 0;
@@ -278,7 +279,7 @@
 
 <body>
 
-    <div id="debug-panel">
+    <div id="debug-panel" data-debug-ui>
         <h2>🚗 Wheel Editor</h2>
 
         <div class="section-title">CAMERA</div>
@@ -684,6 +685,7 @@
     });
 
     // --- MOBILE TOGGLE ---
+    const debugUiEnabled = window.DESK_DEBUG_UI_ENABLED !== false;
     let isMobileMode = true; // Default to Mobile Mode
     const mobileToggleBtn = document.getElementById('mobile-toggle');
     const debugPanel = document.getElementById('debug-panel');
@@ -709,7 +711,7 @@
             mobileToggleBtn.textContent = '🖥️ Desktop Mode';
         } else {
             // Mobile mode OFF
-            debugPanel.style.display = 'block';
+            debugPanel.style.display = debugUiEnabled ? 'block' : 'none';
             controlsInfo.style.display = 'block';
             mobileControls.classList.remove('visible');
             mobileToggleBtn.classList.remove('active');

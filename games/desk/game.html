@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Drift Hammer: Optimized Edition</title>
+    <script src="./debug-runtime.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
     <style>
         body {
@@ -905,7 +906,7 @@
                 <div class="stat-box">HEALTH: <span id="health-display">100</span></div>
                 <div class="stat-box">FPS: <span id="fps-display">0</span></div>
 
-                <div id="debug-panel">
+                <div id="debug-panel" data-debug-ui>
                     <div style="font-size:12px; color:#ccc; margin-bottom:5px;">CAMERA (DEBUG)</div>
                     <input type="range" id="cam-dist-slider" min="10" max="150" value="150">
                 </div>

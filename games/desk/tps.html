@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Three.js Kombo Sistemi</title>
+    <script src="./debug-runtime.js"></script>
     <style>
         body {
             margin: 0;
@@ -1619,7 +1620,9 @@
         }
 
         // --- Debug Panel ---
-        const gui = new dat.GUI();
+        const gui = window.createDeskDebugGui
+            ? window.createDeskDebugGui(() => new dat.GUI())
+            : new dat.GUI();
 
         function fadeToAction(action, duration) {
             if (currentAction === action) return;

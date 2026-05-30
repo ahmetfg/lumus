@@ -49,6 +49,39 @@
       text-transform: uppercase;
     }
 
+    #attemptsBadge {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      background: rgba(230, 57, 70, 0.18);
+      border: 1px solid rgba(230, 57, 70, 0.35);
+      backdrop-filter: blur(10px);
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: 0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 22px;
+      transform: translateX(-50%);
+
+    }
+
+    .attempt-ball {
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .attempt-ball.used {
+      opacity: 0.22;
+      transform: scale(0.9);
+    }
+
     /* Reset Button - Bottom Left */
     #resetBtn {
       position: absolute;
@@ -97,6 +130,177 @@
       align-items: center;
     }
 
+    #debugPanel {
+      position: absolute;
+      top: 20px;
+      left: 112px;
+      right: 84px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--ui-border);
+      border-radius: 14px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      color: #fff;
+      pointer-events: auto;
+      overflow: hidden;
+    }
+
+    #debugPanel.hidden {
+      display: none;
+    }
+
+    #debugToggleBtn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      min-width: 52px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--ui-border);
+      color: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+    }
+
+    #debugHeader {
+      padding: 12px 14px 0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    #debugTabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 180px));
+      gap: 8px;
+      padding: 12px 14px;
+    }
+
+    .debug-tab {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.82);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .debug-tab.active {
+      background: rgba(230, 57, 70, 0.18);
+      border-color: rgba(230, 57, 70, 0.6);
+      color: #fff;
+    }
+
+    .debug-panel-body {
+      display: none;
+      padding: 0 14px 14px;
+    }
+
+    .debug-panel-body.active {
+      display: block;
+    }
+
+    .debug-card {
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 14px;
+    }
+
+    .debug-card h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .debug-section-title {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.62);
+    }
+
+    .debug-card p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .debug-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .debug-btn {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border-radius: 10px;
+      min-width: 44px;
+      height: 44px;
+      padding: 0 14px;
+      font: inherit;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .debug-btn.primary {
+      background: var(--primary-color);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3);
+    }
+
+    .debug-value {
+      min-width: 54px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+
+    #debugContent {
+      padding: 0 14px 14px;
+    }
+
+    @media (max-width: 640px) {
+      #debugToggleBtn {
+        right: 16px;
+      }
+
+      #debugPanel {
+        left: 16px;
+        right: 76px;
+      }
+
+      #tip {
+        right: 16px;
+      }
+
+      #debugTabs {
+        grid-template-columns: 1fr 1fr;
+      }
+
+    }
+
     /* GOAL EFFECT */
     #goalOverlay {
       position: absolute;
@@ -130,6 +334,80 @@
       transform: scale(1.0) rotate(-5deg);
     }
 
+    #loseOverlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease-out;
+      z-index: 35;
+      background: radial-gradient(circle, rgba(230, 57, 70, 0.18) 0%, rgba(15, 23, 42, 0.88) 72%);
+    }
+
+    #loseOverlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #loseCard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 28px 24px;
+      border-radius: 22px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+      transform: scale(0.9);
+      transition: transform 0.22s ease;
+      min-width: min(86vw, 360px);
+    }
+
+    #loseOverlay.active #loseCard {
+      transform: scale(1);
+    }
+
+    #loseTitle {
+      margin: 0;
+      color: #fff;
+      font-size: clamp(42px, 10vw, 72px);
+      font-weight: 900;
+      font-style: italic;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-shadow: 0 0 24px rgba(230, 57, 70, 0.5);
+    }
+
+    #loseSubtitle {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    #restartGameBtn {
+      margin-top: 6px;
+      min-width: 180px;
+      height: 52px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: var(--primary-color);
+      color: #fff;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 10px 26px rgba(230, 57, 70, 0.34);
+    }
+
     /* Canvas & Drag SVG */
     canvas {
       display: block;
@@ -149,9 +427,129 @@
 
   <div id="hud">
     <div id="levelBadge">LVL 1</div>
+    <div id="attemptsBadge" aria-label="Remaining Balls"></div>
+
+    <button id="debugToggleBtn" title="Toggle Debug Panel">Debug</button>
+
+    <div id="debugPanel">
+      <div id="debugHeader">Debug Panel</div>
+      <div id="debugTabs">
+        <button class="debug-tab active" data-debug-tab="position">Konum Değiştir</button>
+        <button class="debug-tab" data-debug-tab="wall">Baraj Engeli</button>
+        <button class="debug-tab" data-debug-tab="goal">Kale Engeli</button>
+        <button class="debug-tab" data-debug-tab="truck">Kamyon Engeli</button>
+      </div>
+
+      <div id="debugContent">
+        <div class="debug-panel-body active" data-debug-panel="position">
+          <div class="debug-card">
+            <h3>Top başlangıç konumu</h3>
+            <p>Gol sonrası kullanılan rastgele konum fonksiyonuyla yeni bir nokta seçer.</p>
+            <div class="debug-actions">
+              <button id="debugRepositionBtn" class="debug-btn primary">Değiştir</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="debug-panel-body" data-debug-panel="wall">
+          <div class="debug-section-title">Baraj Engeli</div>
+          <div class="debug-card">
+            <h3>Barajdaki engel adedi</h3>
+            <p>Geçici debug override uygular. 0 olduğunda baraj gizlenir.</p>
+            <div class="debug-actions">
+              <button id="wallCountDecreaseBtn" class="debug-btn">-</button>
+              <div id="wallCountValue" class="debug-value">1</div>
+              <button id="wallCountIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+
+          <div class="debug-card" style="margin-top: 12px;">
+            <h3>Baraj engel hızı</h3>
+            <p>Barajın aşağı-yukarı hareket hızını değiştirir.</p>
+            <div class="debug-actions">
+              <button id="wallBobSpeedDecreaseBtn" class="debug-btn">-</button>
+              <div id="wallBobSpeedValue" class="debug-value">1.4</div>
+              <button id="wallBobSpeedIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+
+          <div class="debug-card" style="margin-top: 12px;">
+            <h3>Baraj engel aralığı</h3>
+            <p>Yere gömülme miktarını yüzde olarak ayarlar.</p>
+            <div class="debug-actions">
+              <button id="wallBobRangeDecreaseBtn" class="debug-btn">-</button>
+              <div id="wallBobRangeValue" class="debug-value">100%</div>
+              <button id="wallBobRangeIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="debug-panel-body" data-debug-panel="goal">
+          <div class="debug-section-title">Kale Engeli</div>
+          <div class="debug-card">
+            <h3>Kaledeki engel adedi</h3>
+            <p>Dikey hareketli engel parçalarının sayısını değiştirir.</p>
+            <div class="debug-actions">
+              <button id="goalObstacleCountDecreaseBtn" class="debug-btn">-</button>
+              <div id="goalObstacleCountValue" class="debug-value">3</div>
+              <button id="goalObstacleCountIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+
+          <div class="debug-card" style="margin-top: 12px;">
+            <h3>Kaledeki engel hızı</h3>
+            <p>Sağa sola hareket hızını anlık olarak değiştirir.</p>
+            <div class="debug-actions">
+              <button id="goalObstacleSpeedDecreaseBtn" class="debug-btn">-</button>
+              <div id="goalObstacleSpeedValue" class="debug-value">1.8</div>
+              <button id="goalObstacleSpeedIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="debug-panel-body" data-debug-panel="truck">
+          <div class="debug-section-title">Kamyon Engeli</div>
+          <div class="debug-card">
+            <h3>Kamyon görünürlüğü</h3>
+            <p>Geçen kamyon engelini aktif ya da pasif yapar.</p>
+            <div class="debug-actions">
+              <button id="truckObstacleToggleBtn" class="debug-btn primary">Açık</button>
+            </div>
+          </div>
+
+          <div class="debug-card" style="margin-top: 12px;">
+            <h3>Kamyon boyutu</h3>
+            <p>Kamyonun görselini ve collider boyutunu birlikte ölçekler.</p>
+            <div class="debug-actions">
+              <button id="truckObstacleScaleDecreaseBtn" class="debug-btn">-</button>
+              <div id="truckObstacleScaleValue" class="debug-value">100%</div>
+              <button id="truckObstacleScaleIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+
+          <div class="debug-card" style="margin-top: 12px;">
+            <h3>Geçiş sıklığı</h3>
+            <p>Kamyonun yeniden görünmesi için beklenen süreyi saniye cinsinden ayarlar.</p>
+            <div class="debug-actions">
+              <button id="truckObstacleCycleDecreaseBtn" class="debug-btn">-</button>
+              <div id="truckObstacleCycleValue" class="debug-value">9.5s</div>
+              <button id="truckObstacleCycleIncreaseBtn" class="debug-btn">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="goalOverlay">
       <div id="goalText">GOAL!</div>
+    </div>
+
+    <div id="loseOverlay">
+      <div id="loseCard">
+        <div id="loseTitle">LOOSE</div>
+        <p id="loseSubtitle">Game Over</p>
+        <button id="restartGameBtn" type="button">Restart</button>
+      </div>
     </div>
 
     <div id="tip">
@@ -188,6 +586,9 @@
         ballRadius: 0.22,
         wallMaxCount: 4    // New limit
       };
+      const ATTEMPTS_PER_LEVEL = 5;
+      const DIFFICULTY_RAMP_LEVELS = 10;
+      const DIFFICULTY_RAMP_MAX_INDEX = Math.max(1, DIFFICULTY_RAMP_LEVELS - 1);
 
       const isMobile = (/(Android|iPhone|iPad|iPod|Mobi)/i).test(navigator.userAgent || '');
       // Optimization: Cap pixel ratio to save battery/heat
@@ -359,10 +760,58 @@
       sideNetR.rotation.y = Math.PI / 2;
       goalGroup.add(sideNetL, sideNetR);
 
+      const goalObstacleRadius = 2.5 / 6;
+      const goalObstacleColliderRadius = goalObstacleRadius + 0.35;
+      const goalObstacleMinCount = 0;
+      const goalObstacleMaxCount = 3;
+      const defaultGoalObstacleCount = 1;
+      const defaultGoalObstacleSpeed = 1.8;
+      const goalObstaclePhaseStep = Math.PI / 2.8;
+      const goalObstacleGeo = new THREE.CylinderGeometry(goalObstacleRadius, goalObstacleRadius, 0.28, 48);
+      const goalObstacleMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0ea5e9,
+        emissiveIntensity: 0.45,
+        roughness: 0.35,
+        metalness: 0.2
+      });
+      const goalObstacleBaseEmissiveIntensity = 0.45;
+      const goalObstacleFlashIntensity = 1.8;
+      const goalObstacleGroup = new THREE.Group();
+      const goalObstacles = [];
+      goalGroup.add(goalObstacleGroup);
+
+      const truckSize = { x: 2.8, y: 1.2, z: 1.1 };
+      const truckHalfExtents = {
+        x: truckSize.x * 0.5,
+        y: truckSize.y * 0.5,
+        z: truckSize.z * 0.5
+      };
+      const defaultTruckScalePercent = 100;
+      const defaultTruckCycleDuration = 9.5;
+      const truckLaneZ = -29.4;
+      const truckTravelX = 18;
+      const truckActiveDuration = 2.6;
+      const truckSpeed = (truckTravelX * 2) / truckActiveDuration;
+      const truckGeo = new THREE.BoxGeometry(truckSize.x, truckSize.y, truckSize.z);
+      const truckMat = new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        roughness: 0.55,
+        metalness: 0.18
+      });
+      const truckObstacle = new THREE.Mesh(truckGeo, truckMat);
+      truckObstacle.castShadow = USE_SHADOWS;
+      truckObstacle.receiveShadow = USE_SHADOWS;
+      truckObstacle.visible = false;
+      scene.add(truckObstacle);
+
 
       // -- Wall (Defenders) --
       const wallGroup = new THREE.Group();
       scene.add(wallGroup);
+      const wallBaseY = 0.925;
+      const wallMinY = -0.925;
+      const wallPhaseStep = Math.PI / 5;
 
       // Fallback to CylinderGeometry if CapsuleGeometry is not available
       const dummyGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.85, 16);
@@ -373,8 +822,7 @@
           wallGroup.remove(wallGroup.children[0]);
         }
 
-        // LIMIT MAX 4 PLAYERS
-        let count = Math.min(Math.floor((level - 1) / 3) + 1, CONSTANTS.wallMaxCount);
+        const count = getCurrentWallCount();
 
         const spacing = 0.75;
         const totalWidth = (count - 1) * spacing;
@@ -382,13 +830,17 @@
 
         for (let i = 0; i < count; i++) {
           const d = new THREE.Mesh(dummyGeo, dummyMat);
-          d.position.set(startX + i * spacing, 0.925, 0);
+          d.position.set(startX + i * spacing, wallBaseY, 0);
+          d.userData.baseX = startX + i * spacing;
+          d.userData.phase = Math.random() * Math.PI * 2;
+          d.userData.phase2 = Math.random() * Math.PI * 2;
+          d.userData.speedMul = THREE.MathUtils.lerp(0.7, 1.35, Math.random());
+          d.userData.mix = THREE.MathUtils.lerp(0.18, 0.42, Math.random());
           d.castShadow = USE_SHADOWS;
           d.receiveShadow = USE_SHADOWS;
           wallGroup.add(d);
         }
       }
-
 
       // -- Confetti System --
       const confettiCount = 150;
@@ -475,11 +927,17 @@
       let clock = new THREE.Clock();
       let raf = 0;
       let needsRender = true;
+      let goalObstacleT = 0;
+      let truckObstacleT = 0;
+      let wallBobT = 0;
 
       // Re-using Vector3 to avoid GC
       const tmpAcc = new THREE.Vector3();
       const tmpCross = new THREE.Vector3();
       const tmpAxis = new THREE.Vector3();
+      const tmpObstacleWorld = new THREE.Vector3();
+      const tmpWallWorld = new THREE.Vector3();
+      const tmpTruckDelta = new THREE.Vector3();
 
       const state = {
         pos: new THREE.Vector3(0, ballRadius, -6),
@@ -489,7 +947,22 @@
         inFlight: false,
         stopped: false,
         isGoal: false,
-        level: 1
+        level: 1,
+        pendingLevel: null,
+        attemptsRemaining: ATTEMPTS_PER_LEVEL,
+        isGameOver: false
+      };
+
+      const debugState = {
+        wallCountOverride: null,
+        panelVisible: false,
+        wallBobSpeedOverride: null,
+        wallBobRangePercent: 100,
+        goalObstacleCountOverride: null,
+        goalObstacleSpeedOverride: null,
+        truckObstacleEnabledOverride: null,
+        truckObstacleScalePercentOverride: null,
+        truckObstacleCycleDurationOverride: null
       };
 
       const lastStartPos = new THREE.Vector3();
@@ -504,8 +977,116 @@
         { x: 5, z: -18 }
       ];
 
+      function getLevelRamp01(startLevel) {
+        const start = Math.max(1, startLevel || 1);
+        return THREE.MathUtils.clamp((state.level - start) / DIFFICULTY_RAMP_MAX_INDEX, 0, 1);
+      }
+
+      function getBaseWallCount() {
+        const level01 = getLevelRamp01(1);
+        return THREE.MathUtils.clamp(1 + Math.floor(level01 * 3.999), 1, CONSTANTS.wallMaxCount);
+      }
+
+      function getCurrentWallCount() {
+        if (debugState.wallCountOverride === null) return getBaseWallCount();
+        return THREE.MathUtils.clamp(debugState.wallCountOverride, 0, CONSTANTS.wallMaxCount);
+      }
+
+      function getBaseWallBobSpeed() {
+        const level01 = getLevelRamp01(1);
+        return THREE.MathUtils.lerp(1.1, 3.2, Math.pow(level01, 1.15));
+      }
+
+      function getCurrentWallBobSpeed() {
+        if (debugState.wallBobSpeedOverride === null) return getBaseWallBobSpeed();
+        return THREE.MathUtils.clamp(debugState.wallBobSpeedOverride, 0, 5);
+      }
+
+      function getBaseGoalObstacleCount() {
+        const level01 = getLevelRamp01(1);
+        if (level01 < 0.33) return 1;
+        if (level01 < 0.7) return 2;
+        return 3;
+      }
+
+      function getCurrentGoalObstacleCount() {
+        if (debugState.goalObstacleCountOverride === null) return getBaseGoalObstacleCount();
+        return THREE.MathUtils.clamp(debugState.goalObstacleCountOverride, goalObstacleMinCount, goalObstacleMaxCount);
+      }
+
+      function getBaseGoalObstacleSpeed() {
+        const level01 = getLevelRamp01(1);
+        return THREE.MathUtils.lerp(1.15, 3.6, Math.pow(level01, 1.1));
+      }
+
+      function getCurrentGoalObstacleSpeed() {
+        if (debugState.goalObstacleSpeedOverride === null) return getBaseGoalObstacleSpeed();
+        return THREE.MathUtils.clamp(debugState.goalObstacleSpeedOverride, 0, 5);
+      }
+
+      function getBaseTruckEnabled() {
+        return getLevelRamp01(1) >= 0.18;
+      }
+
+      function getCurrentTruckEnabled() {
+        if (debugState.truckObstacleEnabledOverride === null) return getBaseTruckEnabled();
+        return !!debugState.truckObstacleEnabledOverride;
+      }
+
+      function getCurrentTruckActiveDuration() {
+        if (!getBaseTruckEnabled()) return truckActiveDuration;
+        const level01 = getLevelRamp01(Math.max(1, Math.round(DIFFICULTY_RAMP_LEVELS * 0.18)));
+        return THREE.MathUtils.lerp(2.9, 1.45, Math.pow(level01, 1.1));
+      }
+
+      function getCurrentTruckSpeed() {
+        return (truckTravelX * 2) / getCurrentTruckActiveDuration();
+      }
+
+      function getBaseTruckScalePercent() {
+        if (!getBaseTruckEnabled()) return defaultTruckScalePercent;
+        const level01 = getLevelRamp01(Math.max(1, Math.round(DIFFICULTY_RAMP_LEVELS * 0.18)));
+        return THREE.MathUtils.lerp(85, 150, Math.pow(level01, 1.15));
+      }
+
+      function getCurrentTruckScalePercent() {
+        if (debugState.truckObstacleScalePercentOverride === null) return getBaseTruckScalePercent();
+        return THREE.MathUtils.clamp(debugState.truckObstacleScalePercentOverride, 40, 250);
+      }
+
+      function getBaseTruckCycleDuration() {
+        if (!getBaseTruckEnabled()) return defaultTruckCycleDuration;
+        const level01 = getLevelRamp01(Math.max(1, Math.round(DIFFICULTY_RAMP_LEVELS * 0.18)));
+        return THREE.MathUtils.lerp(11.5, 5.2, Math.pow(level01, 1.08));
+      }
+
+      function getCurrentTruckCycleDuration() {
+        if (debugState.truckObstacleCycleDurationOverride === null) return getBaseTruckCycleDuration();
+        return THREE.MathUtils.clamp(debugState.truckObstacleCycleDurationOverride, getCurrentTruckActiveDuration() + 0.5, 20);
+      }
+
       function getRandomSpot() {
-        return spots[Math.floor(Math.random() * spots.length)];
+        const spot = spots[Math.floor(Math.random() * spots.length)];
+        const level01 = getLevelRamp01(1);
+        const xScale = THREE.MathUtils.lerp(1, 1.45, Math.pow(level01, 1.1));
+        const extraBack = THREE.MathUtils.lerp(0, 8, Math.pow(level01, 1.05));
+        return {
+          x: THREE.MathUtils.clamp(spot.x * xScale, -18, 18),
+          z: Math.min(spot.z + extraBack, -4)
+        };
+      }
+
+      function getLoopPhase(value) {
+        return THREE.MathUtils.euclideanModulo(value, Math.PI * 2) / (Math.PI * 2);
+      }
+
+      function triangleWave01(value) {
+        const phase = getLoopPhase(value);
+        return phase < 0.5 ? phase * 2 : 2 - phase * 2;
+      }
+
+      function triangleWaveSigned(value) {
+        return triangleWave01(value) * 2 - 1;
       }
 
       const cameraBasePos = new THREE.Vector3();
@@ -527,12 +1108,89 @@
         cameraBasePos.copy(camera.position);
       }
 
+      function rebuildGoalObstacles() {
+        while (goalObstacleGroup.children.length > 0) {
+          goalObstacleGroup.remove(goalObstacleGroup.children[0]);
+        }
+        goalObstacles.length = 0;
+
+        const count = getCurrentGoalObstacleCount();
+        if (count === 0) return;
+
+        for (let i = 0; i < count; i++) {
+          const goalObstacle = new THREE.Mesh(goalObstacleGeo, goalObstacleMat.clone());
+          goalObstacle.rotation.x = Math.PI / 2;
+          goalObstacle.castShadow = USE_SHADOWS;
+          goalObstacle.receiveShadow = USE_SHADOWS;
+          goalObstacle.position.y = count === 1
+            ? 1.25
+            : THREE.MathUtils.lerp(goalObstacleRadius, 2.5 - goalObstacleRadius, i / (count - 1));
+          goalObstacle.userData.phase = Math.random() * Math.PI * 2;
+          goalObstacle.userData.phase2 = Math.random() * Math.PI * 2;
+          goalObstacle.userData.speedMul = THREE.MathUtils.lerp(0.72, 1.38, Math.random());
+          goalObstacle.userData.mix = THREE.MathUtils.lerp(0.16, 0.38, Math.random());
+          goalObstacle.userData.flash = 0;
+          goalObstacleGroup.add(goalObstacle);
+          goalObstacles.push(goalObstacle);
+        }
+      }
+
+      function updateGoalObstacle(dt) {
+        goalObstacleT += dt;
+        const travel = Math.max(0, 3.66 - goalObstacleRadius - 0.18);
+        goalObstacleGroup.position.set(0, 0, -0.45);
+        for (let i = 0; i < goalObstacles.length; i++) {
+          const obstacle = goalObstacles[i];
+          const speed = getCurrentGoalObstacleSpeed() * obstacle.userData.speedMul;
+          const primary = triangleWaveSigned(goalObstacleT * speed + obstacle.userData.phase);
+          const secondary = triangleWaveSigned(goalObstacleT * (speed * 0.57) + obstacle.userData.phase2) * obstacle.userData.mix;
+          obstacle.position.x = THREE.MathUtils.clamp((primary + secondary) * travel, -travel, travel);
+          obstacle.userData.flash = Math.max(0, obstacle.userData.flash - dt * 4.2);
+          obstacle.material.emissiveIntensity = goalObstacleBaseEmissiveIntensity + obstacle.userData.flash * goalObstacleFlashIntensity;
+        }
+      }
+
+      function updateTruckObstacle(dt) {
+        const activeDuration = getCurrentTruckActiveDuration();
+        const cycleDuration = Math.max(activeDuration + 0.5, getCurrentTruckCycleDuration());
+        truckObstacleT = (truckObstacleT + dt) % cycleDuration;
+        const scale = THREE.MathUtils.clamp(getCurrentTruckScalePercent() / 100, 0.4, 2.5);
+        const isActive = getCurrentTruckEnabled() && truckObstacleT <= activeDuration;
+
+        truckObstacle.scale.setScalar(scale);
+
+        if (!isActive) {
+          truckObstacle.visible = false;
+          return;
+        }
+
+        truckObstacle.visible = true;
+        const progress = truckObstacleT / activeDuration;
+        const x = THREE.MathUtils.lerp(-truckTravelX, truckTravelX, progress);
+        truckObstacle.position.set(x, truckHalfExtents.y * scale, truckLaneZ);
+      }
+
+      function updateWallBobbing(dt) {
+        wallBobT += dt;
+        const range01 = THREE.MathUtils.clamp(debugState.wallBobRangePercent / 100, 0, 1);
+        const minY = THREE.MathUtils.lerp(wallBaseY, wallMinY, range01);
+
+        for (let i = 0; i < wallGroup.children.length; i++) {
+          const dummy = wallGroup.children[i];
+          const speed = getCurrentWallBobSpeed() * dummy.userData.speedMul;
+          const primary = triangleWaveSigned(wallBobT * speed + dummy.userData.phase);
+          const secondary = triangleWaveSigned(wallBobT * (speed * 0.63) + dummy.userData.phase2) * dummy.userData.mix;
+          const bob = THREE.MathUtils.clamp(((primary + secondary) * 0.5) + 0.5, 0, 1);
+          dummy.position.y = THREE.MathUtils.lerp(minY, wallBaseY, bob);
+        }
+      }
+
       function placeWall() {
         const goalCenter = new THREE.Vector3(0, 0, -34);
         const toGoal = new THREE.Vector3().subVectors(goalCenter, state.pos);
         const dist = toGoal.length();
 
-        if (dist < 11.0) {
+        if (dist < 11.0 || getCurrentWallCount() === 0) {
           wallGroup.visible = false;
           return;
         }
@@ -554,16 +1212,29 @@
           resetTimer = null;
         }
 
+        if (state.pendingLevel !== null) {
+          state.level = state.pendingLevel;
+          state.pendingLevel = null;
+          state.attemptsRemaining = ATTEMPTS_PER_LEVEL;
+        }
+
         state.inFlight = false;
         state.stopped = false;
         state.isGoal = false;
+        state.isGameOver = false;
         state.vel.set(0, 0, 0);
         state.omega.set(0, 0, 0);
 
         document.getElementById('goalOverlay').classList.remove('active');
+        setLoseOverlay(false);
         confettiSys.visible = false;
 
         document.getElementById('levelBadge').textContent = "LVL " + state.level;
+        syncAttemptsUI();
+        syncWallCountUI();
+        syncWallBobUI();
+        syncGoalObstacleUI();
+        syncTruckObstacleUI();
 
         if (randomize || !lastStartPos.lengthSq()) {
           const spot = getRandomSpot();
@@ -579,7 +1250,93 @@
 
         updateCameraPosition();
         placeWall();
+        rebuildGoalObstacles();
+        updateGoalObstacle(0);
+        updateTruckObstacle(0);
         requestRender();
+      }
+
+      function canManualReset() {
+        return !state.isGoal && !state.isGameOver && state.pendingLevel === null && !resetTimer;
+      }
+
+      function hasAttemptInProgress() {
+        return state.inFlight
+          || state.vel.lengthSq() > 0.0001
+          || state.pos.distanceToSquared(lastStartPos) > 0.001;
+      }
+
+      function softResetBall() {
+        state.inFlight = false;
+        state.stopped = false;
+        state.vel.set(0, 0, 0);
+        state.omega.set(0, 0, 0);
+        state.pos.copy(lastStartPos);
+        state.prevPos.copy(state.pos);
+        ball.position.copy(state.pos);
+        ball.rotation.set(0, 0, 0);
+        shadow.position.set(state.pos.x, 0.03, state.pos.z);
+        shadow.material.opacity = 0.3;
+        arrow.style.display = 'none';
+        previewLine.visible = false;
+        updateCameraPosition();
+        requestRender();
+      }
+
+      function setLoseOverlay(isActive) {
+        document.getElementById('loseOverlay').classList.toggle('active', !!isActive);
+      }
+
+      function triggerGameOver() {
+        state.isGameOver = true;
+        state.inFlight = false;
+        state.stopped = true;
+        state.pendingLevel = null;
+        state.vel.set(0, 0, 0);
+        state.omega.set(0, 0, 0);
+        arrow.style.display = 'none';
+        previewLine.visible = false;
+        setLoseOverlay(true);
+        requestRender();
+      }
+
+      function failAttempt() {
+        state.attemptsRemaining = Math.max(0, state.attemptsRemaining - 1);
+        syncAttemptsUI();
+
+        if (state.attemptsRemaining <= 0) {
+          triggerGameOver();
+          return;
+        }
+
+        softResetBall();
+      }
+
+      function manualResetBall() {
+        if (!canManualReset()) return;
+        if (!hasAttemptInProgress()) return;
+        failAttempt();
+      }
+
+      function autoResetBall() {
+        if (resetTimer) {
+          clearTimeout(resetTimer);
+          resetTimer = null;
+        }
+        if (state.isGoal || state.isGameOver || state.pendingLevel !== null) return;
+        failAttempt();
+      }
+
+      function restartGame() {
+        if (resetTimer) {
+          clearTimeout(resetTimer);
+          resetTimer = null;
+        }
+        state.level = 1;
+        state.pendingLevel = null;
+        state.attemptsRemaining = ATTEMPTS_PER_LEVEL;
+        state.isGameOver = false;
+        resetBall(true);
       }
 
       // ======================
@@ -804,40 +1561,39 @@
 
       function checkWallCollision() {
         if (!wallGroup.visible) return;
-        // Dummy radius + Ball radius
-        const rSum = 0.3 + CONSTANTS.ballRadius; // Adjusted for Cylinder
-        const colSq = rSum * rSum;
+        const wallColliderRadius = 0.3 + CONSTANTS.ballRadius;
+        const wallHalfHeight = 1.85 * 0.5;
+        const colSq = wallColliderRadius * wallColliderRadius;
 
         for (let i = 0; i < wallGroup.children.length; i++) {
           const dummy = wallGroup.children[i];
-          if (state.pos.y > 1.9) continue; // Over the head
+          dummy.getWorldPosition(tmpWallWorld);
 
-          // Simple X/Z cylinder check
-          const dx = state.pos.x - dummy.position.x; // local coord space is tricky if group rotated
-          // Since wallGroup is rotated, we should check distance in world space or local space carefully.
-          // Simplified: The wall is straight, we know its position.
-          // Actually wallGroup is rotated to face ball. 
-          // Let's do simple world distance check for robustness.
-          const dummyWorld = new THREE.Vector3();
-          dummy.getWorldPosition(dummyWorld);
-
-          const distX = state.pos.x - dummyWorld.x;
-          const distZ = state.pos.z - dummyWorld.z;
-          const dSq = distX * distX + distZ * distZ;
+          const closestY = THREE.MathUtils.clamp(
+            state.pos.y,
+            tmpWallWorld.y - wallHalfHeight,
+            tmpWallWorld.y + wallHalfHeight
+          );
+          const dx = state.pos.x - tmpWallWorld.x;
+          const dy = state.pos.y - closestY;
+          const dz = state.pos.z - tmpWallWorld.z;
+          const dSq = dx * dx + dy * dy + dz * dz;
 
           if (dSq < colSq) {
             // Bounce
             const len = Math.sqrt(dSq);
-            const nx = distX / len;
-            const nz = distZ / len;
+            const nx = len > 0.0001 ? dx / len : 0;
+            const ny = len > 0.0001 ? dy / len : 1;
+            const nz = len > 0.0001 ? dz / len : 0;
 
-            const dot = state.vel.x * nx + state.vel.z * nz;
+            const dot = state.vel.x * nx + state.vel.y * ny + state.vel.z * nz;
             state.vel.x = (state.vel.x - 2 * dot * nx) * 0.5;
+            state.vel.y = (state.vel.y - 2 * dot * ny) * 0.5;
             state.vel.z = (state.vel.z - 2 * dot * nz) * 0.5;
-            state.vel.y *= 0.8;
 
-            const overlap = rSum - len + 0.05;
+            const overlap = wallColliderRadius - len + 0.05;
             state.pos.x += nx * overlap;
+            state.pos.y += ny * overlap;
             state.pos.z += nz * overlap;
             state.omega.multiplyScalar(0.7);
           }
@@ -882,6 +1638,111 @@
             state.pos.z += nz * (0.32 - len);
           }
         }
+      }
+
+      function checkGoalObstacleCollision() {
+        const minDist = goalObstacleColliderRadius + CONSTANTS.ballRadius;
+
+        for (let i = 0; i < goalObstacles.length; i++) {
+          goalObstacles[i].getWorldPosition(tmpObstacleWorld);
+
+          const dx = state.pos.x - tmpObstacleWorld.x;
+          const dy = state.pos.y - tmpObstacleWorld.y;
+          const dz = state.pos.z - tmpObstacleWorld.z;
+          const distSq = dx * dx + dy * dy + dz * dz;
+
+          if (distSq >= minDist * minDist) continue;
+
+          let dist = Math.sqrt(distSq);
+          let nx = 0;
+          let ny = 0;
+          let nz = 1;
+
+          if (dist > 0.0001) {
+            nx = dx / dist;
+            ny = dy / dist;
+            nz = dz / dist;
+          } else {
+            dist = minDist;
+          }
+
+          const dot = state.vel.x * nx + state.vel.y * ny + state.vel.z * nz;
+          state.vel.x = (state.vel.x - 2 * dot * nx) * 0.72;
+          state.vel.y = (state.vel.y - 2 * dot * ny) * 0.72;
+          state.vel.z = (state.vel.z - 2 * dot * nz) * 0.72;
+
+          const overlap = minDist - dist + 0.02;
+          state.pos.x += nx * overlap;
+          state.pos.y += ny * overlap;
+          state.pos.z += nz * overlap;
+          state.omega.multiplyScalar(0.82);
+          goalObstacles[i].userData.flash = 1;
+          return;
+        }
+      }
+
+      function checkTruckObstacleCollision() {
+        if (!truckObstacle.visible) return;
+        const scale = THREE.MathUtils.clamp(getCurrentTruckScalePercent() / 100, 0.4, 2.5);
+        const scaledHalfExtents = {
+          x: truckHalfExtents.x * scale,
+          y: truckHalfExtents.y * scale,
+          z: truckHalfExtents.z * scale
+        };
+
+        const closestX = THREE.MathUtils.clamp(
+          state.pos.x,
+          truckObstacle.position.x - scaledHalfExtents.x,
+          truckObstacle.position.x + scaledHalfExtents.x
+        );
+        const closestY = THREE.MathUtils.clamp(
+          state.pos.y,
+          truckObstacle.position.y - scaledHalfExtents.y,
+          truckObstacle.position.y + scaledHalfExtents.y
+        );
+        const closestZ = THREE.MathUtils.clamp(
+          state.pos.z,
+          truckObstacle.position.z - scaledHalfExtents.z,
+          truckObstacle.position.z + scaledHalfExtents.z
+        );
+
+        const dx = state.pos.x - closestX;
+        const dy = state.pos.y - closestY;
+        const dz = state.pos.z - closestZ;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        const minDist = CONSTANTS.ballRadius;
+
+        if (distSq >= minDist * minDist) return;
+
+        let dist = Math.sqrt(distSq);
+        let nx = 0;
+        let ny = 0;
+        let nz = 1;
+
+        if (dist > 0.0001) {
+          nx = dx / dist;
+          ny = dy / dist;
+          nz = dz / dist;
+        } else {
+          tmpTruckDelta.copy(state.pos).sub(truckObstacle.position);
+          if (Math.abs(tmpTruckDelta.x) > Math.abs(tmpTruckDelta.z)) nx = Math.sign(tmpTruckDelta.x) || 1;
+          else nz = Math.sign(tmpTruckDelta.z) || 1;
+          dist = minDist;
+        }
+
+        const truckVelX = getCurrentTruckSpeed();
+        const relativeVelX = state.vel.x - truckVelX;
+        const dot = relativeVelX * nx + state.vel.y * ny + state.vel.z * nz;
+
+        state.vel.x = (relativeVelX - 2 * dot * nx) * 0.68 + truckVelX;
+        state.vel.y = (state.vel.y - 2 * dot * ny) * 0.68;
+        state.vel.z = (state.vel.z - 2 * dot * nz) * 0.68;
+
+        const overlap = minDist - dist + 0.03;
+        state.pos.x += nx * overlap;
+        state.pos.y += ny * overlap;
+        state.pos.z += nz * overlap;
+        state.omega.multiplyScalar(0.8);
       }
 
       function enforceNetConstraints() {
@@ -938,6 +1799,8 @@
           }
 
           checkWallCollision();
+          checkGoalObstacleCollision();
+          checkTruckObstacleCollision();
           checkPostCollision();
 
           // Goal Logic
@@ -946,7 +1809,8 @@
             if (Math.abs(state.pos.x) < 3.5 && state.pos.y < 2.4) {
               // GOAL!
               state.isGoal = true;
-              state.level++;
+              const nextLevel = state.level + 1;
+              state.pendingLevel = nextLevel;
               goalFlashT = 0.5;
               shakeIntensity = 0.5;
               triggerConfetti();
@@ -955,7 +1819,7 @@
               // LUMUS INTEGRATION: Report level progress
               window.parent.postMessage({
                 type: 'LUMUS_GAME_PROGRESS',
-                data: { level: state.level, gameId: 'prokick' }
+                data: { level: nextLevel, gameId: 'prokick' }
               }, '*');
 
               if (!resetTimer) {
@@ -990,7 +1854,7 @@
 
         if ((state.stopped || isTooFar || isBack) && !state.isGoal && !resetTimer) {
           state.inFlight = false;
-          resetTimer = setTimeout(() => resetBall(false), 800);
+          resetTimer = setTimeout(() => autoResetBall(), 800);
         }
 
         needsRender = true;
@@ -1000,8 +1864,12 @@
         raf = 0;
         const dt = Math.min(clock.getDelta(), 0.033);
 
+        updateWallBobbing(dt);
+        updateGoalObstacle(dt);
+        updateTruckObstacle(dt);
         if (state.inFlight) stepPhysics(dt);
         updateConfetti(dt);
+        needsRender = true;
 
         // Effects
         if (goalFlashT > 0) {
@@ -1030,9 +1898,7 @@
         }
 
         // Keep loop alive if physics active or effects running
-        if (state.inFlight || goalFlashT > 0 || confettiSys.visible || shakeIntensity > 0 || pointer.down) {
-          requestLoop();
-        }
+        requestLoop();
       }
 
       function requestLoop() {
@@ -1042,10 +1908,122 @@
       }
       function requestRender() { needsRender = true; requestLoop(); }
 
+      // ======================
+      // 5) Debug Panel
+      // ======================
+      const debugTabs = Array.from(document.querySelectorAll('[data-debug-tab]'));
+      const debugPanels = Array.from(document.querySelectorAll('[data-debug-panel]'));
+      const wallCountValue = document.getElementById('wallCountValue');
+      const wallBobSpeedValue = document.getElementById('wallBobSpeedValue');
+      const wallBobRangeValue = document.getElementById('wallBobRangeValue');
+      const goalObstacleCountValue = document.getElementById('goalObstacleCountValue');
+      const goalObstacleSpeedValue = document.getElementById('goalObstacleSpeedValue');
+      const truckObstacleToggleBtn = document.getElementById('truckObstacleToggleBtn');
+      const truckObstacleScaleValue = document.getElementById('truckObstacleScaleValue');
+      const truckObstacleCycleValue = document.getElementById('truckObstacleCycleValue');
+      const attemptsBadge = document.getElementById('attemptsBadge');
+      const restartGameBtn = document.getElementById('restartGameBtn');
+      const debugPanel = document.getElementById('debugPanel');
+      const debugToggleBtn = document.getElementById('debugToggleBtn');
+
+      function syncDebugPanelVisibility() {
+        debugPanel.classList.toggle('hidden', !debugState.panelVisible);
+        debugToggleBtn.textContent = debugState.panelVisible ? 'Hide' : 'Show';
+      }
+
+      function syncWallCountUI() {
+        wallCountValue.textContent = String(getCurrentWallCount());
+      }
+
+      function syncAttemptsUI() {
+        attemptsBadge.innerHTML = Array.from({ length: ATTEMPTS_PER_LEVEL }, (_, index) => {
+          const isUsed = index >= state.attemptsRemaining;
+          return `<span class="attempt-ball${isUsed ? ' used' : ''}">⚽️</span>`;
+        }).join('');
+      }
+
+      function syncWallBobUI() {
+        wallBobSpeedValue.textContent = getCurrentWallBobSpeed().toFixed(1);
+        wallBobRangeValue.textContent = `${Math.round(debugState.wallBobRangePercent)}%`;
+      }
+
+      function syncGoalObstacleUI() {
+        goalObstacleCountValue.textContent = String(getCurrentGoalObstacleCount());
+        goalObstacleSpeedValue.textContent = getCurrentGoalObstacleSpeed().toFixed(1);
+      }
+
+      function syncTruckObstacleUI() {
+        truckObstacleToggleBtn.textContent = getCurrentTruckEnabled() ? 'Açık' : 'Kapalı';
+        truckObstacleScaleValue.textContent = `${Math.round(getCurrentTruckScalePercent())}%`;
+        truckObstacleCycleValue.textContent = `${getCurrentTruckCycleDuration().toFixed(1)}s`;
+      }
+
+      function setActiveDebugTab(tabName) {
+        debugTabs.forEach((tab) => {
+          tab.classList.toggle('active', tab.dataset.debugTab === tabName);
+        });
+        debugPanels.forEach((panel) => {
+          panel.classList.toggle('active', panel.dataset.debugPanel === tabName);
+        });
+      }
+
+      function updateDebugWallCount(nextCount) {
+        debugState.wallCountOverride = THREE.MathUtils.clamp(nextCount, 0, CONSTANTS.wallMaxCount);
+        syncWallCountUI();
+        placeWall();
+        requestRender();
+      }
+
+      function updateWallBobSpeed(nextSpeed) {
+        debugState.wallBobSpeedOverride = THREE.MathUtils.clamp(Math.round(nextSpeed * 10) / 10, 0, 5);
+        syncWallBobUI();
+        requestRender();
+      }
+
+      function updateWallBobRange(nextRange) {
+        debugState.wallBobRangePercent = THREE.MathUtils.clamp(Math.round(nextRange / 5) * 5, 0, 100);
+        syncWallBobUI();
+        requestRender();
+      }
+
+      function updateGoalObstacleCount(nextCount) {
+        debugState.goalObstacleCountOverride = THREE.MathUtils.clamp(nextCount, goalObstacleMinCount, goalObstacleMaxCount);
+        rebuildGoalObstacles();
+        syncGoalObstacleUI();
+        requestRender();
+      }
+
+      function updateGoalObstacleSpeed(nextSpeed) {
+        debugState.goalObstacleSpeedOverride = THREE.MathUtils.clamp(Math.round(nextSpeed * 10) / 10, 0, 5);
+        syncGoalObstacleUI();
+        requestRender();
+      }
+
+      function updateTruckObstacleEnabled(nextEnabled) {
+        debugState.truckObstacleEnabledOverride = !!nextEnabled;
+        syncTruckObstacleUI();
+        updateTruckObstacle(0);
+        requestRender();
+      }
+
+      function updateTruckObstacleScale(nextScalePercent) {
+        debugState.truckObstacleScalePercentOverride = THREE.MathUtils.clamp(Math.round(nextScalePercent / 5) * 5, 40, 250);
+        syncTruckObstacleUI();
+        updateTruckObstacle(0);
+        requestRender();
+      }
+
+      function updateTruckObstacleCycleDuration(nextDuration) {
+        debugState.truckObstacleCycleDurationOverride = THREE.MathUtils.clamp(Math.round(nextDuration * 10) / 10, getCurrentTruckActiveDuration() + 0.5, 20);
+        syncTruckObstacleUI();
+        updateTruckObstacle(0);
+        requestRender();
+      }
+
 
 
       // ======================
-      // 5) Event Listeners (Hybrid: Touch for Mobile/PWA, Pointer for Desktop)
+      // 6) Event Listeners (Hybrid: Touch for Mobile/PWA, Pointer for Desktop)
       // ======================
 
       const canvasEl = renderer.domElement;
@@ -1055,7 +2033,7 @@
         if (e.touches.length > 1) return; // Ignore multi-touch
         e.preventDefault(); // Prevent scroll/zoom
 
-        if (state.inFlight || state.vel.length() > 0.1) return;
+        if (state.isGameOver || state.inFlight || state.vel.length() > 0.1) return;
 
         const touch = e.touches[0];
         pointer.down = true;
@@ -1123,7 +2101,7 @@
       // -- POINTER EVENTS (Desktop/Mouse) --
       function onPointerDown(e) {
         if (e.pointerType === 'touch') return; // Let touch handler handle it
-        if (state.inFlight || state.vel.length() > 0.1) return;
+        if (state.isGameOver || state.inFlight || state.vel.length() > 0.1) return;
 
         pointer.down = true;
         pointer.pointerId = e.pointerId;
@@ -1213,7 +2191,92 @@
 
       // Reset Btn
       document.getElementById('resetBtn').addEventListener('click', () => {
-        resetBall(false); // Reset to same spot
+        manualResetBall();
+      });
+
+      restartGameBtn.addEventListener('click', () => {
+        restartGame();
+      });
+
+      window.addEventListener('keyup', (event) => {
+        if (event.key.toLowerCase() === 'r') {
+          manualResetBall();
+        }
+      });
+
+      debugTabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          setActiveDebugTab(tab.dataset.debugTab);
+        });
+      });
+
+      document.getElementById('debugRepositionBtn').addEventListener('click', () => {
+        resetBall(true);
+      });
+
+      debugToggleBtn.addEventListener('click', () => {
+        debugState.panelVisible = !debugState.panelVisible;
+        syncDebugPanelVisibility();
+      });
+
+      document.getElementById('wallCountDecreaseBtn').addEventListener('click', () => {
+        updateDebugWallCount(getCurrentWallCount() - 1);
+      });
+
+      document.getElementById('wallCountIncreaseBtn').addEventListener('click', () => {
+        updateDebugWallCount(getCurrentWallCount() + 1);
+      });
+
+      document.getElementById('wallBobSpeedDecreaseBtn').addEventListener('click', () => {
+        updateWallBobSpeed(getCurrentWallBobSpeed() - 0.2);
+      });
+
+      document.getElementById('wallBobSpeedIncreaseBtn').addEventListener('click', () => {
+        updateWallBobSpeed(getCurrentWallBobSpeed() + 0.2);
+      });
+
+      document.getElementById('wallBobRangeDecreaseBtn').addEventListener('click', () => {
+        updateWallBobRange(debugState.wallBobRangePercent - 5);
+      });
+
+      document.getElementById('wallBobRangeIncreaseBtn').addEventListener('click', () => {
+        updateWallBobRange(debugState.wallBobRangePercent + 5);
+      });
+
+      document.getElementById('goalObstacleCountDecreaseBtn').addEventListener('click', () => {
+        updateGoalObstacleCount(getCurrentGoalObstacleCount() - 1);
+      });
+
+      document.getElementById('goalObstacleCountIncreaseBtn').addEventListener('click', () => {
+        updateGoalObstacleCount(getCurrentGoalObstacleCount() + 1);
+      });
+
+      document.getElementById('goalObstacleSpeedDecreaseBtn').addEventListener('click', () => {
+        updateGoalObstacleSpeed(getCurrentGoalObstacleSpeed() - 0.2);
+      });
+
+      document.getElementById('goalObstacleSpeedIncreaseBtn').addEventListener('click', () => {
+        updateGoalObstacleSpeed(getCurrentGoalObstacleSpeed() + 0.2);
+      });
+
+      truckObstacleToggleBtn.addEventListener('click', () => {
+        updateTruckObstacleEnabled(!getCurrentTruckEnabled());
+      });
+
+      document.getElementById('truckObstacleScaleDecreaseBtn').addEventListener('click', () => {
+        updateTruckObstacleScale(getCurrentTruckScalePercent() - 5);
+      });
+
+      document.getElementById('truckObstacleScaleIncreaseBtn').addEventListener('click', () => {
+        updateTruckObstacleScale(getCurrentTruckScalePercent() + 5);
+      });
+
+      document.getElementById('truckObstacleCycleDecreaseBtn').addEventListener('click', () => {
+        updateTruckObstacleCycleDuration(getCurrentTruckCycleDuration() - 0.5);
+      });
+
+      document.getElementById('truckObstacleCycleIncreaseBtn').addEventListener('click', () => {
+        updateTruckObstacleCycleDuration(getCurrentTruckCycleDuration() + 0.5);
       });
 
       // Resize
@@ -1228,6 +2291,13 @@
 
       // Init
       resizeSVG();
+      rebuildGoalObstacles();
+      syncDebugPanelVisibility();
+      syncAttemptsUI();
+      syncWallCountUI();
+      syncWallBobUI();
+      syncGoalObstacleUI();
+      syncTruckObstacleUI();
       resetBall(true);
 
       // LUMUS INTEGRATION: Notify game start
